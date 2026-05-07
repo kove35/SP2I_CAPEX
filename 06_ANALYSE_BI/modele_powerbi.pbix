@@ -1,0 +1,8 @@
+Placeholder modele Power BI SP2I.
+
+Importer les tables suivantes dans Power BI Desktop :
+- 06_ANALYSE_BI/dataset/FACT_METRE.csv
+- 06_ANALYSE_BI/dataset/DIM_FAMILLE.csv
+
+Relation recommandee :
+FACT_METRE[famille] -> DIM_FAMILLE[famille]
