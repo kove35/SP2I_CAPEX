@@ -1,0 +1,14 @@
+{
+  "port_arrivee": "Pointe-Noire",
+  "devise_reference": "XAF",
+  "incoterm_reference": "FOB",
+  "taux_landed_cost": {
+    "transport_maritime": 0.15,
+    "assurance": 0.02,
+    "droits_douane": 0.2,
+    "frais_portuaires": 0.1,
+    "logistique_locale": 0.05
+  },
+  "seuil_decision_import": 0.97,
+  "seuil_alerte_ecart_prix": 0.2
+}
