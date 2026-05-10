@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function Indicateur({ libelle, valeur, tonalite = "neutre" }) {
   return (
     <article className={`indicateur indicateur-${tonalite}`}>

@@ -9,6 +9,7 @@ node_modules/
 dist/
 build/
 .vite/
+.npm-cache/
 
 .env
 .env.*
@@ -18,7 +19,10 @@ build/
 Thumbs.db
 
 *.log
+*.tmp
+*.temp
+tmp/
+temp/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-

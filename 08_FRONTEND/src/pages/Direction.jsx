@@ -1,3 +1,4 @@
+import React from "react";
 import Indicateur from "../components/Indicateur";
 
 export default function Direction() {

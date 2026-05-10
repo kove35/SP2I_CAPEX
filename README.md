@@ -514,6 +514,123 @@ python -c "import sys, importlib; sys.path.insert(0, '07_API_BACKEND'); importli
 
 ---
 
+## Documentation frontend
+
+Le frontend SP2I CAPEX est une application React construite avec Vite. Il sert de premiere interface SaaS pour consulter les vues metier du projet : Direction, Chantier et Import.
+
+### Objectif du frontend
+
+| Objectif | Description |
+|---|---|
+| Centraliser la lecture CAPEX | Donner une entree simple aux utilisateurs metier. |
+| Separer les vues par profil | Adapter l'affichage aux besoins Direction, Chantier et Import. |
+| Preparer l'usage SaaS | Poser la base d'une interface connectee a l'API FastAPI. |
+| Faciliter la lecture | Afficher des indicateurs simples avant l'integration de tableaux dynamiques. |
+
+### Structure frontend
+
+```text
+08_FRONTEND/
+|
++-- index.html
++-- package.json
++-- src/
+    +-- main.jsx
+    +-- styles.css
+    +-- components/
+    |   +-- Indicateur.jsx
+    +-- pages/
+        +-- Direction.jsx
+        +-- Chantier.jsx
+        +-- Import.jsx
+```
+
+| Fichier | Role |
+|---|---|
+| `index.html` | Point d'entree HTML de l'application. |
+| `package.json` | Scripts NPM et dependances React/Vite. |
+| `src/main.jsx` | Initialisation React, navigation interne et choix de la vue active. |
+| `src/styles.css` | Styles globaux de l'interface. |
+| `src/components/Indicateur.jsx` | Composant reutilisable pour afficher un indicateur metier. |
+| `src/pages/Direction.jsx` | Vue de pilotage global CAPEX. |
+| `src/pages/Chantier.jsx` | Vue controle DQE et metriques terrain. |
+| `src/pages/Import.jsx` | Vue arbitrage import/local Pointe-Noire. |
+
+### Vues disponibles
+
+| Vue | Public cible | Contenu actuel |
+|---|---|---|
+| Direction | Direction, client, maitrise d'ouvrage | CAPEX local, CAPEX optimise, economies nettes. |
+| Chantier | Equipe travaux, controle projet | Lignes DQE, anomalies qualite, zones batiment/niveau. |
+| Import | Achats, logistique, direction projet | FOB, Pointe-Noire, decision import/local. |
+
+### Commandes frontend
+
+Toutes les commandes frontend se lancent depuis le dossier `08_FRONTEND`.
+
+```powershell
+cd 08_FRONTEND
+```
+
+Installer les dependances :
+
+```powershell
+npm install
+```
+
+Lancer le mode developpement :
+
+```powershell
+npm run dev
+```
+
+Construire la version production :
+
+```powershell
+npm run build
+```
+
+Previsualiser le build production :
+
+```powershell
+npm run preview
+```
+
+Adresse locale en developpement :
+
+```text
+http://localhost:5173
+```
+
+### Lien avec le backend
+
+Le backend FastAPI doit tourner sur le port `8000` pour les futurs appels API du frontend.
+
+```powershell
+uvicorn app.main:app --app-dir 07_API_BACKEND --reload --port 8000
+```
+
+Endpoints utiles pour connecter l'interface :
+
+| Endpoint | Usage frontend attendu |
+|---|---|
+| `GET /health` | Verifier que l'API est disponible. |
+| `POST /dqe/upload` | Envoyer un DQE JSON depuis une interface d'upload. |
+| `POST /import/optimize` | Lancer une optimisation import/local. |
+
+### Evolution frontend recommandee
+
+| Evolution | Objectif |
+|---|---|
+| Upload DQE dans l'interface | Permettre a l'utilisateur de charger un fichier sans passer par Swagger. |
+| Appels API reels | Remplacer les valeurs statiques par les resultats FastAPI. |
+| Tableaux de resultats | Afficher lignes DQE, anomalies et decisions import/local. |
+| Etats de chargement | Montrer clairement quand le pipeline est en cours. |
+| Gestion d'erreur | Afficher les erreurs API dans une zone lisible. |
+| Filtres metier | Filtrer par lot, famille, batiment, niveau et decision import. |
+
+---
+
 ## 15. Stack technique
 
 | Couche | Technologie | Rôle |
