@@ -4,15 +4,19 @@ import json
 from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
+from app.database import get_db
 from app.services.service_dqe import ServiceDQE
+from app.services.service_pipeline import ServicePipeline
 
 
 router = APIRouter()
 
 
 @router.post("/upload")
-async def upload_dqe(fichier: UploadFile = File(...)) -> Dict:
+async def upload_dqe(fichier: UploadFile = File(...), db: Session = Depends(get_db)) -> Dict:
     """
     Upload d'un DQE au format JSON.
 
@@ -48,11 +52,23 @@ async def upload_dqe(fichier: UploadFile = File(...)) -> Dict:
         )
 
     try:
-        return ServiceDQE().traiter_upload_json(contenu)
+        return ServiceDQE(db).traiter_upload_json(contenu)
     except Exception as erreur:
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors du traitement SP2I : {str(erreur)}",
+        )
+
+
+@router.post("/sync-current")
+def sync_current_dqe(db: Session = Depends(get_db)) -> Dict:
+    """Relance le pipeline sur le DQE source courant et synchronise PostgreSQL."""
+    try:
+        return ServicePipeline(db).executer_source_courante()
+    except Exception as erreur:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la synchronisation PostgreSQL : {str(erreur)}",
         )
 
 

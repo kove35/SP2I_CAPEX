@@ -1,4 +1,5 @@
 import React from "react";
+import axios from "axios";
 
 const API_BASE_URL = "http://localhost:8000";
 const LIGNES_PAR_PAGE = 10;
@@ -42,6 +43,8 @@ export default function Import() {
   const [rawData, setRawData] = React.useState(exempleLignes);
   const [editableData, setEditableData] = React.useState(exempleLignes);
   const [uploadEnCours, setUploadEnCours] = React.useState(false);
+  const [syncEnCours, setSyncEnCours] = React.useState(false);
+  const [dbSyncStatus, setDbSyncStatus] = React.useState("NON_SYNCHRONISE");
   const [filtreStatut, setFiltreStatut] = React.useState("TOUS");
   const [filtreTexte, setFiltreTexte] = React.useState("");
   const [filtreFamille, setFiltreFamille] = React.useState("TOUTES");
@@ -58,14 +61,19 @@ export default function Import() {
   };
 
   const appelerApi = async (url, options = {}) => {
-    const reponse = await fetch(`${API_BASE_URL}${url}`, options);
-    const contenu = await reponse.json().catch(() => ({}));
+    try {
+      const reponse = await axios({
+        url: `${API_BASE_URL}${url}`,
+        method: options.method || "GET",
+        data: options.body,
+        timeout: options.timeout || 120000,
+      });
 
-    if (!reponse.ok) {
-      throw new Error(contenu.detail || contenu.error || `Erreur HTTP ${reponse.status}`);
+      return reponse.data;
+    } catch (erreur) {
+      const detail = erreur.response?.data?.detail || erreur.response?.data?.error;
+      throw new Error(detail || erreur.message || "Erreur API inconnue");
     }
-
-    return contenu;
   };
 
   const verifierApi = React.useCallback(async () => {
@@ -297,6 +305,7 @@ export default function Import() {
       setRawData(lignesFichier);
       setEditableData(lignesFichier);
       setPage(1);
+      setDbSyncStatus("EN_ATTENTE");
       ajouterLog(`${lignesFichier.length} lignes chargees depuis le fichier source.`);
 
       const reponse = await appelerApi("/dqe/upload", {
@@ -311,8 +320,10 @@ export default function Import() {
         setRawData(lignesNormaliseesApi);
         setEditableData(lignesNormaliseesApi);
         setPage(1);
+        setDbSyncStatus(reponse.db_sync?.status === "SUCCESS" ? "SYNCHRONISE" : "ERREUR");
         ajouterLog(`${lignesApi.length} lignes recues depuis l'API.`);
       } else {
+        setDbSyncStatus(reponse.db_sync?.status === "SUCCESS" ? "SYNCHRONISE" : "EN_ATTENTE");
         ajouterLog("Upload termine. KPI conserve depuis le JSON source local.");
       }
 
@@ -323,6 +334,23 @@ export default function Import() {
       ajouterLog(`Erreur API upload : ${erreur.message}`);
     } finally {
       setUploadEnCours(false);
+    }
+  };
+
+  const synchroniserBase = async () => {
+    setSyncEnCours(true);
+    ajouterLog("POST /dqe/sync-current envoye.");
+
+    try {
+      const reponse = await appelerApi("/dqe/sync-current", { method: "POST" });
+      const statut = reponse.db_sync?.status || "UNKNOWN";
+      setDbSyncStatus(statut === "SUCCESS" ? "SYNCHRONISE" : "ERREUR");
+      ajouterLog(`Synchronisation PostgreSQL terminee : ${statut}.`);
+    } catch (erreur) {
+      setDbSyncStatus("ERREUR");
+      ajouterLog(`Erreur synchronisation PostgreSQL : ${erreur.message}`);
+    } finally {
+      setSyncEnCours(false);
     }
   };
 
@@ -421,6 +449,8 @@ export default function Import() {
         .dqe-pill-ok { color: #064e3b; background: #d1fae5; }
         .dqe-pill-ko { color: #7f1d1d; background: #fee2e2; }
         .dqe-pill-checking { color: #78350f; background: #fef3c7; }
+        .dqe-sync { display: grid; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; }
+        .dqe-sync strong { color: #1e3a5f; }
         .dqe-button {
           border: 0; border-radius: 12px; min-height: 42px; padding: 0 16px; font-weight: 800; cursor: pointer;
           background: #3b82f6; color: #fff; box-shadow: 0 10px 25px rgba(59,130,246,.22);
@@ -760,6 +790,28 @@ export default function Import() {
               >
                 {uploadEnCours ? "Upload en cours..." : "Uploader"}
               </button>
+
+              <div className="dqe-sync">
+                <strong>Base PostgreSQL</strong>
+                <span>
+                  Statut :{" "}
+                  {dbSyncStatus === "SYNCHRONISE"
+                    ? "donnees synchronisees"
+                    : dbSyncStatus === "EN_ATTENTE"
+                      ? "synchronisation a confirmer"
+                      : dbSyncStatus === "ERREUR"
+                        ? "erreur de synchronisation"
+                        : "non synchronise"}
+                </span>
+                <button
+                  type="button"
+                  onClick={synchroniserBase}
+                  disabled={syncEnCours || apiStatus !== "OK"}
+                  className="dqe-button"
+                >
+                  {syncEnCours ? "Synchronisation..." : "Envoyer vers base"}
+                </button>
+              </div>
             </section>
 
             <section className="dqe-card">
