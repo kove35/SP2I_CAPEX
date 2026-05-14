@@ -7,6 +7,7 @@ from tempfile import NamedTemporaryFile
 from time import perf_counter
 from typing import Any
 
+from sqlalchemy.orm import Session
 
 RACINE = Path(__file__).resolve().parents[3]
 TRAITEMENT = RACINE / "04_TRAITEMENT"
@@ -15,27 +16,19 @@ if str(TRAITEMENT) not in sys.path:
     sys.path.insert(0, str(TRAITEMENT))
 
 from pipeline_complet import PipelineCompletSP2I  # noqa: E402
+from app.services.service_pipeline import ServicePipeline
 
 
 class ServiceDQE:
     """Service metier utilise par l'API pour traiter un DQE JSON."""
 
-    def __init__(self) -> None:
+    def __init__(self, db: Session | None = None) -> None:
+        self.db = db
         self.chemin_source = RACINE / "03_DONNEES_ENTREE/dqe/dqe_source_brut.json"
 
     def traiter_upload_json(self, contenu: bytes) -> dict:
         """Sauvegarde le JSON envoye, lance le pipeline, puis retourne le resultat."""
-        try:
-            donnees = json.loads(contenu.decode("utf-8-sig"))
-        except json.JSONDecodeError as exc:
-            raise ValueError("JSON DQE invalide") from exc
-
-        self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
-
-        with self.chemin_source.open("w", encoding="utf-8") as fichier:
-            json.dump(donnees, fichier, ensure_ascii=False, indent=2)
-
-        return PipelineCompletSP2I().executer()
+        return ServicePipeline(self.db).executer_depuis_json(contenu)
 
     def extraire_pdf(self, contenu: bytes, nom_fichier: str) -> dict[str, Any]:
         """Extrait un aperçu texte d'un PDF pour tester l'API depuis le frontend."""

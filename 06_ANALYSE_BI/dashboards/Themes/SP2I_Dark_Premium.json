@@ -1,0 +1,33 @@
+{
+  "name": "SP2I Dark Premium",
+  "dataColors": ["#22c55e", "#3b82f6", "#60a5fa", "#94a3b8"],
+  "background": "#0f172a",
+  "foreground": "#e2e8f0",
+  "tableAccent": "#22c55e",
+  "visualStyles": {
+    "*": {
+      "*": {
+        "title": [
+          {
+            "show": true,
+            "color": "#e2e8f0",
+            "fontSize": 14,
+            "fontFamily": "Segoe UI Semibold"
+          }
+        ],
+        "background": [
+          {
+            "show": true,
+            "color": "#1e293b",
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": false
+          }
+        ]
+      }
+    }
+  }
+}
