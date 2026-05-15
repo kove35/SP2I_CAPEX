@@ -139,3 +139,38 @@ ImportRiskAnalysis =
         Table = Source{[Schema = "public", Item = "v_import_risk_analysis"]}[Data]
     in
         Table;
+
+ProcurementSummary =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_procurement_summary"]}[Data]
+    in
+        Table;
+
+RiskAnalysis =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_risk_analysis"]}[Data]
+    in
+        Table;
+
+SupplierRanking =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_supplier_ranking"]}[Data]
+    in
+        Table;
+
+CountryRisk =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_country_risk"]}[Data]
+    in
+        Table;
+
+ImportComplexity =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_import_complexity"]}[Data]
+    in
+        Table;

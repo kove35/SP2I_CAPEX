@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from app.core import CalculateurCAPEX, DataCleaner, DecisionEngine
+from app.core import CalculateurCAPEX, DataCleaner, DecisionEngine, ProcurementEngine
 from app.core.errors import SP2ICapexError, SimulationError
 from app.core.logging_config import configure_simulation_logging
 from app.repositories import RepositoryBPU, RepositoryMapping, RepositoryRun, RepositoryScenario, RepositorySimulation
@@ -127,6 +127,8 @@ class ServiceSimulation:
         lignes_normalisees = cleaner.normaliser_lignes(lignes_entree)
         calculateur = CalculateurCAPEX(parametres)
         lignes_calculees = calculateur.optimiser_lignes(lignes_normalisees)
+        procurement_engine = ProcurementEngine()
+        lignes_calculees = [procurement_engine.enrich_line(ligne) for ligne in lignes_calculees]
         decision_engine = DecisionEngine(parametres)
         lignes_calculees = [decision_engine.enrich_line(ligne) for ligne in lignes_calculees]
         kpi = calculateur.calculer_kpi(lignes_calculees)
@@ -296,4 +298,11 @@ class ServiceSimulation:
             "decision_score": ligne.get("FINAL_DECISION_SCORE", 0),
             "decision_confidence": ligne.get("DECISION_CONFIDENCE", ""),
             "decision_reason": ligne.get("DECISION_REASON", {}),
+            "global_risk_score": ligne.get("GLOBAL_RISK_SCORE", 0),
+            "risk_level": ligne.get("RISK_LEVEL", ""),
+            "lead_time_days": ligne.get("TOTAL_IMPORT_LEAD_TIME", 0),
+            "cashflow_score": ligne.get("CASHFLOW_SCORE", 0),
+            "moq_risk_score": ligne.get("MOQ_RISK_SCORE", 0),
+            "complexity_score": ligne.get("IMPORT_COMPLEXITY_SCORE", 0),
+            "procurement_analysis": ligne.get("PROCUREMENT_ANALYSIS", {}),
         }

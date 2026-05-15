@@ -78,6 +78,11 @@ v_decision_summary
 v_decision_risk
 v_supplier_performance
 v_import_risk_analysis
+v_procurement_summary
+v_risk_analysis
+v_supplier_ranking
+v_country_risk
+v_import_complexity
 ```
 
 ## Relations Power BI
@@ -221,6 +226,32 @@ country_id
 Power BI doit les afficher, filtrer et agreger, mais ne doit pas recalculer le
 score decisionnel. Les vues `v_decision_*` sont les sources conseillees pour
 les pages de synthese risque, fournisseur et arbitrage import/local.
+
+## Procurement & Risk Analytics
+
+La phase procurement ajoute les indicateurs suivants dans `fact_simulation` :
+
+```text
+global_risk_score
+lead_time_days
+cashflow_score
+moq_risk_score
+complexity_score
+procurement_reason
+```
+
+Les pages Power BI conseillees sont :
+
+```text
+Synthese procurement        -> v_procurement_summary
+Risque par scenario         -> v_risk_analysis
+Ranking fournisseurs        -> v_supplier_ranking
+Risque pays                 -> v_country_risk
+Complexite import / MOQ     -> v_import_complexity
+```
+
+Ces vues sont deja agregees dans PostgreSQL. Power BI ne doit donc pas
+recalculer le risque, le delai ou le scoring procurement.
 
 ## Vues KPI
 

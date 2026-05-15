@@ -188,6 +188,12 @@ class RepositorySimulation:
                         decision_reason,
                         decision_type,
                         decision_confidence,
+                        global_risk_score,
+                        lead_time_days,
+                        cashflow_score,
+                        moq_risk_score,
+                        complexity_score,
+                        procurement_reason,
                         supplier_id,
                         country_id
                     )
@@ -220,6 +226,12 @@ class RepositorySimulation:
                         CAST(:decision_reason AS jsonb),
                         :decision_type,
                         :decision_confidence,
+                        :global_risk_score,
+                        :lead_time_days,
+                        :cashflow_score,
+                        :moq_risk_score,
+                        :complexity_score,
+                        CAST(:procurement_reason AS jsonb),
                         :supplier_id,
                         :country_id
                     )
@@ -254,6 +266,12 @@ class RepositorySimulation:
                     "decision_reason": json.dumps(ligne.get("DECISION_REASON") or {}, ensure_ascii=True),
                     "decision_type": _texte(ligne.get("DECISION_TYPE") or ligne.get("decision_type")),
                     "decision_confidence": _texte(ligne.get("DECISION_CONFIDENCE") or ligne.get("decision_confidence")),
+                    "global_risk_score": _nombre(ligne.get("GLOBAL_RISK_SCORE") or ligne.get("global_risk_score")),
+                    "lead_time_days": _nombre(ligne.get("TOTAL_IMPORT_LEAD_TIME") or ligne.get("lead_time_days")),
+                    "cashflow_score": _nombre(ligne.get("CASHFLOW_SCORE") or ligne.get("cashflow_score")),
+                    "moq_risk_score": _nombre(ligne.get("MOQ_RISK_SCORE") or ligne.get("moq_risk_score")),
+                    "complexity_score": _nombre(ligne.get("IMPORT_COMPLEXITY_SCORE") or ligne.get("complexity_score")),
+                    "procurement_reason": json.dumps(ligne.get("PROCUREMENT_ANALYSIS") or {}, ensure_ascii=True),
                     "supplier_id": ids["supplier_id"],
                     "country_id": ids["country_id"],
                 },

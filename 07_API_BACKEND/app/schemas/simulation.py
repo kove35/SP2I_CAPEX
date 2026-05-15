@@ -20,6 +20,21 @@ class SimulationItem(BaseModel):
     niveau: str | None = None
     unite: str | None = None
     prix_fob: float | None = Field(default=None, ge=0, description="Prix FOB unitaire si connu.")
+    supplier_moq: float | None = Field(default=None, ge=0, description="MOQ fournisseur si connu.")
+    project_criticality: str | None = Field(default=None, description="LOW, MEDIUM, HIGH ou CRITICAL.")
+    cashflow_tension: str | None = Field(default=None, description="LOW, MEDIUM, HIGH ou CRITICAL.")
+    reliability_score: float | None = Field(default=None, ge=0, le=100)
+    quality_score: float | None = Field(default=None, ge=0, le=100)
+    customs_risk: float | None = Field(default=None, ge=0, le=100)
+    port_risk: float | None = Field(default=None, ge=0, le=100)
+    logistics_risk: float | None = Field(default=None, ge=0, le=100)
+    currency_risk: float | None = Field(default=None, ge=0, le=100)
+    political_risk: float | None = Field(default=None, ge=0, le=100)
+    supplier_production_days: float | None = Field(default=None, ge=0)
+    sea_freight_days: float | None = Field(default=None, ge=0)
+    customs_days: float | None = Field(default=None, ge=0)
+    local_transport_days: float | None = Field(default=None, ge=0)
+    security_buffer_days: float | None = Field(default=None, ge=0)
 
 
 class SimulationParameters(BaseModel):
@@ -99,6 +114,13 @@ class SimulationLineResult(BaseModel):
     decision_score: float | None = None
     decision_confidence: str | None = None
     decision_reason: dict[str, Any] = Field(default_factory=dict)
+    global_risk_score: float | None = None
+    risk_level: str | None = None
+    lead_time_days: float | None = None
+    cashflow_score: float | None = None
+    moq_risk_score: float | None = None
+    complexity_score: float | None = None
+    procurement_analysis: dict[str, Any] = Field(default_factory=dict)
 
 
 class SimulationKPI(BaseModel):
