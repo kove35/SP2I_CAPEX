@@ -1,0 +1,383 @@
+from __future__ import annotations
+
+import json
+from typing import Any
+from uuid import UUID
+
+from sqlalchemy import func, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
+
+from app.models import DimFamille, FactMetre
+
+
+def _nombre(valeur: Any) -> float:
+    try:
+        return float(valeur or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _texte(valeur: Any) -> str:
+    return str(valeur or "").strip()
+
+
+class RepositorySimulation:
+    """
+    Repository PostgreSQL pour les tables analytiques CAPEX.
+
+    Il remplace progressivement `ServiceDB` comme couche d'acces aux donnees :
+    les services pilotent les cas d'usage, le repository execute les requetes.
+    """
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def insert_fact_metre(self, data: list[dict[str, Any]]) -> int:
+        lignes = [
+            {
+                "id_ligne": _texte(ligne.get("id_ligne")),
+                "designation": _texte(ligne.get("designation")),
+                "quantite": _nombre(ligne.get("quantite")),
+                "prix_total_ht": _nombre(ligne.get("prix_total_ht") or ligne.get("montant_local")),
+                "capex_optimise": _nombre(ligne.get("capex_optimise")),
+                "economie_nette": _nombre(ligne.get("economie_nette")),
+                "decision_import": _texte(ligne.get("decision_import") or "LOCAL"),
+                "lot": _texte(ligne.get("lot")),
+                "famille": _texte(ligne.get("famille") or "default"),
+                "batiment": _texte(ligne.get("batiment")),
+                "niveau": _texte(ligne.get("niveau")),
+                "statut_ligne": _texte(ligne.get("statut_ligne") or "OK"),
+            }
+            for ligne in data
+            if ligne.get("id_ligne")
+        ]
+
+        if not lignes:
+            return 0
+
+        statement = pg_insert(FactMetre).values(lignes)
+        update_columns = {
+            colonne.name: getattr(statement.excluded, colonne.name)
+            for colonne in FactMetre.__table__.columns
+            if colonne.name not in {"id_ligne", "created_at", "updated_at"}
+        }
+        update_columns["updated_at"] = func.now()
+
+        statement = statement.on_conflict_do_update(
+            index_elements=[FactMetre.id_ligne],
+            set_=update_columns,
+        )
+        self.db.execute(statement)
+        self.db.commit()
+        return len(lignes)
+
+    def insert_dim_famille(self, data: list[dict[str, Any]]) -> int:
+        lignes = [
+            {
+                "famille": _texte(ligne.get("famille") or "default"),
+                "libelle_famille": _texte(ligne.get("libelle_famille") or ligne.get("famille")),
+                "categorie_achat": _texte(ligne.get("categorie_achat") or "A_ANALYSER"),
+            }
+            for ligne in data
+            if ligne.get("famille")
+        ]
+
+        if not lignes:
+            return 0
+
+        statement = pg_insert(DimFamille).values(lignes)
+        statement = statement.on_conflict_do_update(
+            index_elements=[DimFamille.famille],
+            set_={
+                "libelle_famille": statement.excluded.libelle_famille,
+                "categorie_achat": statement.excluded.categorie_achat,
+                "updated_at": func.now(),
+            },
+        )
+        self.db.execute(statement)
+        self.db.commit()
+        return len(lignes)
+
+    def get_summary(self) -> dict[str, Any]:
+        row = self.db.execute(
+            select(
+                func.coalesce(func.sum(FactMetre.prix_total_ht), 0),
+                func.coalesce(func.sum(FactMetre.capex_optimise), 0),
+                func.coalesce(func.sum(FactMetre.economie_nette), 0),
+                func.count(FactMetre.id_ligne),
+            )
+        ).one()
+
+        return {
+            "capex_local": round(float(row[0]), 2),
+            "capex_optimise": round(float(row[1]), 2),
+            "economie": round(float(row[2]), 2),
+            "lignes": int(row[3]),
+        }
+
+    def list_fact_metre(
+        self,
+        famille: str | None = None,
+        lot: str | None = None,
+        batiment: str | None = None,
+        limit: int = 500,
+        offset: int = 0,
+    ) -> list[FactMetre]:
+        statement = select(FactMetre).order_by(FactMetre.id_ligne).limit(limit).offset(offset)
+
+        if famille:
+            statement = statement.where(FactMetre.famille == famille)
+        if lot:
+            statement = statement.where(FactMetre.lot == lot)
+        if batiment:
+            statement = statement.where(FactMetre.batiment == batiment)
+
+        return list(self.db.scalars(statement).all())
+
+    def save_simulation_lines(
+        self,
+        simulation_id: str,
+        scenario_id: str,
+        run_id: str,
+        lignes: list[dict[str, Any]],
+        projet_id: int | None = None,
+    ) -> int:
+        """
+        Sauvegarde les lignes simulees dans fact_simulation.
+
+        Les dimensions sont creees/retrouvees par texte pour garder le service
+        simple et compatible avec les simulations ad hoc du frontend.
+        """
+        simulation_uuid = str(UUID(simulation_id.replace("sim_", ""))) if simulation_id.startswith("sim_") else str(UUID(simulation_id))
+        scenario_uuid = str(UUID(scenario_id.replace("scenario_", ""))) if scenario_id.startswith("scenario_") else str(UUID(scenario_id))
+        run_uuid = str(UUID(run_id.replace("run_", ""))) if run_id.startswith("run_") else str(UUID(run_id))
+
+        inserted = 0
+        for ligne in lignes:
+            ids = self._resolve_dimension_ids(ligne, projet_id)
+            self.db.execute(
+                text(
+                    """
+                    INSERT INTO fact_simulation (
+                        simulation_id,
+                        scenario_id,
+                        run_id,
+                        projet_id,
+                        id_ligne,
+                        lot_id,
+                        famille_id,
+                        niveau_id,
+                        batiment_id,
+                        designation,
+                        quantite,
+                        pu_local,
+                        pu_import,
+                        capex_local,
+                        capex_import,
+                        capex_optimise,
+                        economie,
+                        taux_economie,
+                        decision_import,
+                        score_confiance,
+                        statut_qualite,
+                        decision_score,
+                        risk_score,
+                        lead_time_score,
+                        criticality_score,
+                        decision_reason,
+                        decision_type,
+                        decision_confidence,
+                        supplier_id,
+                        country_id
+                    )
+                    VALUES (
+                        CAST(:simulation_id AS uuid),
+                        CAST(:scenario_id AS uuid),
+                        CAST(:run_id AS uuid),
+                        :projet_id,
+                        :id_ligne,
+                        :lot_id,
+                        :famille_id,
+                        :niveau_id,
+                        :batiment_id,
+                        :designation,
+                        :quantite,
+                        :pu_local,
+                        :pu_import,
+                        :capex_local,
+                        :capex_import,
+                        :capex_optimise,
+                        :economie,
+                        :taux_economie,
+                        :decision_import,
+                        :score_confiance,
+                        :statut_qualite,
+                        :decision_score,
+                        :risk_score,
+                        :lead_time_score,
+                        :criticality_score,
+                        CAST(:decision_reason AS jsonb),
+                        :decision_type,
+                        :decision_confidence,
+                        :supplier_id,
+                        :country_id
+                    )
+                    """
+                ),
+                {
+                    "simulation_id": simulation_uuid,
+                    "scenario_id": scenario_uuid,
+                    "run_id": run_uuid,
+                    "projet_id": ids["projet_id"],
+                    "id_ligne": _texte(ligne.get("id_ligne")),
+                    "lot_id": ids["lot_id"],
+                    "famille_id": ids["famille_id"],
+                    "niveau_id": ids["niveau_id"],
+                    "batiment_id": ids["batiment_id"],
+                    "designation": _texte(ligne.get("designation")),
+                    "quantite": _nombre(ligne.get("QTE") or ligne.get("quantite")),
+                    "pu_local": _nombre(ligne.get("PU_LOCAL") or ligne.get("pu_local")),
+                    "pu_import": _nombre(ligne.get("PU_IMPORT_HT") or ligne.get("pu_import")),
+                    "capex_local": _nombre(ligne.get("CAPEX_LOCAL") or ligne.get("capex_local")),
+                    "capex_import": _nombre(ligne.get("CAPEX_IMPORT") or ligne.get("capex_import")),
+                    "capex_optimise": _nombre(ligne.get("CAPEX_OPTIMISE") or ligne.get("capex_optimise")),
+                    "economie": _nombre(ligne.get("ECONOMIE_NETTE") or ligne.get("economie")),
+                    "taux_economie": _nombre(ligne.get("TAUX_ECONOMIE") or 0),
+                    "decision_import": _texte(ligne.get("DECISION_IMPORT") or ligne.get("decision_import") or "LOCAL"),
+                    "score_confiance": _nombre(ligne.get("SCORE_CONFIANCE") or ligne.get("score_confiance")),
+                    "statut_qualite": _texte(ligne.get("statut_ligne") or "OK"),
+                    "decision_score": _nombre(ligne.get("FINAL_DECISION_SCORE") or ligne.get("decision_score")),
+                    "risk_score": _nombre(ligne.get("RISK_SCORE") or ligne.get("risk_score")),
+                    "lead_time_score": _nombre(ligne.get("LEAD_TIME_SCORE") or ligne.get("lead_time_score")),
+                    "criticality_score": _nombre(ligne.get("CRITICALITY_SCORE") or ligne.get("criticality_score")),
+                    "decision_reason": json.dumps(ligne.get("DECISION_REASON") or {}, ensure_ascii=True),
+                    "decision_type": _texte(ligne.get("DECISION_TYPE") or ligne.get("decision_type")),
+                    "decision_confidence": _texte(ligne.get("DECISION_CONFIDENCE") or ligne.get("decision_confidence")),
+                    "supplier_id": ids["supplier_id"],
+                    "country_id": ids["country_id"],
+                },
+            )
+            inserted += 1
+        return inserted
+
+    def get_simulation(self, scenario_id: str, limit: int = 500, offset: int = 0) -> list[dict[str, Any]]:
+        rows = self.db.execute(
+            text(
+                """
+                SELECT *
+                FROM fact_simulation
+                WHERE scenario_id = CAST(:scenario_id AS uuid)
+                ORDER BY simulation_line_id
+                LIMIT :limit OFFSET :offset
+                """
+            ),
+            {"scenario_id": scenario_id, "limit": limit, "offset": offset},
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def compare_simulations(self, scenario_a: str, scenario_b: str) -> list[dict[str, Any]]:
+        rows = self.db.execute(
+            text(
+                """
+                SELECT *
+                FROM v_kpi_scenario
+                WHERE scenario_id IN (CAST(:scenario_a AS uuid), CAST(:scenario_b AS uuid))
+                ORDER BY scenario_nom
+                """
+            ),
+            {"scenario_a": scenario_a, "scenario_b": scenario_b},
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def _resolve_dimension_ids(self, ligne: dict[str, Any], projet_id: int | None) -> dict[str, int | None]:
+        projet = self.db.execute(
+            text("SELECT COALESCE(:projet_id, (SELECT projet_id FROM dim_projet ORDER BY projet_id LIMIT 1))"),
+            {"projet_id": projet_id},
+        ).scalar_one_or_none()
+        lot = _texte(ligne.get("lot") or "NON_RENSEIGNE")
+        famille = _texte(ligne.get("famille") or "default")
+        niveau = _texte(ligne.get("niveau") or "GLOBAL")
+        batiment = _texte(ligne.get("batiment") or "NON_RENSEIGNE")
+
+        lot_id = self.db.execute(
+            text(
+                """
+                INSERT INTO dim_lot (lot, ordre_lot)
+                VALUES (
+                    CAST(:lot AS varchar),
+                    COALESCE(NULLIF(regexp_replace(CAST(:lot AS text), '\\D', '', 'g'), '')::INTEGER, 999)
+                )
+                ON CONFLICT (lot) DO UPDATE SET updated_at = now()
+                RETURNING lot_id
+                """
+            ),
+            {"lot": lot},
+        ).scalar_one()
+        famille_id = self.db.execute(
+            text(
+                """
+                INSERT INTO dim_famille (famille, libelle_famille, categorie_achat, categorie, importable)
+                VALUES (
+                    CAST(:famille AS varchar),
+                    initcap(replace(CAST(:famille AS text), '_', ' ')),
+                    'A_ANALYSER',
+                    'A_ANALYSER',
+                    false
+                )
+                ON CONFLICT (famille) DO UPDATE SET updated_at = now()
+                RETURNING famille_id
+                """
+            ),
+            {"famille": famille},
+        ).scalar_one()
+        niveau_id = self.db.execute(
+            text(
+                """
+                INSERT INTO dim_niveau (niveau, ordre_niveau)
+                VALUES (CAST(:niveau AS varchar), 999)
+                ON CONFLICT (niveau) DO UPDATE SET updated_at = now()
+                RETURNING niveau_id
+                """
+            ),
+            {"niveau": niveau},
+        ).scalar_one()
+        batiment_id = self.db.execute(
+            text(
+                """
+                INSERT INTO dim_batiment (batiment, type_batiment)
+                VALUES (CAST(:batiment AS varchar), 'A_CLASSER')
+                ON CONFLICT (batiment) DO UPDATE SET updated_at = now()
+                RETURNING batiment_id
+                """
+            ),
+            {"batiment": batiment},
+        ).scalar_one()
+
+        return {
+            "projet_id": projet,
+            "lot_id": lot_id,
+            "famille_id": famille_id,
+            "niveau_id": niveau_id,
+            "batiment_id": batiment_id,
+            "supplier_id": self._default_supplier_id(),
+            "country_id": self._default_country_id(),
+        }
+
+    def _default_supplier_id(self) -> int | None:
+        """
+        Retourne le fournisseur technique par defaut.
+
+        Les simulations temps reel ne connaissent pas toujours le fournisseur.
+        On renseigne donc une dimension stable `NON_RENSEIGNE` afin de garder
+        des relations Power BI propres sans inventer une information metier.
+        """
+        return self.db.execute(
+            text("SELECT supplier_id FROM dim_supplier WHERE supplier_name = 'NON_RENSEIGNE' LIMIT 1")
+        ).scalar_one_or_none()
+
+    def _default_country_id(self) -> int | None:
+        """Retourne le pays technique par defaut pour les simulations ad hoc."""
+        return self.db.execute(
+            text("SELECT country_id FROM dim_country WHERE country_name = 'NON_RENSEIGNE' LIMIT 1")
+        ).scalar_one_or_none()

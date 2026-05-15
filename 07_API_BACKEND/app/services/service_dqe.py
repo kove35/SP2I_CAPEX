@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from time import perf_counter
@@ -10,12 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 RACINE = Path(__file__).resolve().parents[3]
-TRAITEMENT = RACINE / "04_TRAITEMENT"
 
-if str(TRAITEMENT) not in sys.path:
-    sys.path.insert(0, str(TRAITEMENT))
-
-from pipeline_complet import PipelineCompletSP2I  # noqa: E402
 from app.services.service_pipeline import ServicePipeline
 
 

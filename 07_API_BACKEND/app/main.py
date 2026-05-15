@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, SessionLocal, engine
-from app.routes import capex, dqe, monitoring
+from app.routes import capex, decision, dqe, monitoring, simulation, upload
 from app.services.monitoring import MonitoringService
 
 
@@ -32,7 +32,10 @@ app.add_middleware(
 )
 
 app.include_router(dqe.router, prefix="/dqe", tags=["DQE"])
+app.include_router(upload.router, prefix="/api/upload", tags=["Upload intelligent"])
 app.include_router(import_routes.router, prefix="/import", tags=["Import"])
+app.include_router(simulation.router, prefix="/simulation", tags=["Simulation CAPEX"])
+app.include_router(decision.router, prefix="/decision", tags=["Decision Engine"])
 app.include_router(capex.router, tags=["BI"])
 app.include_router(monitoring.router, tags=["Monitoring"])
 
@@ -98,9 +101,18 @@ def root() -> dict:
         "endpoints": {
             "health": "/health",
             "upload_dqe": "/dqe/upload",
+            "upload_excel": "/api/upload/excel",
+            "sync_excel": "/api/upload/excel/sync",
             "extract_dqe": "/dqe/extract",
             "sync_current_dqe": "/dqe/sync-current",
             "optimize_import": "/import/optimize",
+            "simulate_capex": "/simulation/simulate",
+            "simulate_scenarios": "/simulation/scenarios",
+            "list_scenarios": "/simulation/scenarios",
+            "compare_scenarios": "/simulation/compare",
+            "decision_rules": "/decision/rules",
+            "decision_explain": "/decision/explain/{simulation_id}",
+            "decision_risk_analysis": "/decision/risk-analysis/{scenario_id}",
             "capex_summary": "/capex/summary",
             "fact_metre": "/fact_metre",
             "monitoring": "/monitoring/status",

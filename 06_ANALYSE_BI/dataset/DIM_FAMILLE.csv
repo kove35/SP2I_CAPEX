@@ -1,6 +1,8 @@
 ﻿famille;libelle_famille;categorie_achat
-gros_oeuvre;Gros Oeuvre;LOCAL_DOMINANT
 default;Default;A_ANALYSER
-menuiserie;Menuiserie;IMPORTABLE
-ascenseur;Ascenseur;IMPORTABLE
 plomberie;Plomberie;IMPORTABLE
+gros_oeuvre;Gros Oeuvre;LOCAL_DOMINANT
+peinture;Peinture;A_ANALYSER
+electricite;Electricite;IMPORTABLE
+ascenseur;Ascenseur;IMPORTABLE
+menuiserie;Menuiserie;IMPORTABLE
