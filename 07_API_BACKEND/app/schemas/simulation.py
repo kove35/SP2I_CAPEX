@@ -35,6 +35,16 @@ class SimulationItem(BaseModel):
     customs_days: float | None = Field(default=None, ge=0)
     local_transport_days: float | None = Field(default=None, ge=0)
     security_buffer_days: float | None = Field(default=None, ge=0)
+    volume_unitaire_m3: float | None = Field(default=None, ge=0)
+    poids_unitaire_kg: float | None = Field(default=None, ge=0)
+    supplier_city: str | None = None
+    departure_port: str | None = None
+    arrival_port: str | None = None
+    supplier_availability_days: float | None = Field(default=None, ge=0)
+    shipment_status: str | None = None
+    required_on_site_days: float | None = Field(default=None, ge=0)
+    site_storage_capacity_m3: float | None = Field(default=None, ge=0)
+    storage_days: float | None = Field(default=None, ge=0)
 
 
 class SimulationParameters(BaseModel):
@@ -121,6 +131,14 @@ class SimulationLineResult(BaseModel):
     moq_risk_score: float | None = None
     complexity_score: float | None = None
     procurement_analysis: dict[str, Any] = Field(default_factory=dict)
+    container_strategy: str | None = None
+    shipment_strategy: str | None = None
+    fill_rate: float | None = None
+    shipment_cost: float | None = None
+    lead_time_total: float | None = None
+    storage_cost: float | None = None
+    delivery_risk: str | None = None
+    logistics_analysis: dict[str, Any] = Field(default_factory=dict)
 
 
 class SimulationKPI(BaseModel):
