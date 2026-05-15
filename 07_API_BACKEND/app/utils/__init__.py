@@ -1,0 +1,2 @@
+"""Utilitaires applicatifs transverses."""
+
