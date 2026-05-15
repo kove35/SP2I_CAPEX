@@ -174,3 +174,59 @@ ImportComplexity =
         Table = Source{[Schema = "public", Item = "v_import_complexity"]}[Data]
     in
         Table;
+
+DimContainer =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "dim_container"]}[Data]
+    in
+        Table;
+
+FactShipment =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "fact_shipment"]}[Data]
+    in
+        Table;
+
+FactLogisticsCost =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "fact_logistics_cost"]}[Data]
+    in
+        Table;
+
+ContainerUtilization =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_container_utilization"]}[Data]
+    in
+        Table;
+
+ShipmentPerformance =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_shipment_performance"]}[Data]
+    in
+        Table;
+
+LogisticsCosts =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_logistics_costs"]}[Data]
+    in
+        Table;
+
+DeliveryRisk =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_delivery_risk"]}[Data]
+    in
+        Table;
+
+SupplierLogistics =
+    let
+        Source = PostgreSQL.Database("localhost", "sp2i_capex"),
+        Table = Source{[Schema = "public", Item = "v_supplier_logistics"]}[Data]
+    in
+        Table;

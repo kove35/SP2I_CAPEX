@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from app.core import CalculateurCAPEX, DataCleaner, DecisionEngine, ProcurementEngine
+from app.core import CalculateurCAPEX, DataCleaner, DecisionEngine, LogisticsEngine, ProcurementEngine
 from app.core.errors import SP2ICapexError, SimulationError
 from app.core.logging_config import configure_simulation_logging
 from app.repositories import RepositoryBPU, RepositoryMapping, RepositoryRun, RepositoryScenario, RepositorySimulation
@@ -129,6 +129,8 @@ class ServiceSimulation:
         lignes_calculees = calculateur.optimiser_lignes(lignes_normalisees)
         procurement_engine = ProcurementEngine()
         lignes_calculees = [procurement_engine.enrich_line(ligne) for ligne in lignes_calculees]
+        logistics_engine = LogisticsEngine()
+        lignes_calculees = [logistics_engine.enrich_line(ligne) for ligne in lignes_calculees]
         decision_engine = DecisionEngine(parametres)
         lignes_calculees = [decision_engine.enrich_line(ligne) for ligne in lignes_calculees]
         kpi = calculateur.calculer_kpi(lignes_calculees)
@@ -305,4 +307,12 @@ class ServiceSimulation:
             "moq_risk_score": ligne.get("MOQ_RISK_SCORE", 0),
             "complexity_score": ligne.get("IMPORT_COMPLEXITY_SCORE", 0),
             "procurement_analysis": ligne.get("PROCUREMENT_ANALYSIS", {}),
+            "container_strategy": ligne.get("CONTAINER_STRATEGY", ""),
+            "shipment_strategy": ligne.get("SHIPMENT_STRATEGY", ""),
+            "fill_rate": ligne.get("FILL_RATE", 0),
+            "shipment_cost": ligne.get("SHIPMENT_COST", 0),
+            "lead_time_total": ligne.get("LEAD_TIME_TOTAL", 0),
+            "storage_cost": ligne.get("STORAGE_COST", 0),
+            "delivery_risk": ligne.get("DELIVERY_RISK", ""),
+            "logistics_analysis": ligne.get("LOGISTICS_ANALYSIS", {}),
         }

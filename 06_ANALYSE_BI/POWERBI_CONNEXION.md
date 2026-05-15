@@ -83,6 +83,14 @@ v_risk_analysis
 v_supplier_ranking
 v_country_risk
 v_import_complexity
+dim_container
+fact_shipment
+fact_logistics_cost
+v_container_utilization
+v_shipment_performance
+v_logistics_costs
+v_delivery_risk
+v_supplier_logistics
 ```
 
 ## Relations Power BI
@@ -252,6 +260,34 @@ Complexite import / MOQ     -> v_import_complexity
 
 Ces vues sont deja agregees dans PostgreSQL. Power BI ne doit donc pas
 recalculer le risque, le delai ou le scoring procurement.
+
+## Container & Shipment Analytics
+
+La couche logistique ajoute les champs suivants dans `fact_simulation` :
+
+```text
+container_strategy
+shipment_strategy
+fill_rate
+shipment_cost
+lead_time_total
+storage_cost
+delivery_risk
+logistics_reason
+```
+
+Les vues Power BI conseillees sont :
+
+```text
+Remplissage containers      -> v_container_utilization
+Performance shipment        -> v_shipment_performance
+Couts logistiques           -> v_logistics_costs
+Risque livraison chantier   -> v_delivery_risk
+Logistique fournisseur      -> v_supplier_logistics
+```
+
+Ces donnees couvrent le flux usine Chine, consolidation, port de depart,
+transport maritime, port de Pointe-Noire, douane, livraison locale et chantier.
 
 ## Vues KPI
 
