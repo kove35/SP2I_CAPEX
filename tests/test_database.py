@@ -22,12 +22,16 @@ from dotenv import load_dotenv
 
 try:
     import psycopg2
-    from psycopg2.extensions import connection as PsycopgConnection
+    from psycopg2.extensions import connection as PostgresConnection
 except ImportError as exc:  # pragma: no cover - message utile si dependance absente.
-    raise RuntimeError(
-        "La dependance psycopg2 est manquante. Installez-la avec : "
-        "pip install psycopg2-binary"
-    ) from exc
+    try:
+        import psycopg as psycopg2
+        from psycopg import Connection as PostgresConnection
+    except ImportError:
+        raise RuntimeError(
+            "La dependance PostgreSQL est manquante. Installez psycopg avec : "
+            "pip install psycopg[binary]"
+        ) from exc
 
 
 load_dotenv()
@@ -80,7 +84,7 @@ def mask_database_url(database_url: str) -> str:
 
 
 @contextmanager
-def get_connection() -> Generator[PsycopgConnection, None, None]:
+def get_connection() -> Generator[PostgresConnection, None, None]:
     """
     Ouvre puis ferme proprement une connexion PostgreSQL.
 
@@ -157,10 +161,10 @@ def test_tables() -> dict[str, Any]:
         SELECT table_name
         FROM information_schema.tables
         WHERE table_schema = 'public'
-          AND table_name IN %s
+          AND table_name = ANY(%s)
         ORDER BY table_name
         """,
-        (EXPECTED_TABLES,),
+        (list(EXPECTED_TABLES),),
     )
 
     tables_found = {row[0] for row in rows}
