@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -12,6 +13,7 @@ from app.services.service_simulation import ServiceSimulation
 
 
 router = APIRouter()
+logger = logging.getLogger("sp2i-capex-api")
 
 
 @router.post("/simulate", response_model=SimulationResponse)
@@ -46,11 +48,15 @@ def list_scenarios(
     """Liste les scenarios historises disponibles pour Power BI et React."""
     try:
         scenarios = RepositoryScenario(db).list_scenarios(limit=limit, offset=offset)
-    except SQLAlchemyError as erreur:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Historique scenarios indisponible : {erreur.__class__.__name__}",
-        ) from erreur
+    except Exception as erreur:
+        logger.error("Historique scenarios indisponible: %s", erreur)
+        return {
+            "status": "SUCCESS",
+            "scenarios": [],
+            "warnings": [
+                "Historique scenarios indisponible temporairement. Le cockpit reste utilisable sans historique."
+            ],
+        }
     return {"status": "SUCCESS", "scenarios": scenarios}
 
 
