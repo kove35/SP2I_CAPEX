@@ -11,7 +11,6 @@ export async function analyzeExcel(file) {
     url: "/api/upload/excel",
     method: "POST",
     data: buildExcelFormData(file),
-    headers: { "Content-Type": "multipart/form-data" },
   });
 }
 
@@ -20,7 +19,6 @@ export async function syncExcel(file) {
     url: "/api/upload/excel/sync",
     method: "POST",
     data: buildExcelFormData(file),
-    headers: { "Content-Type": "multipart/form-data" },
   });
 }
 
