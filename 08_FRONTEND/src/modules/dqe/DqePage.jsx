@@ -3,6 +3,17 @@ import AnalyticsCard from "../../ui/AnalyticsCard";
 import KpiCard from "../../ui/KpiCard";
 import { analyzeExcel, syncExcel, validateAiMapping } from "../../services/excelUploadService";
 
+const SUPPORTED_UPLOAD_EXTENSIONS = [".xlsx", ".xlsm", ".xls", ".csv"];
+
+function hasSupportedExtension(fileName) {
+  const lowerName = fileName.toLowerCase();
+  return SUPPORTED_UPLOAD_EXTENSIONS.some((extension) => lowerName.endsWith(extension));
+}
+
+function isSuccessResponse(data) {
+  return data?.status === "SUCCESS";
+}
+
 export default function DqePage() {
   const [tab, setTab] = React.useState(new URLSearchParams(window.location.search).get("tab") || "import");
   const [file, setFile] = React.useState(null);
@@ -18,13 +29,18 @@ export default function DqePage() {
 
   const recommendedSheet = analysis?.feuille_recommandee || "-";
   const bestAnalysis = analysis?.analyses?.[0] || {};
-  const previewRows = analysis?.lignes_normalisees_preview || [];
+  const previewRows = Array.isArray(analysis?.lignes_normalisees_preview)
+    ? analysis.lignes_normalisees_preview
+    : [];
   const aiPreview = analysis?.ai_preview || {};
   const aiConfidence = analysis?.ai_confidence || {};
-  const aiAnomalies = analysis?.ai_anomalies || [];
+  const aiAnomalies = Array.isArray(analysis?.ai_anomalies) ? analysis.ai_anomalies : [];
   const aiSuggestions = analysis?.ai_suggestions || {};
   const lineCount = bestAnalysis.lignes_detectees || previewRows.length || 0;
   const qualityScore = Math.round(Number(aiPreview.quality_score ?? bestAnalysis.score_dqe ?? 0) * 100);
+  const recognizedColumns = aiPreview.recognized_columns ?? "-";
+  const lotsDetected = aiPreview.lots_detected ?? "-";
+  const estimatedCapex = Number(aiPreview.estimated_capex_detected || 0);
   const warningCount = bestAnalysis.avertissements?.length || 0;
 
   const handleFileChange = (event) => {
@@ -38,10 +54,10 @@ export default function DqePage() {
       return;
     }
 
-    if (!selectedFile.name.toLowerCase().endsWith(".xlsx") && !selectedFile.name.toLowerCase().endsWith(".xlsm")) {
+    if (!hasSupportedExtension(selectedFile.name)) {
       setFile(null);
       setAnalysis(null);
-      setError("Le fichier doit etre un Excel .xlsx ou .xlsm.");
+      setError("Le fichier doit etre au format .xlsx, .xlsm, .xls ou .csv.");
       return;
     }
 
@@ -59,7 +75,14 @@ export default function DqePage() {
     setSyncResult(null);
     try {
       const result = await analyzeExcel(file);
+      console.log("API RESPONSE DQE ANALYZE", result);
+      if (!isSuccessResponse(result)) {
+        setAnalysis(null);
+        setError(result?.message || result?.detail || "Erreur analyse DQE.");
+        return;
+      }
       setAnalysis(result);
+      setError(null);
     } catch (apiError) {
       setError(apiError.message);
     } finally {
@@ -95,7 +118,13 @@ export default function DqePage() {
     setError("");
     try {
       const result = await syncExcel(file);
+      console.log("API RESPONSE DQE SYNC", result);
+      if (result?.status && result.status !== "SUCCESS" && result.status !== "OK") {
+        setError(result?.message || result?.detail || "Erreur synchronisation PostgreSQL.");
+        return;
+      }
       setSyncResult(result);
+      setError(null);
     } catch (apiError) {
       setError(apiError.message);
     } finally {
@@ -120,15 +149,15 @@ export default function DqePage() {
         <KpiCard label="Fichier" value={file ? "Excel" : "Aucun"} />
         <KpiCard label="Feuille recommandee" value={recommendedSheet} />
         <KpiCard label="Score DQE" value={`${qualityScore}%`} tone={qualityScore >= 80 ? "success" : "warning"} />
-        <KpiCard label="Lots detectes" value={aiPreview.lots_detected ?? "-"} />
+        <KpiCard label="Lots detectes" value={lotsDetected} />
       </section>
       <section className="cockpit-split">
         <AnalyticsCard title={tab === "mapping" ? "Mapping standard SP2I" : tab === "quality" ? "Controle qualite" : "Preview Excel DQE"} eyebrow="Upload intelligent">
           {tab === "import" ? (
             <div className="excel-upload-zone">
               <label>
-                Fichier Excel DQE/BPU
-                <input type="file" accept=".xlsx,.xlsm" onChange={handleFileChange} />
+                Fichier DQE/BPU
+                <input type="file" accept=".xlsx,.xlsm,.xls,.csv" onChange={handleFileChange} />
               </label>
               <div className="excel-actions">
                 <button className="primary-action" type="button" onClick={runAnalysis} disabled={!file || loading}>
@@ -141,17 +170,17 @@ export default function DqePage() {
                   Synchroniser PostgreSQL
                 </button>
               </div>
-              {file ? <p>Fichier selectionne : <strong>{file.name}</strong></p> : <p>Formats acceptes : .xlsx et .xlsm.</p>}
+              {file ? <p>Fichier selectionne : <strong>{file.name}</strong></p> : <p>Formats acceptes : .xlsx, .xlsm, .xls et .csv.</p>}
             </div>
           ) : null}
 
           {tab === "analysis" || tab === "import" ? (
             <>
               <div className="ai-preview-grid">
-                <span>Colonnes reconnues <strong>{aiPreview.recognized_columns ?? "-"}</strong></span>
+                <span>Colonnes reconnues <strong>{recognizedColumns}</strong></span>
                 <span>Colonnes ambigues <strong>{aiPreview.ambiguous_columns ?? "-"}</strong></span>
                 <span>Anomalies <strong>{aiPreview.invalid_rows ?? aiAnomalies.length}</strong></span>
-                <span>CAPEX detecte <strong>{Number(aiPreview.estimated_capex_detected || 0).toLocaleString("fr-FR")}</strong></span>
+                <span>CAPEX detecte <strong>{estimatedCapex.toLocaleString("fr-FR")}</strong></span>
               </div>
               <div className="data-table-wrap panel-scroll">
                 <table className="data-table">
