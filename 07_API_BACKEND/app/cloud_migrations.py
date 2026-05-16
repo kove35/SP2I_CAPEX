@@ -4,6 +4,8 @@ import logging
 
 from sqlalchemy.engine import Engine
 
+from app.analytics.sql import ANALYTICS_VIEWS_SQL
+
 
 logger = logging.getLogger("sp2i-capex-api")
 
@@ -269,5 +271,6 @@ def ensure_powerbi_schema(engine: Engine) -> None:
 
     with engine.begin() as connection:
         connection.exec_driver_sql(sql)
+        connection.exec_driver_sql(ANALYTICS_VIEWS_SQL)
 
     logger.info("Schema Power BI PostgreSQL verifie ou complete.")

@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+from typing import Any
+
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.analytics.schemas import AnalyticsQuery
+
+
+ALLOWED_GROUPS = {
+    "projet": "projet_id",
+    "batiment": "batiment",
+    "niveau": "niveau",
+    "lot": "lot",
+    "famille": "famille",
+    "decision_import": "decision_import",
+}
+
+ALLOWED_ORDER = {
+    "capex_local",
+    "capex_optimise",
+    "economie",
+    "lot",
+    "famille",
+    "batiment",
+    "niveau",
+    "decision_import",
+}
+
+DRILLDOWN = ["projet", "batiment", "niveau", "lot", "famille", "article"]
+
+
+class AnalyticsRepository:
+    """Repository SQL optimise pour les dashboards React/Power BI-like."""
+
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def kpis(self, query: AnalyticsQuery) -> dict[str, Any]:
+        where_sql, params = self._where(query)
+        row = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COALESCE(SUM(capex_local), 0) AS capex_brut,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(economie), 0) AS economie_nette,
+                    CASE WHEN COALESCE(SUM(capex_local), 0) = 0 THEN 0
+                         ELSE SUM(economie) / NULLIF(SUM(capex_local), 0)
+                    END AS taux_economie,
+                    CASE WHEN COALESCE(SUM(capex_import), 0) = 0 THEN 0
+                         ELSE SUM(economie) / NULLIF(SUM(capex_import), 0)
+                    END AS roi_import,
+                    CASE WHEN COUNT(*) = 0 THEN 0
+                         ELSE SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END)::float / COUNT(*)
+                    END AS taux_importable,
+                    COUNT(*) AS nb_lignes
+                FROM fact_metre
+                {where_sql}
+                """
+            ),
+            params,
+        ).mappings().one()
+        return dict(row)
+
+    def table(self, query: AnalyticsQuery) -> tuple[list[dict[str, Any]], int]:
+        where_sql, params = self._where(query)
+        limit = query.page_size
+        offset = (query.page - 1) * query.page_size
+        order_column = query.order_by if query.order_by in ALLOWED_ORDER else "capex_local"
+        order_dir = "ASC" if query.order_dir == "asc" else "DESC"
+
+        total = self.db.execute(text(f"SELECT COUNT(*) FROM fact_metre {where_sql}"), params).scalar_one()
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    id_ligne,
+                    designation,
+                    lot,
+                    famille,
+                    batiment,
+                    niveau,
+                    quantite,
+                    pu_local,
+                    pu_import,
+                    capex_local,
+                    capex_import,
+                    capex_optimise,
+                    economie,
+                    taux_economie,
+                    decision_import,
+                    date_import
+                FROM fact_metre
+                {where_sql}
+                ORDER BY {order_column} {order_dir}
+                LIMIT :limit OFFSET :offset
+                """
+            ),
+            {**params, "limit": limit, "offset": offset},
+        ).mappings().all()
+        return [dict(row) for row in rows], int(total)
+
+    def grouped(self, query: AnalyticsQuery, default_group: str = "lot") -> list[dict[str, Any]]:
+        group_key = query.group_by or default_group
+        group_column = ALLOWED_GROUPS.get(group_key, ALLOWED_GROUPS[default_group])
+        where_sql, params = self._where(query)
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COALESCE(CAST({group_column} AS text), 'NON_RENSEIGNE') AS label,
+                    COALESCE(SUM(capex_local), 0) AS capex_brut,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(economie), 0) AS economie_nette,
+                    COUNT(*) AS nb_lignes
+                FROM fact_metre
+                {where_sql}
+                GROUP BY COALESCE(CAST({group_column} AS text), 'NON_RENSEIGNE')
+                ORDER BY capex_brut DESC
+                LIMIT 50
+                """
+            ),
+            params,
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def heatmap(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        where_sql, params = self._where(query)
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COALESCE(lot, 'NON_RENSEIGNE') AS lot,
+                    COALESCE(famille, 'default') AS famille,
+                    COALESCE(SUM(capex_optimise), 0) AS value,
+                    COUNT(*) AS nb_lignes
+                FROM fact_metre
+                {where_sql}
+                GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE(famille, 'default')
+                ORDER BY value DESC
+                LIMIT 200
+                """
+            ),
+            params,
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def scenarios(self) -> list[dict[str, Any]]:
+        rows = self.db.execute(
+            text(
+                """
+                SELECT scenario_id::text, scenario_nom, scenario_type, created_at
+                FROM dim_scenario
+                ORDER BY created_at DESC
+                LIMIT 100
+                """
+            )
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def timeline(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        where_sql, params = self._where(query)
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    date_trunc('day', COALESCE(date_import, created_at))::date AS periode,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(economie), 0) AS economie_nette,
+                    COUNT(*) AS nb_lignes
+                FROM fact_metre
+                {where_sql}
+                GROUP BY date_trunc('day', COALESCE(date_import, created_at))::date
+                ORDER BY periode
+                """
+            ),
+            params,
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
+        filters = query.filters
+        clauses: list[str] = []
+        params: dict[str, Any] = {}
+
+        for field in ("batiment", "niveau", "lot", "famille", "decision_import"):
+            value = getattr(filters, field)
+            if value:
+                clauses.append(f"LOWER({field}) = LOWER(:{field})")
+                params[field] = value
+
+        if filters.periode_debut:
+            clauses.append("COALESCE(date_import, created_at) >= CAST(:periode_debut AS timestamptz)")
+            params["periode_debut"] = filters.periode_debut
+        if filters.periode_fin:
+            clauses.append("COALESCE(date_import, created_at) <= CAST(:periode_fin AS timestamptz)")
+            params["periode_fin"] = filters.periode_fin
+
+        if not clauses:
+            return "", params
+        return "WHERE " + " AND ".join(clauses), params
+
+    @staticmethod
+    def drilldown_path(level: str | None) -> dict[str, Any]:
+        current = level if level in DRILLDOWN else "projet"
+        index = DRILLDOWN.index(current)
+        return {
+            "current": current,
+            "next": DRILLDOWN[index + 1] if index + 1 < len(DRILLDOWN) else None,
+            "path": DRILLDOWN,
+        }
