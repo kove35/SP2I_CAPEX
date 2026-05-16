@@ -33,6 +33,17 @@ def _get_cors_origins() -> list[str]:
     return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
 
+def _get_cors_origin_regex() -> str | None:
+    """
+    Autorise les domaines Vercel sans connaitre l'URL finale a l'avance.
+
+    Vercel cree souvent des URLs de preview et de production differentes. Cette
+    regex evite de bloquer le frontend quand l'URL exacte n'a pas encore ete
+    ajoutee dans `CORS_ORIGINS`.
+    """
+    return os.getenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
+
+
 app = FastAPI(
     title="SP2I CAPEX API",
     description="API SaaS pour analyse DQE, optimisation import/local et exposition BI.",
@@ -42,6 +53,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_cors_origins(),
+    allow_origin_regex=_get_cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
