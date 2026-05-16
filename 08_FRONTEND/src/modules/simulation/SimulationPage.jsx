@@ -31,8 +31,13 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
       const result = await simulateCapex({ ...defaultSimulationPayload, scenario_name: scenarioName });
       setSimulation(result);
       setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: result }));
-      const scenarioData = await listScenarios();
-      setScenarios(scenarioData.scenarios || []);
+      try {
+        const scenarioData = await listScenarios();
+        setScenarios(scenarioData.scenarios || []);
+      } catch (scenarioError) {
+        console.warn("SCENARIOS HISTORY UNAVAILABLE", scenarioError);
+        setScenarios([]);
+      }
     } catch (apiError) {
       setError(apiError.message);
     } finally {
