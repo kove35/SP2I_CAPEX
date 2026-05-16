@@ -84,7 +84,7 @@ export default function DqePage() {
       setAnalysis(result);
       setError(null);
     } catch (apiError) {
-      setError(apiError.message);
+      setError(`Analyse DQE indisponible : ${apiError.message}`);
     } finally {
       setLoading(false);
     }
@@ -102,7 +102,7 @@ export default function DqePage() {
       const result = await validateAiMapping(analysis.file_id, bestAnalysis.mapping || []);
       setValidationResult(result);
     } catch (apiError) {
-      setError(apiError.message);
+      setError(`Validation mapping indisponible : ${apiError.message}`);
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export default function DqePage() {
       setSyncResult(result);
       setError(null);
     } catch (apiError) {
-      setError(apiError.message);
+      setError(`Synchronisation PostgreSQL indisponible : ${apiError.message}`);
     } finally {
       setLoading(false);
     }
