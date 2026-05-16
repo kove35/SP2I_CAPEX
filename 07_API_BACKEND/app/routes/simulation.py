@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -43,7 +44,13 @@ def list_scenarios(
     db: Session = Depends(get_db),
 ) -> dict:
     """Liste les scenarios historises disponibles pour Power BI et React."""
-    scenarios = RepositoryScenario(db).list_scenarios(limit=limit, offset=offset)
+    try:
+        scenarios = RepositoryScenario(db).list_scenarios(limit=limit, offset=offset)
+    except SQLAlchemyError as erreur:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Historique scenarios indisponible : {erreur.__class__.__name__}",
+        ) from erreur
     return {"status": "SUCCESS", "scenarios": scenarios}
 
 
