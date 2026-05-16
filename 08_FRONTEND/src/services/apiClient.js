@@ -18,10 +18,18 @@ export const apiClient = axios.create({
   timeout: 120000,
 });
 
-export function normalizeApiError(error) {
+export function normalizeApiError(error, config = {}) {
+  const endpoint = config.url || "endpoint inconnu";
+
+  if (error.code === "ECONNABORTED") {
+    return new Error(
+      `Temps d'attente depasse pour ${endpoint}. Render peut encore traiter la demande, surtout sur analyse ou synchronisation volumineuse.`
+    );
+  }
+
   if (!error.response) {
     return new Error(
-      `Impossible de joindre l'API SP2I (${API_BASE_URL}). Verifie VITE_API_URL, le deploiement Render et CORS_ORIGINS.`
+      `Connexion interrompue sur ${endpoint}. Si l'import fonctionne, le probleme vient probablement de cette action precise et non de l'API globale.`
     );
   }
 
@@ -47,6 +55,6 @@ export async function request(config) {
       data: error.response?.data,
       message: error.message,
     });
-    throw normalizeApiError(error);
+    throw normalizeApiError(error, config);
   }
 }
