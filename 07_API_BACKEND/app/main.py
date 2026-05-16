@@ -8,6 +8,7 @@ from importlib import import_module
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.analytics.routes import router as analytics_router
 from app.cloud_migrations import ensure_powerbi_schema
 from app.database import Base, SessionLocal, engine
 from app.routes import capex, decision, dqe, logistics, monitoring, procurement, simulation, upload
@@ -66,6 +67,7 @@ app.include_router(simulation.router, prefix="/simulation", tags=["Simulation CA
 app.include_router(decision.router, prefix="/decision", tags=["Decision Engine"])
 app.include_router(procurement.router, prefix="/procurement", tags=["Procurement Analytics"])
 app.include_router(logistics.router, prefix="/logistics", tags=["Logistics Analytics"])
+app.include_router(analytics_router, prefix="/analytics", tags=["SP2I Analytics Engine"])
 app.include_router(capex.router, tags=["BI"])
 app.include_router(monitoring.router, tags=["Monitoring"])
 
@@ -155,6 +157,8 @@ def root() -> dict:
             "capex_summary": "/capex/summary",
             "fact_metre": "/fact_metre",
             "monitoring": "/monitoring/status",
+            "analytics_dashboard": "/analytics/dashboard",
+            "analytics_kpis": "/analytics/kpis",
             "docs": "/docs",
         },
         "description": "API metier pour analyse DQE et optimisation CAPEX import/local",
