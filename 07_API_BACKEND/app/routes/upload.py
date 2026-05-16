@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.dependencies import get_service_ai_mapping
+from app.core.ai.ai_file_store import AIFileStore
 from app.database import get_db
 from app.schemas import ExcelUploadResponse
 from app.services.service_ai_mapping import ServiceAIMapping
@@ -11,6 +14,35 @@ from sqlalchemy.orm import Session
 
 
 router = APIRouter()
+
+SUPPORTED_TABLE_FILES = (".xlsx", ".xlsm", ".xls", ".csv")
+
+
+def _max_upload_bytes() -> int:
+    """Retourne la taille maximale autorisee pour les uploads cloud."""
+    try:
+        max_upload_mb = int(os.getenv("MAX_UPLOAD_MB", "25"))
+    except ValueError:
+        max_upload_mb = 25
+    return max_upload_mb * 1024 * 1024
+
+
+def _valider_fichier_tabulaire(nom_fichier: str, contenu: bytes) -> None:
+    if not nom_fichier.lower().endswith(SUPPORTED_TABLE_FILES):
+        formats = ", ".join(SUPPORTED_TABLE_FILES)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Le fichier doit etre au format {formats}.",
+        )
+
+    if not contenu:
+        raise HTTPException(status_code=400, detail="Le fichier est vide.")
+
+    if len(contenu) > _max_upload_bytes():
+        raise HTTPException(
+            status_code=413,
+            detail=f"Fichier trop volumineux. Taille maximale: {os.getenv('MAX_UPLOAD_MB', '25')} Mo.",
+        )
 
 
 @router.post("/excel", response_model=ExcelUploadResponse)
@@ -28,15 +60,13 @@ async def upload_excel_intelligent(
     if not fichier.filename:
         raise HTTPException(status_code=400, detail="Aucun fichier fourni.")
 
-    if not fichier.filename.lower().endswith((".xlsx", ".xlsm")):
-        raise HTTPException(status_code=400, detail="Le fichier doit etre un Excel .xlsx ou .xlsm.")
-
     contenu = await fichier.read()
-    if not contenu:
-        raise HTTPException(status_code=400, detail="Le fichier Excel est vide.")
+    _valider_fichier_tabulaire(fichier.filename, contenu)
 
     try:
-        return service.analyser_excel(contenu, fichier.filename)
+        resultat = service.analyser_excel(contenu, fichier.filename)
+        resultat["file_id"] = AIFileStore.save(resultat)
+        return resultat
     except Exception as erreur:
         raise HTTPException(
             status_code=500,
@@ -60,12 +90,8 @@ async def upload_excel_et_synchroniser(
     if not fichier.filename:
         raise HTTPException(status_code=400, detail="Aucun fichier fourni.")
 
-    if not fichier.filename.lower().endswith((".xlsx", ".xlsm")):
-        raise HTTPException(status_code=400, detail="Le fichier doit etre un Excel .xlsx ou .xlsm.")
-
     contenu = await fichier.read()
-    if not contenu:
-        raise HTTPException(status_code=400, detail="Le fichier Excel est vide.")
+    _valider_fichier_tabulaire(fichier.filename, contenu)
 
     try:
         return ServicePipeline(db).executer_depuis_excel(contenu, fichier.filename)

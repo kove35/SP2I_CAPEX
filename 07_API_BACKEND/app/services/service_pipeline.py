@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
@@ -168,11 +170,17 @@ class ServicePipeline:
             WHERE NOT EXISTS (
                 SELECT 1 FROM fact_metre f WHERE f.lot_id = d.lot_id
             )
+            AND NOT EXISTS (
+                SELECT 1 FROM fact_simulation s WHERE s.lot_id = d.lot_id
+            )
             """,
             """
             DELETE FROM dim_niveau d
             WHERE NOT EXISTS (
                 SELECT 1 FROM fact_metre f WHERE f.niveau_id = d.niveau_id
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM fact_simulation s WHERE s.niveau_id = d.niveau_id
             )
             """,
             """
@@ -180,11 +188,17 @@ class ServicePipeline:
             WHERE NOT EXISTS (
                 SELECT 1 FROM fact_metre f WHERE f.batiment_id = d.batiment_id
             )
+            AND NOT EXISTS (
+                SELECT 1 FROM fact_simulation s WHERE s.batiment_id = d.batiment_id
+            )
             """,
             """
             DELETE FROM dim_famille d
             WHERE NOT EXISTS (
                 SELECT 1 FROM fact_metre f WHERE f.famille_id = d.famille_id
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM fact_simulation s WHERE s.famille_id = d.famille_id
             )
             """,
         ]
@@ -265,12 +279,23 @@ class ServicePipeline:
         mapper = MapperFamilles()
         fact_metre: list[dict[str, Any]] = []
         familles: dict[str, dict[str, Any]] = {}
+        signatures_deja_vues: set[tuple[str, str, float, float]] = set()
 
         for ligne in lignes_dqe:
             quantite = self._valeur_numerique(ligne.get("quantite"))
             prix_total_ht = self._valeur_numerique(ligne.get("prix_total_ht"))
             if quantite <= 0 or prix_total_ht <= 0:
                 continue
+
+            signature = (
+                self._lot_racine(ligne.get("lot")),
+                str(ligne.get("designation", "")).strip().upper(),
+                round(quantite, 4),
+                round(prix_total_ht, 2),
+            )
+            if signature in signatures_deja_vues:
+                continue
+            signatures_deja_vues.add(signature)
 
             capex = capex_par_id.get(ligne.get("id_ligne"), {})
             famille = str(ligne.get("famille") or "default").lower().strip()
@@ -282,10 +307,25 @@ class ServicePipeline:
                     "categorie_achat": mapper.categorie_achat(famille),
                 },
             )
+            id_ligne_source = str(ligne.get("id_ligne", "")).strip()
+            cle_metier = ligne.get("cle_metier") or "|".join(
+                [
+                    str(ligne.get("lot", "")),
+                    str(ligne.get("batiment", "")),
+                    str(ligne.get("niveau", "")),
+                    str(id_ligne_source or ligne.get("designation", "")),
+                ]
+            )
+            id_ligne_powerbi = self._id_ligne_powerbi(ligne, id_ligne_source, cle_metier)
             fact_metre.append(
                 {
-                    "id_ligne": ligne.get("id_ligne", ""),
-                    "cle_metier": ligne.get("cle_metier", ""),
+                    # Les DQE multi-feuilles reutilisent souvent 1.1, 1.2...
+                    # dans chaque lot. Power BI/PostgreSQL ont besoin d'une
+                    # cle technique unique : on utilise donc la cle metier
+                    # stabilisee plutot que le numero court de la feuille.
+                    "id_ligne": id_ligne_powerbi,
+                    "id_ligne_source": id_ligne_source,
+                    "cle_metier": cle_metier,
                     "lot": ligne.get("lot", ""),
                     "famille": famille,
                     "batiment": ligne.get("batiment", ""),
@@ -363,3 +403,32 @@ class ServicePipeline:
             return float(valeur or 0)
         except (TypeError, ValueError):
             return 0.0
+
+    def _id_ligne_powerbi(self, ligne: dict[str, Any], id_ligne_source: str, cle_metier: str) -> str:
+        """
+        Produit une cle courte compatible PostgreSQL varchar(100).
+
+        Les numeros 1.1, 1.2 se repetent entre lots. On les prefixe donc par le
+        lot. Si le fichier ne donne pas de numero stable, on utilise un hash de
+        la cle metier complete.
+        """
+        lot = str(ligne.get("lot") or "LOT").strip()
+        if id_ligne_source:
+            candidat = f"{lot}|{id_ligne_source}"
+            if len(candidat) <= 100:
+                return candidat
+
+        digest = hashlib.sha1(cle_metier.encode("utf-8")).hexdigest()[:16]
+        candidat = f"{lot}|{digest}"
+        return candidat[:100]
+
+    def _lot_racine(self, valeur: Any) -> str:
+        """
+        Normalise les variantes de feuilles phase pour detecter les doublons.
+
+        Exemple : `LOT 1`, `LOT 1_PHASE1`, `LOT 1 : PHASE 1` deviennent `LOT 1`.
+        """
+        texte = str(valeur or "").upper().strip()
+        texte = re.sub(r"[_: ]*PHASE\s*1", "", texte)
+        texte = re.sub(r"\s+", " ", texte)
+        return texte.strip()
