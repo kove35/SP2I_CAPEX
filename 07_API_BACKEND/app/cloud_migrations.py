@@ -180,6 +180,91 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     CREATE INDEX IF NOT EXISTS ix_fact_metre_niveau_id ON fact_metre (niveau_id);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_batiment_id ON fact_metre (batiment_id);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_famille_id ON fact_metre (famille_id);
+
+    CREATE TABLE IF NOT EXISTS dim_scenario (
+        scenario_id UUID PRIMARY KEY,
+        projet_id BIGINT NULL REFERENCES dim_projet(projet_id),
+        scenario_nom VARCHAR(255) NOT NULL,
+        scenario_type VARCHAR(100) NOT NULL DEFAULT 'BASELINE',
+        description TEXT NOT NULL DEFAULT '',
+        parameters_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+        is_baseline BOOLEAN NOT NULL DEFAULT FALSE,
+        created_by VARCHAR(150) NOT NULL DEFAULT 'system',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS simulation_run (
+        run_id UUID PRIMARY KEY,
+        scenario_id UUID NOT NULL REFERENCES dim_scenario(scenario_id) ON DELETE CASCADE,
+        projet_id BIGINT NULL REFERENCES dim_projet(projet_id),
+        source_file VARCHAR(500) NOT NULL DEFAULT '',
+        source_type VARCHAR(100) NOT NULL DEFAULT 'API',
+        rows_in INTEGER NOT NULL DEFAULT 0,
+        rows_out INTEGER NOT NULL DEFAULT 0,
+        rows_rejected INTEGER NOT NULL DEFAULT 0,
+        warnings_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+        errors_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ended_at TIMESTAMPTZ NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'RUNNING'
+    );
+
+    CREATE TABLE IF NOT EXISTS fact_simulation (
+        simulation_line_id BIGSERIAL PRIMARY KEY,
+        simulation_id UUID NOT NULL,
+        scenario_id UUID NOT NULL REFERENCES dim_scenario(scenario_id) ON DELETE CASCADE,
+        run_id UUID NOT NULL REFERENCES simulation_run(run_id) ON DELETE CASCADE,
+        projet_id BIGINT NULL REFERENCES dim_projet(projet_id),
+        id_ligne VARCHAR(100) NOT NULL DEFAULT '',
+        lot_id BIGINT NULL REFERENCES dim_lot(lot_id),
+        famille_id BIGINT NULL REFERENCES dim_famille(famille_id),
+        niveau_id BIGINT NULL REFERENCES dim_niveau(niveau_id),
+        batiment_id BIGINT NULL REFERENCES dim_batiment(batiment_id),
+        designation VARCHAR(500) NOT NULL DEFAULT '',
+        quantite DOUBLE PRECISION NOT NULL DEFAULT 0,
+        pu_local DOUBLE PRECISION NOT NULL DEFAULT 0,
+        pu_import DOUBLE PRECISION NOT NULL DEFAULT 0,
+        capex_local DOUBLE PRECISION NOT NULL DEFAULT 0,
+        capex_import DOUBLE PRECISION NOT NULL DEFAULT 0,
+        capex_optimise DOUBLE PRECISION NOT NULL DEFAULT 0,
+        economie DOUBLE PRECISION NOT NULL DEFAULT 0,
+        taux_economie DOUBLE PRECISION NOT NULL DEFAULT 0,
+        decision_import VARCHAR(50) NOT NULL DEFAULT 'LOCAL',
+        score_confiance DOUBLE PRECISION NOT NULL DEFAULT 0,
+        statut_qualite VARCHAR(150) NOT NULL DEFAULT 'OK',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE fact_simulation
+        ADD COLUMN IF NOT EXISTS decision_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS risk_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS lead_time_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS criticality_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS decision_reason JSONB NOT NULL DEFAULT '{}'::jsonb,
+        ADD COLUMN IF NOT EXISTS decision_type VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS decision_confidence VARCHAR(50) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS global_risk_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS lead_time_days DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS cashflow_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS moq_risk_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS complexity_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS procurement_reason JSONB NOT NULL DEFAULT '{}'::jsonb,
+        ADD COLUMN IF NOT EXISTS container_strategy VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS shipment_strategy VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS fill_rate DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS shipment_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS lead_time_total DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS storage_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS delivery_risk VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS logistics_reason JSONB NOT NULL DEFAULT '{}'::jsonb,
+        ADD COLUMN IF NOT EXISTS supplier_id BIGINT NULL REFERENCES dim_supplier(supplier_id),
+        ADD COLUMN IF NOT EXISTS country_id BIGINT NULL REFERENCES dim_country(country_id);
+
+    CREATE INDEX IF NOT EXISTS ix_dim_scenario_created_at ON dim_scenario(created_at);
+    CREATE INDEX IF NOT EXISTS ix_fact_simulation_scenario_id ON fact_simulation(scenario_id);
+    CREATE INDEX IF NOT EXISTS ix_simulation_run_scenario_id ON simulation_run(scenario_id);
     """
 
     with engine.begin() as connection:
