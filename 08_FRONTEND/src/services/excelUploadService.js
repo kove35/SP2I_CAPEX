@@ -11,6 +11,7 @@ export async function analyzeExcel(file) {
     url: "/api/upload/excel",
     method: "POST",
     data: buildExcelFormData(file),
+    timeout: 180000,
   });
 }
 
@@ -19,6 +20,7 @@ export async function syncExcel(file) {
     url: "/api/upload/excel/sync",
     method: "POST",
     data: buildExcelFormData(file),
+    timeout: 300000,
   });
 }
 

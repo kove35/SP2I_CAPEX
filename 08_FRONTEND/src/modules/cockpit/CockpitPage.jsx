@@ -11,7 +11,7 @@ export default function CockpitPage() {
   React.useEffect(() => {
     simulateCapex({ ...defaultSimulationPayload, scenario_name: "COCKPIT_OVERVIEW" })
       .then(setSimulation)
-      .catch((apiError) => setError(apiError.message));
+      .catch((apiError) => setError(`Simulation cockpit indisponible : ${apiError.message}`));
   }, []);
 
   const kpi = simulation?.kpi || {};
