@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from importlib import import_module
 
@@ -17,6 +18,20 @@ logger = logging.getLogger("sp2i-capex-api")
 
 import_routes = import_module("app.routes.import")
 
+
+def _get_cors_origins() -> list[str]:
+    """
+    Charge les origines autorisees depuis l'environnement.
+
+    En local, React et Streamlit peuvent tourner sur des ports differents.
+    En cloud, Render doit accepter l'URL publique Streamlit configuree dans
+    `CORS_ORIGINS`.
+    """
+    default_origins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8501"
+    raw_origins = os.getenv("CORS_ORIGINS", default_origins)
+    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+
+
 app = FastAPI(
     title="SP2I CAPEX API",
     description="API SaaS pour analyse DQE, optimisation import/local et exposition BI.",
@@ -25,7 +40,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=_get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -99,7 +114,7 @@ def root() -> dict:
         "service": "SP2I CAPEX API",
         "version": "1.0.0",
         "status": "RUNNING",
-        "environment": "DEV",
+        "environment": os.getenv("ENVIRONMENT", "development"),
         "endpoints": {
             "health": "/health",
             "upload_dqe": "/dqe/upload",
@@ -130,7 +145,7 @@ def root() -> dict:
         },
         "description": "API metier pour analyse DQE et optimisation CAPEX import/local",
         "frontend": {
-            "url": "http://localhost:5173",
+            "url": os.getenv("FRONTEND_URL", "http://localhost:5173"),
         },
     }
 
@@ -140,4 +155,33 @@ def health() -> dict[str, str]:
     return {
         "statut": "OK",
         "service": "SP2I CAPEX API",
+    }
+
+
+@app.get("/debug/config")
+def debug_config() -> dict:
+    """
+    Expose une configuration non sensible pour verifier le deploiement cloud.
+
+    Cet endpoint ne renvoie jamais les secrets eux-memes. Il indique seulement
+    si les briques critiques sont configurees.
+    """
+    powerbi_keys = [
+        "POWERBI_DIRECTION_URL",
+        "POWERBI_FINANCE_URL",
+        "POWERBI_IMPORT_URL",
+        "POWERBI_CHANTIER_URL",
+        "POWERBI_DQE_URL",
+    ]
+    return {
+        "environment": os.getenv("ENVIRONMENT", "development"),
+        "database_configured": bool(os.getenv("DATABASE_URL")),
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "cors_origins": _get_cors_origins(),
+        "frontend_url": os.getenv("FRONTEND_URL", ""),
+        "max_upload_mb": os.getenv("MAX_UPLOAD_MB", "25"),
+        "powerbi_dashboards_configured": {
+            key: bool(os.getenv(key))
+            for key in powerbi_keys
+        },
     }

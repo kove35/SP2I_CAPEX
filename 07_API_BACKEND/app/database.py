@@ -19,10 +19,16 @@ DATABASE_URL = os.getenv(
 
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+elif DATABASE_URL.startswith("postgres://"):
+    # Certains fournisseurs cloud exposent encore le prefixe historique
+    # `postgres://`. SQLAlchemy 2 prefere un dialecte explicite.
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
 
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
+    pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
+    max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
     future=True,
 )
 

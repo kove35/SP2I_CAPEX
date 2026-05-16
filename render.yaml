@@ -1,0 +1,48 @@
+databases:
+  - name: sp2i-postgres
+    databaseName: sp2i_capex
+    user: sp2i_user
+    plan: free
+
+services:
+  - type: web
+    name: sp2i-backend
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r 07_API_BACKEND/requirements.txt
+    startCommand: uvicorn app.main:app --app-dir 07_API_BACKEND --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ENVIRONMENT
+        value: render-test
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sp2i-postgres
+          property: connectionString
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "10"
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+      - key: MAX_UPLOAD_MB
+        value: "25"
+      - key: POWERBI_DIRECTION_URL
+        sync: false
+      - key: POWERBI_FINANCE_URL
+        sync: false
+      - key: POWERBI_IMPORT_URL
+        sync: false
+      - key: POWERBI_CHANTIER_URL
+        sync: false
+      - key: POWERBI_DQE_URL
+        sync: false

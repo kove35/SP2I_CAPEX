@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -8,11 +9,28 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.core.ai.ai_file_store import AIFileStore
 from app.services.service_dqe import ServiceDQE
 from app.services.service_pipeline import ServicePipeline
 
 
 router = APIRouter()
+
+
+def _max_upload_bytes() -> int:
+    try:
+        max_upload_mb = int(os.getenv("MAX_UPLOAD_MB", "25"))
+    except ValueError:
+        max_upload_mb = 25
+    return max_upload_mb * 1024 * 1024
+
+
+def _valider_taille_upload(contenu: bytes) -> None:
+    if len(contenu) > _max_upload_bytes():
+        raise HTTPException(
+            status_code=413,
+            detail=f"Fichier trop volumineux. Taille maximale: {os.getenv('MAX_UPLOAD_MB', '25')} Mo.",
+        )
 
 
 @router.post("/upload")
@@ -43,6 +61,7 @@ async def upload_dqe(fichier: UploadFile = File(...), db: Session = Depends(get_
                 status_code=400,
                 detail="Le fichier est vide.",
             )
+        _valider_taille_upload(contenu)
     except HTTPException:
         raise
     except Exception as erreur:
@@ -70,6 +89,67 @@ def sync_current_dqe(db: Session = Depends(get_db)) -> Dict:
             status_code=500,
             detail=f"Erreur lors de la synchronisation PostgreSQL : {str(erreur)}",
         )
+
+
+@router.get("/ai-analyze/{file_id}")
+def ai_analyze(file_id: str) -> Dict:
+    """Retourne l'analyse IA complete stockee apres upload Excel."""
+    item = AIFileStore.get(file_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Analyse IA introuvable pour ce file_id.")
+    return {
+        "file_id": file_id,
+        "created_at": item["created_at"],
+        "analysis": item["payload"],
+        "validated_mapping": item.get("validated_mapping"),
+    }
+
+
+@router.get("/ai-preview/{file_id}")
+def ai_preview(file_id: str) -> Dict:
+    """Retourne le resume intelligent IA sans exposer tout le payload."""
+    item = AIFileStore.get(file_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Preview IA introuvable pour ce file_id.")
+    payload = item["payload"]
+    return {
+        "file_id": file_id,
+        "ai_preview": payload.get("ai_preview"),
+        "ai_confidence": payload.get("ai_confidence"),
+        "ai_anomalies": payload.get("ai_anomalies", []),
+    }
+
+
+@router.get("/ai-suggestions/{file_id}")
+def ai_suggestions(file_id: str) -> Dict:
+    """Retourne les suggestions IA a valider humainement."""
+    item = AIFileStore.get(file_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Suggestions IA introuvables pour ce file_id.")
+    return {
+        "file_id": file_id,
+        "suggestions": item["payload"].get("ai_suggestions"),
+        "classified_rows": item["payload"].get("ai_classified_rows", []),
+    }
+
+
+@router.post("/validate-mapping/{file_id}")
+async def validate_mapping(file_id: str, mapping: list[dict]) -> Dict:
+    """
+    Valide humainement un mapping propose par l'IA.
+
+    Cette validation reste en memoire pour la phase actuelle. Elle ne synchronise
+    pas PostgreSQL : l'ecriture DB reste reservee au pipeline controle.
+    """
+    item = AIFileStore.validate_mapping(file_id, mapping)
+    if not item:
+        raise HTTPException(status_code=404, detail="Analyse IA introuvable pour validation.")
+    return {
+        "status": "VALIDATED",
+        "file_id": file_id,
+        "validated_mapping": item.get("validated_mapping"),
+        "validated_at": item.get("validated_at"),
+    }
 
 
 @router.post("/extract")
@@ -105,6 +185,7 @@ async def extract_dqe_pdf(
                 status_code=400,
                 detail="Le fichier PDF est vide.",
             )
+        _valider_taille_upload(contenu)
     except HTTPException:
         raise
     except Exception as erreur:

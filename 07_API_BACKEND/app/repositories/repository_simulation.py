@@ -34,43 +34,136 @@ class RepositorySimulation:
         self.db = db
 
     def insert_fact_metre(self, data: list[dict[str, Any]]) -> int:
-        lignes = [
-            {
-                "id_ligne": _texte(ligne.get("id_ligne")),
-                "designation": _texte(ligne.get("designation")),
-                "quantite": _nombre(ligne.get("quantite")),
-                "prix_total_ht": _nombre(ligne.get("prix_total_ht") or ligne.get("montant_local")),
-                "capex_optimise": _nombre(ligne.get("capex_optimise")),
-                "economie_nette": _nombre(ligne.get("economie_nette")),
-                "decision_import": _texte(ligne.get("decision_import") or "LOCAL"),
-                "lot": _texte(ligne.get("lot")),
-                "famille": _texte(ligne.get("famille") or "default"),
-                "batiment": _texte(ligne.get("batiment")),
-                "niveau": _texte(ligne.get("niveau")),
-                "statut_ligne": _texte(ligne.get("statut_ligne") or "OK"),
-            }
-            for ligne in data
-            if ligne.get("id_ligne")
-        ]
+        inserted = 0
+        seen: set[str] = set()
 
-        if not lignes:
-            return 0
+        for ligne in data:
+            id_ligne = _texte(ligne.get("id_ligne"))
+            if not id_ligne or id_ligne in seen:
+                continue
+            seen.add(id_ligne)
 
-        statement = pg_insert(FactMetre).values(lignes)
-        update_columns = {
-            colonne.name: getattr(statement.excluded, colonne.name)
-            for colonne in FactMetre.__table__.columns
-            if colonne.name not in {"id_ligne", "created_at", "updated_at"}
-        }
-        update_columns["updated_at"] = func.now()
+            ids = self._resolve_dimension_ids(ligne, projet_id=None)
+            capex_local = _nombre(ligne.get("CAPEX_LOCAL") or ligne.get("capex_local") or ligne.get("montant_local") or ligne.get("prix_total_ht"))
+            capex_import = _nombre(ligne.get("CAPEX_IMPORT") or ligne.get("capex_import"))
+            capex_optimise = _nombre(ligne.get("CAPEX_OPTIMISE") or ligne.get("capex_optimise") or capex_local)
+            economie = _nombre(ligne.get("ECONOMIE_NETTE") or ligne.get("economie") or ligne.get("economie_nette"))
+            taux_economie = (economie / capex_local) if capex_local else 0
 
-        statement = statement.on_conflict_do_update(
-            index_elements=[FactMetre.id_ligne],
-            set_=update_columns,
-        )
-        self.db.execute(statement)
+            self.db.execute(
+                text(
+                    """
+                    INSERT INTO fact_metre (
+                        id_ligne,
+                        designation,
+                        quantite,
+                        prix_total_ht,
+                        capex_optimise,
+                        economie_nette,
+                        decision_import,
+                        lot,
+                        famille,
+                        batiment,
+                        niveau,
+                        statut_ligne,
+                        projet_id,
+                        lot_id,
+                        niveau_id,
+                        batiment_id,
+                        famille_id,
+                        scenario_id,
+                        pu_local,
+                        pu_import,
+                        capex_local,
+                        capex_import,
+                        economie,
+                        taux_economie,
+                        date_import
+                    )
+                    VALUES (
+                        :id_ligne,
+                        :designation,
+                        :quantite,
+                        :prix_total_ht,
+                        :capex_optimise,
+                        :economie_nette,
+                        :decision_import,
+                        :lot,
+                        :famille,
+                        :batiment,
+                        :niveau,
+                        :statut_ligne,
+                        :projet_id,
+                        :lot_id,
+                        :niveau_id,
+                        :batiment_id,
+                        :famille_id,
+                        NULL,
+                        :pu_local,
+                        :pu_import,
+                        :capex_local,
+                        :capex_import,
+                        :economie,
+                        :taux_economie,
+                        now()
+                    )
+                    ON CONFLICT (id_ligne) DO UPDATE SET
+                        designation = EXCLUDED.designation,
+                        quantite = EXCLUDED.quantite,
+                        prix_total_ht = EXCLUDED.prix_total_ht,
+                        capex_optimise = EXCLUDED.capex_optimise,
+                        economie_nette = EXCLUDED.economie_nette,
+                        decision_import = EXCLUDED.decision_import,
+                        lot = EXCLUDED.lot,
+                        famille = EXCLUDED.famille,
+                        batiment = EXCLUDED.batiment,
+                        niveau = EXCLUDED.niveau,
+                        statut_ligne = EXCLUDED.statut_ligne,
+                        projet_id = EXCLUDED.projet_id,
+                        lot_id = EXCLUDED.lot_id,
+                        niveau_id = EXCLUDED.niveau_id,
+                        batiment_id = EXCLUDED.batiment_id,
+                        famille_id = EXCLUDED.famille_id,
+                        pu_local = EXCLUDED.pu_local,
+                        pu_import = EXCLUDED.pu_import,
+                        capex_local = EXCLUDED.capex_local,
+                        capex_import = EXCLUDED.capex_import,
+                        economie = EXCLUDED.economie,
+                        taux_economie = EXCLUDED.taux_economie,
+                        date_import = EXCLUDED.date_import,
+                        updated_at = now()
+                    """
+                ),
+                {
+                    "id_ligne": id_ligne,
+                    "designation": _texte(ligne.get("designation")),
+                    "quantite": _nombre(ligne.get("quantite")),
+                    "prix_total_ht": _nombre(ligne.get("prix_total_ht") or ligne.get("montant_local")),
+                    "capex_optimise": capex_optimise,
+                    "economie_nette": economie,
+                    "decision_import": _texte(ligne.get("DECISION_IMPORT") or ligne.get("decision_import") or "LOCAL"),
+                    "lot": _texte(ligne.get("lot")),
+                    "famille": _texte(ligne.get("famille") or "default"),
+                    "batiment": _texte(ligne.get("batiment")),
+                    "niveau": _texte(ligne.get("niveau")),
+                    "statut_ligne": _texte(ligne.get("statut_ligne") or "OK"),
+                    "projet_id": ids["projet_id"],
+                    "lot_id": ids["lot_id"],
+                    "niveau_id": ids["niveau_id"],
+                    "batiment_id": ids["batiment_id"],
+                    "famille_id": ids["famille_id"],
+                    "pu_local": _nombre(ligne.get("PU_LOCAL") or ligne.get("pu_local") or ligne.get("prix_total_ht")),
+                    "pu_import": _nombre(ligne.get("PU_IMPORT_HT") or ligne.get("pu_import")),
+                    "capex_local": capex_local,
+                    "capex_import": capex_import,
+                    "economie": economie,
+                    "taux_economie": taux_economie,
+                },
+            )
+            inserted += 1
+
         self.db.commit()
-        return len(lignes)
+        return inserted
 
     def insert_dim_famille(self, data: list[dict[str, Any]]) -> int:
         lignes = [
@@ -101,11 +194,15 @@ class RepositorySimulation:
 
     def get_summary(self) -> dict[str, Any]:
         row = self.db.execute(
-            select(
-                func.coalesce(func.sum(FactMetre.prix_total_ht), 0),
-                func.coalesce(func.sum(FactMetre.capex_optimise), 0),
-                func.coalesce(func.sum(FactMetre.economie_nette), 0),
-                func.count(FactMetre.id_ligne),
+            text(
+                """
+                SELECT
+                    COALESCE(SUM(capex_local), 0) AS capex_local,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(economie), 0) AS economie,
+                    COUNT(*) AS lignes
+                FROM fact_metre
+                """
             )
         ).one()
 

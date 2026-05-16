@@ -23,6 +23,10 @@ services:
     container_name: sp2i_capex_api
     environment:
       DATABASE_URL: postgresql://user:password@postgres:5432/sp2i_capex
+      ENVIRONMENT: docker
+      FRONTEND_URL: http://localhost:8501
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8501
+      MAX_UPLOAD_MB: "25"
       PYTHONUNBUFFERED: "1"
     ports:
       - "8000:8000"
@@ -31,6 +35,23 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: 08_FRONTEND_STREAMLIT/Dockerfile
+    container_name: sp2i_streamlit
+    environment:
+      API_URL: http://backend:8000
+      POWERBI_DIRECTION_URL: ${POWERBI_DIRECTION_URL:-}
+      POWERBI_FINANCE_URL: ${POWERBI_FINANCE_URL:-}
+      POWERBI_IMPORT_URL: ${POWERBI_IMPORT_URL:-}
+      POWERBI_CHANTIER_URL: ${POWERBI_CHANTIER_URL:-}
+      POWERBI_DQE_URL: ${POWERBI_DQE_URL:-}
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
 
 volumes:
   sp2i_capex_pgdata:
