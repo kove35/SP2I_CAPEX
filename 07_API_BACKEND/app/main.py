@@ -8,6 +8,7 @@ from importlib import import_module
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.cloud_migrations import ensure_powerbi_schema
 from app.database import Base, SessionLocal, engine
 from app.routes import capex, decision, dqe, logistics, monitoring, procurement, simulation, upload
 from app.services.monitoring import MonitoringService
@@ -104,6 +105,7 @@ def startup() -> None:
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Tables PostgreSQL verifiees ou creees.")
+        ensure_powerbi_schema(engine)
     except Exception as erreur:
         logger.error("PostgreSQL indisponible au demarrage: %s", erreur)
 
