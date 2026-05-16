@@ -5,6 +5,37 @@ import { average } from "../../shared/formatters";
 import { defaultSimulationPayload, simulateCapex } from "../../services/simulationService";
 import { getProcurementCashflow, getProcurementImportComplexity, getProcurementLeadTime, getProcurementRiskAnalysis } from "../../services/procurementService";
 
+function rowsFromSimulation(lines = []) {
+  return {
+    risk: lines.map((line) => ({
+      id_ligne: line.id_ligne,
+      designation: line.designation,
+      global_risk_score: line.global_risk_score,
+      procurement_reason: line.procurement_analysis,
+    })),
+    lead: lines.map((line) => ({
+      id_ligne: line.id_ligne,
+      designation: line.designation,
+      lead_time_days: line.lead_time_days,
+      procurement_reason: line.procurement_analysis,
+    })),
+    cash: lines.map((line) => ({
+      id_ligne: line.id_ligne,
+      designation: line.designation,
+      cashflow_score: line.cashflow_score,
+      capex_import: line.capex_import,
+      procurement_reason: line.procurement_analysis,
+    })),
+    complexity: lines.map((line) => ({
+      id_ligne: line.id_ligne,
+      designation: line.designation,
+      complexity_score: line.complexity_score,
+      moq_risk_score: line.moq_risk_score,
+      procurement_reason: line.procurement_analysis,
+    })),
+  };
+}
+
 export default function ProcurementPage() {
   const [rows, setRows] = React.useState({ risk: [], lead: [], cash: [], complexity: [] });
   const [error, setError] = React.useState("");
@@ -18,21 +49,27 @@ export default function ProcurementPage() {
     setError("");
     try {
       const simulation = await simulateCapex({ ...defaultSimulationPayload, scenario_name: "SAAS_PROCUREMENT" });
+      setRows(rowsFromSimulation(simulation.lignes || []));
+
       const id = simulation.metadata.simulation_id;
-      const [risk, lead, cash, complexity] = await Promise.all([
-        getProcurementRiskAnalysis(id),
-        getProcurementLeadTime(id),
-        getProcurementCashflow(id),
-        getProcurementImportComplexity(id),
-      ]);
-      setRows({
-        risk: risk.risk_analysis || [],
-        lead: lead.lead_time_analysis || [],
-        cash: cash.cashflow_analysis || [],
-        complexity: complexity.import_complexity_analysis || [],
-      });
+      try {
+        const [risk, lead, cash, complexity] = await Promise.all([
+          getProcurementRiskAnalysis(id),
+          getProcurementLeadTime(id),
+          getProcurementCashflow(id),
+          getProcurementImportComplexity(id),
+        ]);
+        setRows({
+          risk: risk.risk_analysis || [],
+          lead: lead.lead_time_analysis || [],
+          cash: cash.cashflow_analysis || [],
+          complexity: complexity.import_complexity_analysis || [],
+        });
+      } catch (historyError) {
+        console.warn("PROCUREMENT HISTORY UNAVAILABLE", historyError);
+      }
     } catch (apiError) {
-      setError(apiError.message);
+      setError(`Analyse procurement indisponible : ${apiError.message}`);
     }
   };
 
