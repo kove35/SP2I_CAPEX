@@ -1,5 +1,9 @@
 # Deploiement Render + Streamlit Cloud
 
+> Note 2026-05-17 : le frontend principal de SP2I est maintenant le cockpit
+> React/Vite deploye sur Vercel dans `08_FRONTEND`. Streamlit reste une facade
+> optionnelle pour les tests cloud, les demos rapides et les controles data.
+
 ## 1. Preparer GitHub
 
 1. Pousser le projet sur GitHub.
@@ -40,7 +44,13 @@ POWERBI_DQE_URL
 Exemple `CORS_ORIGINS` :
 
 ```text
-https://sp2i-build.streamlit.app,http://localhost:8501,http://localhost:5173
+https://sp-2-i-capex.vercel.app,https://sp2i-build.streamlit.app,http://localhost:8501,http://localhost:5173
+```
+
+Pour les previews Vercel, garder aussi :
+
+```text
+CORS_ORIGIN_REGEX=https://.*\.vercel\.app
 ```
 
 ## 4. Tester le backend
@@ -101,7 +111,8 @@ Services :
 
 ## 8. Regle importante
 
-Streamlit est une interface d'exploitation et de test. Les calculs critiques restent dans :
+Streamlit est une interface d'exploitation et de test. Le cockpit utilisateur
+principal reste React/Vercel. Les calculs critiques restent dans :
 
 - FastAPI
 - services metier

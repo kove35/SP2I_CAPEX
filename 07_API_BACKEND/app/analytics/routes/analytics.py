@@ -121,3 +121,8 @@ def query_performance(db: Session = Depends(get_db)) -> dict:
 @router.get("/cache-status", response_model=AnalyticsResponse)
 def cache_status(db: Session = Depends(get_db)) -> dict:
     return AnalyticsService(db).cache_status()
+
+
+@router.get("/debug/pipeline", response_model=AnalyticsResponse)
+def debug_pipeline(db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).debug_pipeline()
