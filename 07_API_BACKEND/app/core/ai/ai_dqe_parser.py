@@ -1,5 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
@@ -155,9 +156,9 @@ class AIDQEParser:
             or texte.startswith("sous-total")
             or texte.startswith("sous total")
             or "recap" in texte
-            or "récap" in texte
+            or "rÃ©cap" in texte
             or "synthese" in texte
-            or "synthèse" in texte
+            or "synthÃ¨se" in texte
         )
 
     def _is_analytics_or_ratio_line(self, text: str) -> bool:
@@ -165,7 +166,9 @@ class AIDQEParser:
         if "%" in text and len(valeurs) <= 4:
             return True
         lowered = text.lower()
-        return any(mot in lowered for mot in ("répartition", "repartition", "statistique", "ratio"))
+        # Detection par mot entier : "administration" ne doit pas etre rejete
+        # sous pretexte qu'il contient la sequence de lettres "ratio".
+        return bool(re.search(r"\b(rÃ©partition|repartition|statistique|ratio)\b", lowered))
 
     def _value(self, row: list[Any], columns: dict[str, int], field: str, default: Any = "") -> Any:
         index = columns.get(field)
