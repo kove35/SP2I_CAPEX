@@ -1,37 +1,97 @@
 import React from "react";
+import { RefreshCcw } from "lucide-react";
+import CapexHeatmap from "../../components/charts/CapexHeatmap";
+import CapexTimeline from "../../components/charts/CapexTimeline";
+import CapexWaterfall from "../../components/charts/CapexWaterfall";
+import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
+import RiskMatrix from "../../components/charts/RiskMatrix";
+import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilters";
+import FactMetreGrid from "../../components/grids/FactMetreGrid";
+import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
+import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import AnalyticsCard from "../../ui/AnalyticsCard";
+import Skeleton from "../../ui/Skeleton";
+import AnalyticsHealthPage from "./AnalyticsHealthPage";
 
 const dashboards = [
   ["direction", "Direction"],
   ["capex", "CAPEX"],
-  ["site", "Projet"],
   ["procurement", "Procurement"],
   ["logistics", "Logistics"],
   ["risks", "Risks"],
   ["heatmaps", "Heatmaps"],
   ["drilldown", "Drill-down"],
   ["timeline", "Timeline"],
-  ["admin", "Administration"],
   ["monitoring", "Monitoring"],
-  ["users", "Utilisateurs"],
 ];
 
-export default function AnalyticsPage() {
+const dashboardCopy = {
+  direction: "Cockpit exécutif pour piloter CAPEX, économie, risque et arbitrages import/local.",
+  capex: "Lecture financière des investissements immobiliers et des optimisations CAPEX.",
+  procurement: "Analyse procurement, importabilité, familles fournisseurs et décisions local/import.",
+  logistics: "Vue logistique projet et arbitrages opérationnels alimentés par le moteur analytics.",
+  risks: "Matrice décisionnelle risque, criticité et potentiel d'économie.",
+  heatmaps: "Densité CAPEX par lot et famille pour repérer les zones de concentration.",
+  drilldown: "Exploration FACT_METRE avec sélection interactive et filtres globaux.",
+  timeline: "Evolution des simulations, économies et décisions dans le temps.",
+  monitoring: "Santé Analytics Engine, PostgreSQL, cache et cohérence QA.",
+};
+
+function useDashboardFromUrl() {
   const [dashboard, setDashboard] = React.useState(new URLSearchParams(window.location.search).get("dashboard") || "direction");
 
   React.useEffect(() => {
-    setDashboard(new URLSearchParams(window.location.search).get("dashboard") || "direction");
-  }, [window.location.search]);
+    const sync = () => setDashboard(new URLSearchParams(window.location.search).get("dashboard") || "direction");
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
 
-  const label = dashboards.find(([key]) => key === dashboard)?.[1] || "Direction";
+  const updateDashboard = (value) => {
+    setDashboard(value);
+    const url = `/app/analytics?dashboard=${value}`;
+    window.history.pushState({}, "", url);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
+  return [dashboard, updateDashboard];
+}
+
+export default function AnalyticsPage() {
+  const [dashboard, setDashboard] = useDashboardFromUrl();
+  const engine = useAnalyticsEngine(dashboard);
+  const mainPayload = engine.dashboard.data || {};
+  const capexPayload = engine.capex.data || {};
+  const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
+  const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
+  const total = mainPayload.pagination?.total || engine.drilldown.data?.pagination?.total || table.length;
+  const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
+  const heatmapRows = engine.heatmap.data?.charts?.heatmap || mainPayload.charts?.heatmap || [];
+  const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
+  const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || [];
+
+  const refreshAll = () => {
+    engine.dashboard.refetch();
+    engine.capex.refetch();
+    engine.procurement.refetch();
+    engine.heatmap.refetch();
+    engine.risk.refetch();
+    engine.timeline.refetch();
+    engine.drilldown.refetch();
+    engine.qa.refetch();
+  };
 
   return (
-    <main className="cockpit-page cockpit-page-fit">
-      <section className="page-hero compact">
-        <p className="eyebrow">Power BI Embedded</p>
-        <h1>Dashboards decisionnels pour investissements immobiliers</h1>
-        <p>Power BI est la couche analytique strategique pour direction, finance et pilotage projet.</p>
+    <main className="cockpit-page analytics-engine-page">
+      <section className="page-hero compact analytics-engine-hero">
+        <p className="eyebrow">SP2I Analytics Engine</p>
+        <h1>Decision intelligence immobilière pilotée par Analytics Engine V1</h1>
+        <p>{dashboardCopy[dashboard] || dashboardCopy.direction}</p>
+        <button type="button" className="icon-text-button" onClick={refreshAll}>
+          <RefreshCcw size={15} />
+          Rafraîchir
+        </button>
       </section>
+
       <div className="tab-row">
         {dashboards.map(([key, name]) => (
           <button key={key} className={dashboard === key ? "active" : ""} type="button" onClick={() => setDashboard(key)}>
@@ -39,24 +99,46 @@ export default function AnalyticsPage() {
           </button>
         ))}
       </div>
-      <section className="cockpit-split analytics-embed-layout">
-        <AnalyticsCard title={`Dashboard ${label}`} eyebrow="Power BI actif">
-          <div className="powerbi-placeholder powerbi-embed-large">
-            <strong>Power BI Embedded</strong>
-            <span>Un seul dashboard charge a la fois pour garder l'interface fluide.</span>
-            <small>Contexte attendu : projet Pointe-Noire, scenario actif, periode et filtres metier.</small>
-          </div>
-        </AnalyticsCard>
-        <aside className="context-panel">
-          <AnalyticsCard title="Contexte analytics" eyebrow="React vers Power BI">
-            <ul className="signal-list">
-              <li>Projet actif transmis comme filtre.</li>
-              <li>Scenario actif synchronise avec le cockpit.</li>
-              <li>React pilote, Power BI analyse en profondeur.</li>
-            </ul>
+
+      <GlobalAnalyticsFilters />
+
+      {engine.error ? <div className="analytics-error">{engine.error.message}</div> : null}
+      {engine.isFetching ? <div className="live-refresh">Synchronisation Analytics Engine en cours...</div> : null}
+
+      {dashboard === "monitoring" ? (
+        <AnalyticsHealthPage qa={engine.qa} />
+      ) : (
+        <>
+          <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
+
+          {engine.isLoading ? <Skeleton rows={4} /> : null}
+
+          <section className="bi-dashboard-grid">
+            <AnalyticsCard title="Waterfall CAPEX" eyebrow="CAPEX brut vers CAPEX final">
+              <CapexWaterfall summary={kpis} />
+            </AnalyticsCard>
+            <AnalyticsCard title="Sankey import/local" eyebrow="Décisions par lots">
+              <ImportDecisionSankey rows={table} chartRows={barRows} />
+            </AnalyticsCard>
+            <AnalyticsCard title="Heatmap CAPEX" eyebrow="Lot x famille">
+              <CapexHeatmap data={heatmapRows} />
+            </AnalyticsCard>
+            <AnalyticsCard title="Risk matrix" eyebrow="Probabilité x criticité">
+              <RiskMatrix rows={riskRows} />
+            </AnalyticsCard>
+          </section>
+
+          <section className="bi-dashboard-wide">
+            <AnalyticsCard title="Timeline CAPEX" eyebrow="Evolution simulation et économie">
+              <CapexTimeline data={timelineRows} />
+            </AnalyticsCard>
+          </section>
+
+          <AnalyticsCard title="Drill-down FACT_METRE" eyebrow="AG Grid décisionnel">
+            <FactMetreGrid rows={table} total={total} />
           </AnalyticsCard>
-        </aside>
-      </section>
+        </>
+      )}
     </main>
   );
 }

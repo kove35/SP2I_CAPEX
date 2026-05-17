@@ -31,7 +31,7 @@ export default function AppShell({ activePath, onNavigate, children }) {
             <span><AlertTriangle size={16} /> Risque global moyen</span>
             <button type="button" onClick={() => onNavigate("/app/dqe?tab=import")}><FileSpreadsheet size={16} /> Importer DQE</button>
             <button type="button" onClick={() => onNavigate("/app/simulation")}><Play size={16} /> Simulation</button>
-            <button type="button" onClick={() => onNavigate("/app/analytics?dashboard=direction")}><BarChart3 size={16} /> Power BI</button>
+            <button type="button" onClick={() => onNavigate("/app/analytics?dashboard=direction")}><BarChart3 size={16} /> Analytics</button>
           </div>
           <AlertCenter />
         </header>

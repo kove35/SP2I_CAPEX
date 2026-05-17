@@ -1,7 +1,7 @@
 import React from "react";
 import ReactECharts from "echarts-for-react";
 
-export default function BIChart({ option, height = 280 }) {
+export default function BIChart({ option, height = 280, onEvents }) {
   return (
     <ReactECharts
       option={option}
@@ -9,6 +9,7 @@ export default function BIChart({ option, height = 280 }) {
       notMerge
       lazyUpdate
       opts={{ renderer: "canvas" }}
+      onEvents={onEvents}
     />
   );
 }

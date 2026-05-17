@@ -2207,3 +2207,245 @@ a {
     display: none;
   }
 }
+
+.analytics-engine-page {
+  gap: 16px;
+}
+
+.analytics-engine-hero {
+  position: relative;
+}
+
+.analytics-engine-hero .icon-text-button {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+}
+
+.enterprise-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.enterprise-kpi-head,
+.enterprise-kpi footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.enterprise-kpi-head svg {
+  color: #7dd3fc;
+}
+
+.enterprise-kpi footer {
+  margin-top: 12px;
+}
+
+.enterprise-kpi footer em {
+  color: #34d399;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.global-analytics-filters {
+  display: grid;
+  grid-template-columns: 1.2fr 1.1fr repeat(5, minmax(116px, 1fr)) repeat(2, 138px) auto auto;
+  gap: 9px;
+  align-items: end;
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(15, 23, 42, .72);
+}
+
+.global-analytics-filters label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.global-analytics-filters span {
+  color: #93a8c5;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.global-analytics-filters input {
+  min-height: 35px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 7px;
+  padding: 0 9px;
+  color: #e5eefb;
+  background: rgba(2, 6, 23, .68);
+  outline: none;
+}
+
+.global-analytics-filters input:focus {
+  border-color: rgba(94, 234, 212, .72);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, .12);
+}
+
+.filter-live-chip,
+.live-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 35px;
+  border: 1px solid rgba(45, 212, 191, .28);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: #99f6e4;
+  background: rgba(20, 184, 166, .08);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.live-refresh {
+  justify-content: flex-start;
+  padding: 10px 12px;
+}
+
+.bi-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.bi-dashboard-wide {
+  display: grid;
+  gap: 14px;
+}
+
+.fact-grid-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.fact-grid-shell.fullscreen {
+  position: fixed;
+  inset: 18px;
+  z-index: 60;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 10px;
+  padding: 14px;
+  background: #07111f;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .55);
+}
+
+.fact-grid-toolbar {
+  display: grid;
+  grid-template-columns: 1fr minmax(180px, 260px) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.fact-grid-toolbar div {
+  display: grid;
+  gap: 3px;
+}
+
+.fact-grid-toolbar strong {
+  color: #f8fafc;
+}
+
+.fact-grid-toolbar span {
+  color: #8ea5c4;
+  font-size: 12px;
+}
+
+.fact-grid-toolbar input {
+  min-height: 36px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: #e5eefb;
+  background: rgba(2, 6, 23, .74);
+}
+
+.fact-grid-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 7px;
+  padding: 0 12px;
+  color: #dbeafe;
+  background: rgba(15, 23, 42, .92);
+  cursor: pointer;
+}
+
+.analytics-health-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+}
+
+.health-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.health-list span {
+  border: 1px solid rgba(148, 163, 184, .18);
+  border-radius: 7px;
+  padding: 9px;
+  color: #dbeafe;
+  background: rgba(15, 23, 42, .68);
+  font-size: 12px;
+}
+
+.health-list .ok {
+  border-color: rgba(45, 212, 191, .35);
+  color: #99f6e4;
+}
+
+.health-list .ko {
+  border-color: rgba(248, 113, 113, .44);
+  color: #fecaca;
+}
+
+.empty-state {
+  margin: 0;
+  color: #9fb4d1;
+}
+
+@media (max-width: 1380px) {
+  .global-analytics-filters {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .enterprise-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  .analytics-engine-hero .icon-text-button {
+    position: static;
+    margin-top: 12px;
+  }
+
+  .global-analytics-filters,
+  .bi-dashboard-grid,
+  .analytics-health-grid,
+  .fact-grid-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .enterprise-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+}
