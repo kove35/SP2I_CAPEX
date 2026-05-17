@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app.ai.excel_mapping_rules import (
@@ -8,11 +9,15 @@ from app.ai.excel_mapping_rules import (
     normaliser_libelle,
 )
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
+from app.core.errors import PipelineIntegrityError
 from app.core.ai import AIExcelOrchestrator
 from app.repositories import RepositoryExcel
 from app.schemas import SimulationItem, SimulationRequest
 from app.services.service_simulation import ServiceSimulation
 from app.utils.data_lineage import DataLineageTracker
+
+
+logger = logging.getLogger("sp2i.pipeline")
 
 
 class ServiceAIMapping:
@@ -33,6 +38,17 @@ class ServiceAIMapping:
         self.service_simulation = service_simulation or ServiceSimulation()
         self.ai_orchestrator = AIExcelOrchestrator()
 
+    BLACKLIST_ANALYTICS_SHEETS = {
+        "ANALYSE_SPATIALE",
+        "RECAP",
+        "RECAP_LOTS",
+        "SYNTHESE",
+        "SYNTHÈSE",
+        "TABLEAU_BORD",
+        "STATISTIQUES",
+        "DASHBOARD",
+    }
+
     def analyser_excel(self, contenu: bytes, nom_fichier: str, preview_limit: int = 25) -> dict[str, Any]:
         lineage = DataLineageTracker("excel_ai_mapping")
         feuilles = self.repository_excel.lire_workbook(contenu, nom_fichier)
@@ -48,8 +64,8 @@ class ServiceAIMapping:
         ai_payload: dict[str, Any] = {}
 
         if meilleure_analyse and meilleure_analyse["score_dqe"] > 0:
-            analyses_retenues = self._selectionner_feuilles_metier(analyses_triees)
-            parse_result = self._parser_analyses_retenues(feuilles, analyses_retenues, meilleure_analyse)
+            analyses_retenues, sheet_selection = self._selectionner_feuilles_metier(analyses_triees, feuilles)
+            parse_result = self._parser_analyses_retenues(feuilles, analyses_retenues, meilleure_analyse, sheet_selection)
             lignes_completes = parse_result["lignes_normalisees"]
             lignes_preview = lignes_completes[:preview_limit]
             simulation_preview = self._simuler_preview(lignes_preview)
@@ -90,8 +106,8 @@ class ServiceAIMapping:
         lineage.track("excel.workbook_loaded", rows_out=sum(len(lignes) for lignes in feuilles.values()), fichier=nom_fichier)
         analyses = [self._analyser_feuille(nom, lignes) for nom, lignes in feuilles.items()]
         meilleure_analyse = max(analyses, key=lambda analyse: analyse["score_dqe"])
-        analyses_retenues = self._selectionner_feuilles_metier(analyses)
-        parse_result = self._parser_analyses_retenues(feuilles, analyses_retenues, meilleure_analyse)
+        analyses_retenues, sheet_selection = self._selectionner_feuilles_metier(analyses, feuilles)
+        parse_result = self._parser_analyses_retenues(feuilles, analyses_retenues, meilleure_analyse, sheet_selection)
         lignes = parse_result["lignes_normalisees"]
         lineage.audit_lots("excel.pipeline_lots", lignes)
         lineage.track(
@@ -108,6 +124,7 @@ class ServiceAIMapping:
             "ai_preview": parse_result["intelligent_preview"],
             "ai_confidence": parse_result["confidence"],
             "ai_anomalies": parse_result["anomalies"],
+            "sheet_selection": sheet_selection,
             "lineage": lineage.as_dict(),
         }
 
@@ -173,32 +190,92 @@ class ServiceAIMapping:
             "next_actions": next_actions,
         }
 
-    def _selectionner_feuilles_metier(self, analyses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _selectionner_feuilles_metier(
+        self,
+        analyses: list[dict[str, Any]],
+        feuilles: dict[str, list[list[Any]]],
+    ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         """
-        Selectionne toutes les feuilles metier exploitables.
+        Selectionne les feuilles autorisees a alimenter FACT_METRE.
 
-        Beaucoup de DQE sont structures avec une feuille par lot. Se limiter a
-        la meilleure feuille ferait disparaitre des lots entiers.
+        Regle forte : une feuille `METRE` DQE prime sur les autres. Les feuilles
+        de recap, dashboard ou analytics peuvent aider a comprendre le fichier,
+        mais ne doivent jamais devenir la source metier principale.
         """
-        retenues = [
-            analyse
-            for analyse in analyses
-            if analyse.get("score_dqe", 0) >= 0.45
-            and analyse.get("classification", {}).get("document_type") in {"DQE", "BPU", "METRE"}
+        evaluations = [self._evaluer_feuille_fact(analyse, feuilles.get(analyse["feuille"], [])) for analyse in analyses]
+        ignored = [
+            evaluation
+            for evaluation in evaluations
+            if evaluation["is_blacklisted"] or not evaluation["is_fact_candidate"]
         ]
-        return retenues or ([analyses[0]] if analyses else [])
+
+        metre = [
+            evaluation
+            for evaluation in evaluations
+            if evaluation["normalized_name"] == "METRE"
+            and not evaluation["is_blacklisted"]
+            and evaluation["document_type"] in {"DQE", "METRE"}
+        ]
+        if metre:
+            best = max(metre, key=lambda item: item["fact_score"])
+            selected_names = {best["sheet_name"]}
+            reason = "Priorite absolue a la feuille METRE pour FACT_METRE."
+        else:
+            candidates = [
+                evaluation
+                for evaluation in evaluations
+                if evaluation["is_fact_candidate"]
+                and not evaluation["is_blacklisted"]
+                and evaluation["fact_score"] >= 0.35
+            ]
+            if not candidates:
+                candidates = [
+                    evaluation
+                    for evaluation in evaluations
+                    if not evaluation["is_blacklisted"]
+                    and evaluation["document_type"] in {"DQE", "METRE"}
+                ]
+            selected_names = {
+                item["sheet_name"]
+                for item in candidates
+                if item["fact_score"] >= 0.35
+            }
+            reason = "Selection par score qualite feuille detaillee."
+
+        retenues = [analyse for analyse in analyses if analyse["feuille"] in selected_names]
+        if not retenues and analyses:
+            fallback = next((analyse for analyse in analyses if not self._is_blacklisted_sheet(analyse["feuille"])), analyses[0])
+            retenues = [fallback]
+            selected_names = {fallback["feuille"]}
+            reason = "Fallback controle : aucune feuille detaillee forte detectee."
+
+        selection = {
+            "source_fact_metre": sorted(selected_names),
+            "reason": reason,
+            "evaluations": evaluations,
+            "ignored_sheets": ignored,
+            "blacklist_active": sorted(self.BLACKLIST_ANALYTICS_SHEETS),
+        }
+        logger.info("FACT_METRE source selected: %s | %s", selection["source_fact_metre"], reason)
+        for ignored_sheet in ignored:
+            if ignored_sheet["is_blacklisted"]:
+                logger.info("%s ignored (analytics sheet)", ignored_sheet["sheet_name"])
+        return retenues, selection
 
     def _parser_analyses_retenues(
         self,
         feuilles: dict[str, list[list[Any]]],
         analyses: list[dict[str, Any]],
         analyse_reference: dict[str, Any],
+        sheet_selection: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         lignes: list[dict[str, Any]] = []
         classified_rows: list[dict[str, Any]] = []
         anomalies: list[dict[str, Any]] = []
+        rows_in = 0
 
         for analyse in analyses:
+            rows_in += max(len(feuilles[analyse["feuille"]]) - int(analyse.get("ligne_entete") or 0), 0)
             parse_result = self.ai_orchestrator.parse_and_enrich(feuilles[analyse["feuille"]], analyse)
             lignes.extend(parse_result["lignes_normalisees"])
             classified_rows.extend(
@@ -223,6 +300,9 @@ class ServiceAIMapping:
             confidence,
         )
         intelligent_preview["sheets_used"] = [analyse["feuille"] for analyse in analyses]
+        intelligent_preview["source_fact_metre"] = (sheet_selection or {}).get("source_fact_metre", [])
+
+        self._valider_integrite_pipeline(rows_in, lignes, classified_rows, sheet_selection)
 
         return {
             "lignes_normalisees": lignes,
@@ -230,7 +310,131 @@ class ServiceAIMapping:
             "anomalies": anomalies,
             "confidence": confidence,
             "intelligent_preview": intelligent_preview,
+            "sheet_selection": sheet_selection or {},
         }
+
+    def _evaluer_feuille_fact(self, analyse: dict[str, Any], rows: list[list[Any]]) -> dict[str, Any]:
+        sheet_name = str(analyse.get("feuille") or "")
+        normalized_name = self._normaliser_nom_feuille(sheet_name)
+        mapping_fields = {item["champ_standard"] for item in analyse.get("mapping", [])}
+        header_line = int(analyse.get("ligne_entete") or 0)
+        data_rows = rows[header_line:] if header_line else rows
+
+        detailed_rows = 0
+        percentage_rows = 0
+        total_rows = 0
+        for row in data_rows:
+            text = " ".join(str(value) for value in row if value not in (None, "")).strip()
+            if not text:
+                continue
+            lowered = text.lower()
+            if "%" in text:
+                percentage_rows += 1
+            if lowered.startswith("total") or "sous-total" in lowered or "recap" in lowered or "récap" in lowered:
+                total_rows += 1
+            numeric_values = [nettoyer_nombre(value, None) for value in row]
+            numeric_count = sum(1 for value in numeric_values if value is not None and value > 0)
+            text_count = sum(1 for value in row if isinstance(value, str) and len(value.strip()) >= 4)
+            if numeric_count >= 2 and text_count >= 1 and "%" not in text:
+                detailed_rows += 1
+
+        non_empty = sum(1 for row in data_rows if sum(1 for value in row if value not in (None, "")) >= 3)
+        percentage_ratio = percentage_rows / max(non_empty, 1)
+        total_ratio = total_rows / max(non_empty, 1)
+        required_score = len(mapping_fields & {"designation", "quantite"}) / 2
+        amount_score = 1 if mapping_fields & {"prix_total_ht", "prix_unitaire_ht"} else 0
+        detail_score = min(detailed_rows / 50, 1)
+        name_bonus = 1 if normalized_name == "METRE" else 0
+        fact_score = (
+            required_score * 0.30
+            + amount_score * 0.20
+            + detail_score * 0.30
+            + float(analyse.get("score_dqe") or 0) * 0.10
+            + name_bonus * 0.10
+            - percentage_ratio * 0.35
+            - total_ratio * 0.20
+        )
+        document_type = analyse.get("classification", {}).get("document_type")
+        is_blacklisted = self._is_blacklisted_sheet(sheet_name)
+        is_fact_candidate = (
+            document_type in {"DQE", "METRE"}
+            and not is_blacklisted
+            and required_score >= 0.5
+            and amount_score > 0
+            and percentage_ratio < 0.35
+        )
+        return {
+            "sheet_name": sheet_name,
+            "normalized_name": normalized_name,
+            "document_type": document_type,
+            "score_dqe": analyse.get("score_dqe", 0),
+            "fact_score": round(max(fact_score, 0), 3),
+            "detailed_rows": detailed_rows,
+            "non_empty_rows": non_empty,
+            "percentage_ratio": round(percentage_ratio, 3),
+            "total_ratio": round(total_ratio, 3),
+            "is_blacklisted": is_blacklisted,
+            "is_fact_candidate": is_fact_candidate,
+            "reason": self._raison_selection_feuille(is_blacklisted, is_fact_candidate, normalized_name, document_type),
+        }
+
+    def _raison_selection_feuille(
+        self,
+        is_blacklisted: bool,
+        is_fact_candidate: bool,
+        normalized_name: str,
+        document_type: str | None,
+    ) -> str:
+        if is_blacklisted:
+            return "Feuille analytics/recap ignoree pour FACT_METRE."
+        if normalized_name == "METRE" and document_type in {"DQE", "METRE"}:
+            return "Feuille METRE prioritaire pour lignes detaillees."
+        if is_fact_candidate:
+            return "Feuille detaillee eligible FACT_METRE."
+        return "Feuille non retenue pour FACT_METRE."
+
+    def _valider_integrite_pipeline(
+        self,
+        rows_in: int,
+        lignes: list[dict[str, Any]],
+        classified_rows: list[dict[str, Any]],
+        sheet_selection: dict[str, Any] | None,
+    ) -> None:
+        if rows_in <= 0:
+            return
+        rows_out = len(lignes)
+        if rows_out < rows_in * 0.30 and rows_in >= 50:
+            top_rejets: dict[str, int] = {}
+            for row in classified_rows:
+                row_type = str(row.get("row_type") or "inconnu")
+                if row_type != "article":
+                    top_rejets[row_type] = top_rejets.get(row_type, 0) + 1
+            logger.error(
+                "Perte massive de lignes detectee rows_in=%s rows_out=%s lost_rows=%s selection=%s top_rejets=%s",
+                rows_in,
+                rows_out,
+                rows_in - rows_out,
+                (sheet_selection or {}).get("source_fact_metre"),
+                top_rejets,
+            )
+            raise PipelineIntegrityError(
+                "Perte massive de lignes detectee pendant le parsing DQE.",
+                details={
+                    "rows_in": rows_in,
+                    "rows_out": rows_out,
+                    "lost_rows": rows_in - rows_out,
+                    "loss_ratio": round((rows_in - rows_out) / rows_in, 3),
+                    "sheet_selection": sheet_selection or {},
+                    "top_rejets": top_rejets,
+                },
+            )
+
+    def _normaliser_nom_feuille(self, sheet_name: str) -> str:
+        return normaliser_libelle(sheet_name).upper()
+
+    def _is_blacklisted_sheet(self, sheet_name: str) -> bool:
+        normalized_name = self._normaliser_nom_feuille(sheet_name)
+        return any(token in normalized_name for token in self.BLACKLIST_ANALYTICS_SHEETS)
 
     def _mapper_colonnes(self, ligne_entete: list[Any]) -> list[dict[str, Any]]:
         mapping: list[dict[str, Any]] = []

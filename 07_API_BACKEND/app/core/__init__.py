@@ -4,7 +4,13 @@ from app.core.cleaner import DataCleaner, arrondir_montant, clean_famille, clean
 from app.core.consolidation_engine import ConsolidationEngine
 from app.core.container_engine import ContainerEngine
 from app.core.decision_engine import DecisionEngine
-from app.core.errors import DataQualityError, ImportDecisionError, InvalidScenarioError, SimulationError
+from app.core.errors import (
+    DataQualityError,
+    ImportDecisionError,
+    InvalidScenarioError,
+    PipelineIntegrityError,
+    SimulationError,
+)
 from app.core.freight_engine import FreightEngine
 from app.core.import_complexity_engine import ImportComplexityEngine
 from app.core.lead_time_engine import LeadTimeEngine
@@ -23,6 +29,7 @@ __all__ = [
     "ContainerEngine",
     "DataCleaner",
     "DataQualityError",
+    "PipelineIntegrityError",
     "DecisionEngine",
     "FreightEngine",
     "ImportComplexityEngine",

@@ -33,6 +33,12 @@ class DataQualityError(SP2ICapexError):
     code = "DATA_QUALITY_ERROR"
 
 
+class PipelineIntegrityError(SP2ICapexError):
+    """Erreur bloquante quand le pipeline perd trop de donnees metier."""
+
+    code = "PIPELINE_INTEGRITY_ERROR"
+
+
 class InvalidScenarioError(SP2ICapexError):
     """Erreur de parametrage scenario."""
 

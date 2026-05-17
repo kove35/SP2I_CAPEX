@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 from time import perf_counter
 from typing import Any
 
@@ -10,6 +11,9 @@ from sqlalchemy.orm import Session
 from app.analytics.cache import analytics_cache
 from app.analytics.repositories import AnalyticsRepository
 from app.analytics.schemas import AnalyticsQuery
+
+
+RACINE = Path(__file__).resolve().parents[4]
 
 
 class AnalyticsService:
@@ -78,6 +82,7 @@ class AnalyticsService:
 
     def debug_pipeline(self) -> dict[str, Any]:
         debug = self.repository.pipeline_debug()
+        latest_source = self._latest_pipeline_source()
         return {
             "status": "SUCCESS",
             "filters": {},
@@ -96,6 +101,7 @@ class AnalyticsService:
                     "columns": debug["columns"],
                     "sums": debug["sums"],
                     "views": debug["views"],
+                    "latest_source": latest_source,
                     "cache": analytics_cache.status(),
                 },
             },
@@ -115,6 +121,30 @@ class AnalyticsService:
             "charts": {},
             "table": [],
             "metadata": {"last_probe_ms": elapsed_ms, "target_ms": 500},
+        }
+
+    def _latest_pipeline_source(self) -> dict[str, Any]:
+        chemin_source = RACINE / "03_DONNEES_ENTREE/dqe/dqe_source_brut.json"
+        if not chemin_source.exists():
+            return {"available": False, "reason": "Aucun fichier source courant trouve."}
+        try:
+            payload = json.loads(chemin_source.read_text(encoding="utf-8-sig"))
+        except Exception as exc:
+            return {"available": False, "reason": f"Lecture source impossible: {exc}"}
+
+        audit_excel = payload.get("audit_excel", {}) if isinstance(payload, dict) else {}
+        sheet_selection = audit_excel.get("sheet_selection", {})
+        ai_preview = audit_excel.get("ai_preview", {})
+        return {
+            "available": True,
+            "source": payload.get("source") if isinstance(payload, dict) else None,
+            "rows_in_source_json": len(payload.get("lignes", [])) if isinstance(payload, dict) else 0,
+            "source_fact_metre": sheet_selection.get("source_fact_metre", []),
+            "selection_reason": sheet_selection.get("reason"),
+            "sheet_evaluations": sheet_selection.get("evaluations", []),
+            "ignored_sheets": sheet_selection.get("ignored_sheets", []),
+            "blacklist_active": sheet_selection.get("blacklist_active", []),
+            "ai_preview": ai_preview,
         }
 
     def _build_dashboard(self, query: AnalyticsQuery, dashboard_type: str) -> dict[str, Any]:
