@@ -11,6 +11,7 @@
   "source_file": "03_DONNEES_REFERENCE/SP2I_CAPEX_DEMO_V1.xlsx",
   "generated_at": "2026-05-17T15:57:13+02:00",
   "immutable": true,
+  "display_encoding": "UTF-8 source with ASCII-safe BI labels",
   "compatible_with": [
     "Analytics Engine V1",
     "FACT_METRE",

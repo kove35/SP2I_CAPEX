@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.analytics.schemas import AnalyticsQuery
+from app.analytics.utils.display_text import normalize_display_text
 
 
 ALLOWED_GROUPS = {
@@ -282,6 +283,8 @@ class AnalyticsRepository:
             return float(value)
         if isinstance(value, (datetime, date)):
             return value.isoformat()
+        if isinstance(value, str):
+            return normalize_display_text(value)
         return value
 
     def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
