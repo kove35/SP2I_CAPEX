@@ -1,571 +1,368 @@
 # SP2I CAPEX
 
-SP2I CAPEX est une plateforme metier pour analyser et optimiser les couts de construction dans un contexte BTP.
+SP2I CAPEX signifie **Systeme de Pilotage des Investissements Immobiliers**.
 
-L'objectif est simple : partir d'un DQE brut, le nettoyer, l'enrichir, comparer les couts locaux avec une strategie d'import, puis produire des fichiers exploitables dans Power BI.
+Le projet est maintenant une plateforme decisionnelle cloud-native pour piloter
+les investissements immobiliers, analyser les DQE, simuler le CAPEX, comparer
+les strategies import/local et alimenter un cockpit BI moderne.
 
-En clair, le projet aide a repondre a ces questions :
-
-- Combien coute vraiment le projet ?
-- Quels postes peuvent etre optimises ?
-- Est-il plus interessant d'acheter localement ou d'importer ?
-- Quels lots, familles ou batiments pesent le plus dans le CAPEX ?
-- Comment fournir des donnees propres a Power BI ?
-
----
-
-## A quoi sert SP2I CAPEX ?
-
-SP2I CAPEX couvre toute la chaine de traitement :
-
-1. Structurer des DQE, c'est-a-dire des Devis Quantitatifs Estimatifs.
-2. Nettoyer les donnees chantier : quantites, unites, prix, lots, niveaux.
-3. Classer les lignes par famille travaux : gros oeuvre, plomberie, electricite, menuiserie, etc.
-4. Simuler une strategie d'import vers Pointe-Noire.
-5. Comparer le cout local et le cout importe.
-6. Generer des datasets propres pour Power BI.
-
----
-
-## Objectifs Metier
-
-### 1. Fiabiliser les DQE
-
-Un DQE brut contient souvent des erreurs ou des formats heterogenes.
-
-Le moteur de normalisation sert a :
-
-- nettoyer les nombres ;
-- harmoniser les unites ;
-- completer les informations manquantes ;
-- detecter les lignes suspectes ;
-- creer une cle metier stable pour la BI.
-
-### 2. Optimiser les couts d'import
-
-Le moteur import simule un cout complet d'importation.
-
-Il part d'une estimation FOB, puis ajoute :
-
-- transport maritime ;
-- assurance ;
-- droits de douane ;
-- frais portuaires ;
-- logistique locale.
-
-Le systeme compare ensuite le prix importe avec le prix local.
-
-### 3. Piloter le CAPEX
-
-Le CAPEX correspond aux depenses d'investissement du projet.
-
-SP2I CAPEX permet de suivre :
-
-- le CAPEX local ;
-- le CAPEX optimise ;
-- les economies potentielles ;
-- les decisions IMPORT ou LOCAL ;
-- les analyses par lot, famille, batiment et niveau.
-
----
-
-## Architecture SaaS
-
-Voici la logique globale du projet :
+Le positionnement produit est clair :
 
 ```text
-UTILISATEUR
-    |
-    v
-FRONTEND REACT
-    |
-    v
-API BACKEND FASTAPI
-    |
-    +--> DQE ENGINE
-    |       normalisation, nettoyage, controle qualite
-    |
-    +--> IMPORT ENGINE
-            calcul FOB, landed cost, arbitrage import/local
-    |
-    v
-DATASETS BI
-    |
-    v
-POWER BI
+SP2I = cockpit decisionnel immobilier
+React = cockpit operationnel
+FastAPI = moteur metier et analytics
+PostgreSQL = source de verite analytique
+Power BI = couche de visualisation strategique
 ```
 
-Cette organisation prepare le projet a evoluer vers un vrai SaaS :
-
-- une interface utilisateur ;
-- une API ;
-- des services metier separes ;
-- un pipeline data ;
-- des exports BI ;
-- une base Docker pour l'infrastructure.
+L'import Chine, la supply chain, les containers et la logistique restent des
+moteurs d'optimisation integres. Ils ne remplacent pas le coeur du produit :
+le pilotage des investissements immobiliers.
 
 ---
 
-## Structure Du Projet
+## Architecture actuelle
+
+```text
+Utilisateur
+    |
+    v
+Frontend React / Vite / Vercel
+    |
+    v
+API FastAPI / Render
+    |
+    +--> DQE AI Engine
+    +--> CAPEX Engine
+    +--> DecisionEngine
+    +--> RiskEngine
+    +--> ProcurementEngine
+    +--> LogisticsEngine
+    +--> Analytics Engine V1
+    |
+    v
+PostgreSQL Render
+    |
+    +--> FACT / DIM
+    +--> KPI views
+    +--> Analytics views
+    |
+    v
+Power BI Service
+```
+
+---
+
+## Stack technique
+
+| Couche | Technologie | Role |
+|---|---|---|
+| Frontend | React + Vite | Cockpit operationnel |
+| Hebergement frontend | Vercel | Deploiement web |
+| Backend | FastAPI | API, moteurs metier, analytics |
+| Hebergement backend | Render | API cloud |
+| Base de donnees | PostgreSQL Render | Donnees FACT/DIM, KPI, scenarios |
+| BI | Power BI Service | Dashboards strategiques |
+| IA | OpenAI + heuristiques | Analyse intelligente DQE |
+| Charts cockpit | Apache ECharts | Visualisations React rapides |
+| Tables cockpit | AG Grid | Tables BI interactives |
+| State | Zustand | Filtres globaux cockpit |
+| Data fetching | TanStack Query | Cache et chargement API |
+
+---
+
+## URLs de reference
+
+```text
+Frontend production : https://sp-2-i-capex.vercel.app
+Backend production  : https://sp2i-backend.onrender.com
+Swagger FastAPI     : https://sp2i-backend.onrender.com/docs
+Healthcheck         : https://sp2i-backend.onrender.com/health
+Debug config        : https://sp2i-backend.onrender.com/debug/config
+```
+
+En local :
+
+```text
+Frontend : http://localhost:5173
+Backend  : http://localhost:8000
+```
+
+---
+
+## Structure du projet
 
 ```text
 SP2I_CAPEX/
 |
-+-- 01_PARAMETRES/
-|   +-- parametres_import_pointe_noire.json
-|
-+-- 02_REFERENTIELS/
-|   +-- mapping_familles.xlsx
-|   +-- ratios_fob.xlsx
-|
-+-- 03_DONNEES_ENTREE/
-|   +-- dqe/
-|       +-- dqe_source_brut.json
-|       +-- dqe_normalise.json
-|       +-- dqe_enrichi.json
-|
-+-- 04_TRAITEMENT/
-|   +-- normalisation_dqe.py
-|   +-- optimisation_import.py
-|   +-- pipeline_complet.pyk
-|   +-- utils/
-|       +-- clean_numbers.py
-|       +-- helpers.py
-|
-+-- 05_RESULTATS/
-|   +-- dqe_pret_powerbi.csv
-|   +-- optimisation_capex_import.csv
-|   +-- audit_qualite_dqe.xlsx
-|
-+-- 06_ANALYSE_BI/
-|   +-- dataset/
-|   |   +-- FACT_METRE.csv
-|   |   +-- DIM_FAMILLE.csv
-|   +-- POWERBI_CONNEXION.md
-|   +-- power_query_postgresql.pq
-|
-+-- 07_API_BACKEND/
++-- 01_PARAMETRES/              Hypotheses metier et import
++-- 02_REFERENTIELS/            Mapping familles, referentiels metier
++-- 03_DONNEES_ENTREE/          Fichiers DQE, Excel, sources de test
++-- 04_TRAITEMENT/              Scripts historiques de traitement
++-- 05_RESULTATS/               Exports et resultats locaux
++-- 06_ANALYSE_BI/              Power BI, themes, datasets BI
++-- 07_API_BACKEND/             Backend FastAPI Render
 |   +-- app/
-|       +-- main.py
-|       +-- routes/
-|       |   +-- dqe.py
-|       |   +-- import.py
-|       +-- services/
-|           +-- service_dqe.py
-|           +-- service_import.py
+|       +-- ai/                  Regles et aide mapping Excel
+|       +-- analytics/           SP2I Analytics Engine V1
+|       +-- core/                Moteurs metier purs
+|       +-- repositories/        Acces PostgreSQL
+|       +-- routes/              Routes FastAPI existantes
+|       +-- services/            Orchestration metier
+|       +-- main.py              Application FastAPI
 |
-+-- 08_FRONTEND/
-|   +-- index.html
-|   +-- package.json
++-- 08_FRONTEND/                Frontend React / Vite / Vercel
 |   +-- src/
-|       +-- main.jsx
-|       +-- styles.css
-|       +-- pages/
-|       |   +-- Direction.jsx
-|       |   +-- Chantier.jsx
-|       |   +-- Import.jsx
-|       +-- components/
-|           +-- Indicateur.jsx
+|       +-- app/                 Providers React Query
+|       +-- components/          KPI, charts, grids, filtres
+|       +-- layouts/             Layout cockpit
+|       +-- marketing/           Landing page
+|       +-- modules/             Cockpit, DQE, analytics, etc.
+|       +-- pages/               Pages routees
+|       +-- services/            Clients API
+|       +-- store/               Zustand store global
 |
-+-- 09_INFRA/
-|   +-- docker-compose.yml
-|
-+-- README.md
++-- 08_FRONTEND_STREAMLIT/       Facade Streamlit optionnelle de test cloud
++-- 09_INFRA/                    Docker et infra locale
++-- docs/                        Documentation projet
 ```
 
 ---
 
-## Role De Chaque Dossier
-
-### `01_PARAMETRES`
-
-Contient les hypotheses modifiables du projet.
-
-Exemple : les taux d'import pour Pointe-Noire.
-
-### `02_REFERENTIELS`
-
-Contient les tables de reference metier.
-
-Exemples :
-
-- mapping des familles travaux ;
-- ratios FOB par famille.
-
-### `03_DONNEES_ENTREE`
-
-Contient les fichiers DQE utilises par le pipeline.
-
-Le fichier principal d'entree est :
+## Workflow utilisateur principal
 
 ```text
-03_DONNEES_ENTREE/dqe/dqe_source_brut.json
+1. L'utilisateur importe un fichier Excel DQE
+2. Le backend analyse le fichier
+3. Les heuristiques detectent colonnes, lots, lignes et anomalies
+4. La couche IA assiste le mapping quand la structure est ambigue
+5. Le preview normalise est affiche dans React
+6. L'utilisateur controle ou valide les donnees
+7. Le backend synchronise PostgreSQL
+8. Analytics Engine expose les KPI et datasets dashboard
+9. React affiche le cockpit operationnel
+10. Power BI affiche les dashboards decisionnels
 ```
 
-### `04_TRAITEMENT`
-
-Contient le coeur Python du projet.
-
-- `normalisation_dqe.py` nettoie et structure le DQE.
-- `optimisation_import.py` calcule le scenario import/local.
-- `pipeline_complet.py` orchestre toute la chaine.
-- `utils/` contient les fonctions partagees.
-
-### `05_RESULTATS`
-
-Contient les exports metier.
-
-Ces fichiers servent au controle, au partage ou a l'analyse.
-
-### `06_ANALYSE_BI`
-
-Contient les donnees pretes pour Power BI.
-
-Les fichiers importants sont :
-
-- `FACT_METRE.csv`
-- `DIM_FAMILLE.csv`
-
-### `07_API_BACKEND`
-
-Contient l'API FastAPI.
-
-Elle permet d'exposer les traitements Python sous forme de routes web.
-
-### `08_FRONTEND`
-
-Contient l'interface React.
-
-Elle propose trois vues :
-
-- Direction ;
-- Chantier ;
-- Import.
-
-### `09_INFRA`
-
-Contient les fichiers d'infrastructure, notamment Docker.
+L'IA aide a comprendre le fichier, mais elle n'ecrit pas directement en base
+comme source de verite. La validation metier et la normalisation backend restent
+prioritaires.
 
 ---
 
-## Pipeline Data
+## Endpoints backend importants
 
-Le pipeline complet lance toute la chaine de traitement.
-
-Commande :
-
-```powershell
-python 04_TRAITEMENT/pipeline_complet.py
-```
-
-Etapes executees :
-
-1. Lecture du DQE brut.
-2. Nettoyage et normalisation.
-3. Enrichissement avec famille, zone et cle metier.
-4. Calcul import/local.
-5. Generation des resultats.
-6. Generation des datasets Power BI.
-7. Generation de l'audit qualite DQE.
-
-Fichier lu :
-
-```text
-03_DONNEES_ENTREE/dqe/dqe_source_brut.json
-```
-
-Fichiers produits :
-
-```text
-03_DONNEES_ENTREE/dqe/dqe_normalise.json
-03_DONNEES_ENTREE/dqe/dqe_enrichi.json
-05_RESULTATS/dqe_pret_powerbi.csv
-05_RESULTATS/optimisation_capex_import.csv
-05_RESULTATS/audit_qualite_dqe.xlsx
-06_ANALYSE_BI/dataset/FACT_METRE.csv
-06_ANALYSE_BI/dataset/DIM_FAMILLE.csv
-```
-
----
-
-## Logique Import Pointe-Noire
-
-Le cout importe est calcule a partir du FOB.
-
-Formule :
-
-```text
-LANDED COST = FOB x (1 + transport + assurance + douane + port + logistique locale)
-```
-
-Parametres par defaut :
-
-| Poste | Taux |
-|---|---:|
-| Transport maritime | 15% |
-| Assurance | 2% |
-| Droits de douane | 20% |
-| Frais portuaires | 10% |
-| Logistique locale | 5% |
-
-Ces parametres sont dans :
-
-```text
-01_PARAMETRES/parametres_import_pointe_noire.json
-```
-
----
-
-## Logique CAPEX
-
-Pour chaque ligne du DQE :
-
-```text
-CAPEX_LOCAL = prix local
-CAPEX_IMPORT = cout importe complet
-CAPEX_OPTIMISE = meilleur cout entre local et import
-ECONOMIE_NETTE = CAPEX_LOCAL - CAPEX_OPTIMISE
-```
-
-Decision :
-
-```text
-si CAPEX_IMPORT est meilleur -> IMPORT
-sinon -> LOCAL
-```
-
----
-
-## Modele Power BI
-
-### Table `FACT_METRE`
-
-Cette table contient les lignes de metrage et les montants.
-
-| Champ | Description |
-|---|---|
-| `id_ligne` | identifiant unique de la ligne |
-| `designation` | description du poste |
-| `quantite` | quantite mesuree |
-| `unite` | unite de mesure |
-| `prix_total_ht` | cout local |
-| `capex_optimise` | cout final optimise |
-| `economie_nette` | economie calculee |
-| `decision_import` | IMPORT ou LOCAL |
-| `lot` | lot travaux |
-| `famille` | famille metier |
-| `batiment` | batiment concerne |
-| `niveau` | niveau ou etage |
-
-### Table `DIM_FAMILLE`
-
-Cette table de dimension decrit les familles travaux.
-
-| Champ | Description |
-|---|---|
-| `famille` | code famille |
-| `libelle_famille` | nom lisible |
-| `categorie_achat` | importable ou local dominant |
-
-Relation recommandee dans Power BI :
-
-```text
-FACT_METRE[famille] -> DIM_FAMILLE[famille]
-```
-
----
-
-## Idees De Dashboards Power BI
-
-### 1. Direction
-
-- CAPEX total.
-- Economie globale.
-- Taux d'optimisation.
-- Top lots les plus couteux.
-- Top familles avec plus fort potentiel d'economie.
-
-### 2. Chantier
-
-- Couts par batiment.
-- Couts par niveau.
-- Analyse par lot.
-- Suivi des lignes DQE en anomalie.
-
-### 3. Import
-
-- Comparaison local vs import.
-- Economies par famille.
-- Decisions IMPORT / LOCAL.
-- Analyse des postes importables.
-
----
-
-## Lancer Le Backend FastAPI
-
-Installer les dependances Python :
-
-```powershell
-pip install -r requirements.txt
-```
-
-Lancer l'API :
-
-```powershell
-uvicorn app.main:app --app-dir 07_API_BACKEND --reload --port 8000
-```
-
-Adresse API :
-
-```text
-http://localhost:8000
-```
-
-Documentation interactive FastAPI :
-
-```text
-http://localhost:8000/docs
-```
-
-Endpoints disponibles :
+### Sante et diagnostic
 
 | Methode | Route | Role |
 |---|---|---|
-| GET | `/health` | verifier que l'API fonctionne |
-| POST | `/dqe/upload` | envoyer un DQE JSON |
-| POST | `/import/optimize` | lancer l'optimisation import |
+| GET | `/` | Informations API |
+| GET | `/health` | Healthcheck Render |
+| GET | `/debug/config` | Configuration non sensible |
+| GET | `/monitoring/status` | Etat technique |
+
+### DQE et upload
+
+| Methode | Route | Role |
+|---|---|---|
+| POST | `/api/upload/excel` | Upload et analyse Excel |
+| POST | `/api/upload/excel/sync` | Analyse puis synchronisation PostgreSQL |
+| POST | `/dqe/upload` | Upload DQE historique |
+| POST | `/dqe/extract` | Extraction DQE PDF/texte |
+| POST | `/dqe/sync-current` | Synchronisation du DQE courant |
+
+### Simulation et metier
+
+| Methode | Route | Role |
+|---|---|---|
+| POST | `/simulation/simulate` | Simulation CAPEX |
+| GET | `/simulation/scenarios` | Historique scenarios |
+| GET | `/simulation/compare` | Comparaison scenarios |
+| GET | `/decision/rules` | Regles decisionnelles |
+| GET | `/decision/explain/{simulation_id}` | Explication d'une decision |
+| GET | `/procurement/*` | Analyses procurement |
+| GET | `/logistics/*` | Analyses logistiques |
+
+### BI et analytics
+
+| Methode | Route | Role |
+|---|---|---|
+| GET | `/capex/summary` | Resume CAPEX historique |
+| GET | `/fact_metre` | Lignes analytiques |
+| GET | `/analytics/dashboard` | Dataset cockpit complet |
+| GET | `/analytics/kpis` | KPI centralises |
+| GET | `/analytics/capex` | CAPEX par axes analytiques |
+| GET | `/analytics/drilldown` | Drill-down projet -> article |
+| GET | `/analytics/heatmap` | Donnees heatmap |
+| GET | `/analytics/system-health` | Sante Analytics Engine |
 
 ---
 
-## Lancer Le Frontend React
+## Contrat Analytics Engine V1
 
-Aller dans le dossier frontend :
+Les endpoints `/analytics/*` retournent un format stable pour React Query,
+ECharts et AG Grid :
+
+```json
+{
+  "status": "SUCCESS",
+  "filters": {},
+  "pagination": {},
+  "kpis": {},
+  "charts": {},
+  "table": [],
+  "metadata": {}
+}
+```
+
+Ce contrat evite de disperser les calculs BI dans React. Les ratios financiers,
+les KPI globaux et les aggregations restent calcules cote PostgreSQL/FastAPI.
+
+---
+
+## Lancer le backend en local
+
+```powershell
+cd 07_API_BACKEND
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Verifier :
+
+```text
+http://localhost:8000/health
+http://localhost:8000/docs
+```
+
+Variables importantes :
+
+```text
+DATABASE_URL
+OPENAI_API_KEY
+CORS_ORIGINS
+CORS_ORIGIN_REGEX
+FRONTEND_URL
+MAX_UPLOAD_MB
+```
+
+---
+
+## Lancer le frontend en local
 
 ```powershell
 cd 08_FRONTEND
-```
-
-Installer les dependances :
-
-```powershell
 npm install
-```
-
-Lancer l'application :
-
-```powershell
 npm run dev
 ```
 
-Adresse frontend :
+Verifier :
 
 ```text
 http://localhost:5173
 ```
 
----
-
-## Lancer Avec Docker
-
-Docker permet de lancer l'API et le frontend ensemble.
-
-```powershell
-cd 09_INFRA
-docker compose up --build
-```
-
-Services disponibles :
-
-| Service | URL |
-|---|---|
-| API FastAPI | `http://localhost:8000` |
-| Frontend React | `http://localhost:5173` |
-
----
-
-## Controle Qualite DQE
-
-Le moteur detecte notamment :
-
-- quantites invalides ;
-- prix unitaires invalides ;
-- prix totaux invalides ;
-- ecarts entre quantite x prix unitaire et prix total ;
-- lignes non exploitables ;
-- familles ou zones a verifier.
-
-Le fichier d'audit est genere ici :
+Variable importante :
 
 ```text
-05_RESULTATS/audit_qualite_dqe.xlsx
+VITE_API_URL=http://localhost:8000
+```
+
+En production Vercel, l'URL backend cible est :
+
+```text
+VITE_API_URL=https://sp2i-backend.onrender.com
 ```
 
 ---
 
-## Stack Technique
+## Deploiement cloud
 
-| Couche | Technologie |
-|---|---|
-| Data | Python |
-| API | FastAPI |
-| Frontend | React + Vite |
-| BI | Power BI |
-| Infra | Docker |
-| Fichiers | JSON, CSV, XLSX |
+### Backend Render
+
+Render lance l'API FastAPI et utilise PostgreSQL Render via `DATABASE_URL`.
+Au demarrage, le backend verifie les tables et cree les vues analytiques
+necessaires.
+
+Commande type :
+
+```text
+python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+### Frontend Vercel
+
+Le frontend React est dans `08_FRONTEND`.
+
+Points importants :
+
+- `vercel.json` doit rediriger les routes SPA vers `index.html`.
+- `VITE_API_URL` doit pointer vers Render.
+- Les domaines Vercel doivent etre autorises par CORS cote Render.
+
+### PostgreSQL Render
+
+PostgreSQL contient :
+
+- `fact_metre`
+- dimensions analytiques
+- scenarios
+- runs de simulation
+- vues KPI
+- vues Analytics Engine V1
+
+Power BI doit se connecter a PostgreSQL ou consommer des vues deja calculees.
 
 ---
 
-## Commandes Utiles
+## Documentation utile
 
-Lancer le pipeline complet :
+Le point d'entree documentaire est :
 
-```powershell
-python 04_TRAITEMENT/pipeline_complet.py
+```text
+docs/README_DOCUMENTATION.md
 ```
 
-Lancer seulement la normalisation :
+Documents a lire en premier :
 
-```powershell
-python 04_TRAITEMENT/normalisation_dqe.py --input 03_DONNEES_ENTREE/dqe/dqe_source_brut.json --output 03_DONNEES_ENTREE/dqe/dqe_normalise.json
-```
-
-Lancer seulement l'optimisation import :
-
-```powershell
-python 04_TRAITEMENT/optimisation_import.py --input 03_DONNEES_ENTREE/dqe/dqe_normalise.json --output 05_RESULTATS/optimisation_capex_import.csv
-```
-
-Tester l'import de l'API :
-
-```powershell
-python -c "import sys, importlib; sys.path.insert(0, '07_API_BACKEND'); importlib.import_module('app.main'); print('API OK')"
-```
+- `docs/frontend_architecture.md`
+- `docs/frontend_backend_flow.md`
+- `docs/api_services.md`
+- `docs/analytics_engine_v1.md`
+- `docs/cloud_readiness_audit.md`
+- `docs/powerbi_integration.md`
+- `docs/ai_excel_engine.md`
 
 ---
 
-## Roadmap
+## Regles d'architecture
 
-Prochaines evolutions possibles :
-
-- authentification utilisateurs ;
-- gestion multi-projets ;
-- base PostgreSQL ;
-- stockage des imports DQE ;
-- extraction automatique de DQE PDF par IA ;
-- gestion des fournisseurs ;
-- workflow de validation Direction ;
-- deploiement cloud ;
-- vrais dashboards Power BI connectes.
+1. Ne pas mettre de logique metier critique dans React.
+2. Ne pas recalculer les KPI financiers dans Power BI.
+3. Ne pas laisser l'IA ecrire directement en base sans validation.
+4. Garder PostgreSQL/FastAPI comme source de verite.
+5. Ajouter les evolutions progressivement, sans casser les endpoints existants.
+6. Garder React comme cockpit operationnel, pas comme moteur BI complet.
 
 ---
 
-## Resume Pour Debutant
+## Resume pour demarrer
 
-Si tu decouvres le projet, retiens ceci :
+Pour un nouvel utilisateur :
 
-1. Tu mets ton DQE brut dans `03_DONNEES_ENTREE/dqe/dqe_source_brut.json`.
-2. Tu lances `python 04_TRAITEMENT/pipeline_complet.py`.
-3. Le projet nettoie le DQE.
-4. Il calcule les economies possibles entre local et import.
-5. Il produit les fichiers Power BI dans `06_ANALYSE_BI/dataset/`.
-6. Tu peux ensuite lancer l'API et le frontend pour preparer une utilisation SaaS.
+1. Aller sur le frontend Vercel.
+2. Ouvrir le module `DQE & Data`.
+3. Importer un fichier Excel DQE.
+4. Lire le score qualite, les lots detectes, les anomalies et le preview.
+5. Synchroniser les donnees vers PostgreSQL si le controle est correct.
+6. Ouvrir le cockpit et les dashboards.
+7. Utiliser Power BI pour les analyses decisionnelles longues.
+
+Pour un developpeur :
+
+1. Lire ce README.
+2. Lire `docs/README_DOCUMENTATION.md`.
+3. Lancer FastAPI en local.
+4. Lancer React en local.
+5. Tester `/api/upload/excel`, `/capex/summary` et `/analytics/dashboard`.

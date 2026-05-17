@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import text
@@ -179,6 +181,108 @@ class AnalyticsRepository:
             params,
         ).mappings().all()
         return [dict(row) for row in rows]
+
+    def pipeline_debug(self) -> dict[str, Any]:
+        """
+        Retourne un diagnostic SQL lisible du pipeline DQE -> PostgreSQL.
+
+        Cet endpoint aide a distinguer :
+        - base vide ;
+        - colonnes manquantes ;
+        - montants non calcules ;
+        - vues analytics vides ;
+        - cache qui masque un refresh recent.
+        """
+        fact_count = int(self.db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one() or 0)
+        columns = self.db.execute(
+            text(
+                """
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_name = 'fact_metre'
+                ORDER BY ordinal_position
+                """
+            )
+        ).mappings().all()
+        sums = self.db.execute(
+            text(
+                """
+                SELECT
+                    COALESCE(SUM(quantite), 0) AS quantite_total,
+                    COALESCE(SUM(prix_total_ht), 0) AS prix_total_ht_total,
+                    COALESCE(SUM(pu_local), 0) AS pu_local_total,
+                    COALESCE(SUM(capex_local), 0) AS capex_local_total,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise_total,
+                    COALESCE(SUM(economie), 0) AS economie_total,
+                    SUM(CASE WHEN quantite IS NULL OR quantite <= 0 THEN 1 ELSE 0 END) AS lignes_quantite_invalide,
+                    SUM(CASE WHEN capex_local IS NULL OR capex_local <= 0 THEN 1 ELSE 0 END) AS lignes_capex_local_invalide,
+                    SUM(CASE WHEN lot IS NULL OR lot = '' THEN 1 ELSE 0 END) AS lignes_sans_lot
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        preview = self.db.execute(
+            text(
+                """
+                SELECT
+                    id_ligne,
+                    designation,
+                    lot,
+                    famille,
+                    quantite,
+                    pu_local,
+                    prix_total_ht,
+                    capex_local,
+                    capex_optimise,
+                    economie,
+                    decision_import
+                FROM fact_metre
+                ORDER BY created_at DESC NULLS LAST, id_ligne
+                LIMIT 20
+                """
+            )
+        ).mappings().all()
+        view_checks = {
+            "vw_capex_summary": self._safe_view_one("SELECT * FROM vw_capex_summary LIMIT 1"),
+            "vw_project_kpis": self._safe_view_one("SELECT * FROM vw_project_kpis LIMIT 1"),
+            "vw_dashboard_direction": self._safe_view_one("SELECT * FROM vw_dashboard_direction LIMIT 1"),
+        }
+        warnings: list[str] = []
+        if fact_count == 0:
+            warnings.append("fact_metre est vide : synchroniser un DQE avec /api/upload/excel/sync.")
+        if float(sums["capex_local_total"] or 0) == 0 and fact_count > 0:
+            warnings.append("fact_metre contient des lignes mais capex_local total vaut 0 : verifier mapping montant/PU.")
+        if int(sums["lignes_capex_local_invalide"] or 0) > 0:
+            warnings.append("Certaines lignes ont capex_local vide ou nul.")
+        if int(sums["lignes_sans_lot"] or 0) > 0:
+            warnings.append("Certaines lignes n'ont pas de lot.")
+
+        return {
+            "fact_metre_count": fact_count,
+            "columns": [dict(row) for row in columns],
+            "sums": self._json_safe(dict(sums)),
+            "preview": [self._json_safe(dict(row)) for row in preview],
+            "views": view_checks,
+            "warnings": warnings,
+        }
+
+    def _safe_view_one(self, sql: str) -> dict[str, Any]:
+        try:
+            row = self.db.execute(text(sql)).mappings().first()
+            return {"status": "OK", "row": self._json_safe(dict(row)) if row else None}
+        except Exception as exc:
+            return {"status": "ERROR", "error": str(exc)}
+
+    def _json_safe(self, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: self._json_safe(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [self._json_safe(item) for item in value]
+        if isinstance(value, Decimal):
+            return float(value)
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        return value
 
     def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
         filters = query.filters

@@ -11,8 +11,10 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.analytics.cache import analytics_cache
 from app.core import CalculateurCAPEX, DataCleaner, MapperFamilles
 from app.core.logging_config import configure_simulation_logging
+from app.core.cleaner import nettoyer_nombre
 from app.services.service_ai_mapping import ServiceAIMapping
 from app.services.service_db import ServiceDB
 from app.utils.data_lineage import DataLineageTracker
@@ -127,6 +129,31 @@ class ServicePipeline:
             fact_metre = _lire_csv(self.chemin_fact)
             dim_famille = _lire_csv(self.chemin_dim_famille)
             service_db = ServiceDB(self.db)
+            capex_fact_csv = sum(
+                self._valeur_numerique(ligne.get("CAPEX_LOCAL") or ligne.get("capex_local") or ligne.get("montant_local") or ligne.get("prix_total_ht"))
+                for ligne in fact_metre
+            )
+
+            # Garde-fou important : ne jamais remplacer PostgreSQL par un
+            # dataset vide ou sans montant. Cela evite un dashboard Power BI a
+            # zero apres un parsing Excel incomplet.
+            if not fact_metre or capex_fact_csv <= 0:
+                message = (
+                    "DB sync blocked: FACT_METRE genere vide ou sans CAPEX_LOCAL positif. "
+                    "Verifier mapping quantite/PU/montant avant synchronisation."
+                )
+                pipeline_logger.error(
+                    "db.sync.blocked fact_rows=%s capex_fact_csv=%s",
+                    len(fact_metre),
+                    capex_fact_csv,
+                )
+                return {
+                    "status": "ERROR",
+                    "fact_metre": 0,
+                    "dim_famille": 0,
+                    "error": message,
+                    "logs": [message],
+                }
 
             # Un run pipeline represente le dataset analytique courant. On
             # remplace donc les anciennes lignes pour eviter de melanger deux
@@ -138,17 +165,33 @@ class ServicePipeline:
             familles = service_db.insert_dim_famille(dim_famille)
             faits = service_db.insert_fact_metre(fact_metre)
             self._nettoyer_dimensions_orphelines()
+            total_sql = self.db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one()
+            total_capex = self.db.execute(text("SELECT COALESCE(SUM(capex_local), 0) FROM fact_metre")).scalar_one()
+            analytics_cache.clear()
             logs.append(f"DB sync OK: {faits} lignes FACT_METRE.")
             logs.append(f"DB sync OK: {familles} lignes DIM_FAMILLE.")
+            logs.append(f"DB sync CHECK: {total_sql} lignes presentes dans PostgreSQL.")
+            logs.append(f"DB sync CHECK: capex_local total={round(float(total_capex or 0), 2)}.")
+            pipeline_logger.info(
+                "db.sync.success inserted_fact=%s sql_count=%s capex_local=%s dim_famille=%s",
+                faits,
+                total_sql,
+                total_capex,
+                familles,
+            )
 
             return {
                 "status": "SUCCESS",
                 "fact_metre": faits,
                 "dim_famille": familles,
+                "fact_metre_sql_count": int(total_sql or 0),
+                "capex_local_sql_total": round(float(total_capex or 0), 2),
+                "analytics_cache_cleared": True,
                 "logs": logs,
             }
         except Exception as erreur:
             self.db.rollback()
+            pipeline_logger.exception("db.sync.error")
             return {
                 "status": "ERROR",
                 "fact_metre": 0,
@@ -280,11 +323,25 @@ class ServicePipeline:
         fact_metre: list[dict[str, Any]] = []
         familles: dict[str, dict[str, Any]] = {}
         signatures_deja_vues: set[tuple[str, str, float, float]] = set()
+        rejet_quantite = 0
+        rejet_montant = 0
+        rejet_doublon = 0
 
         for ligne in lignes_dqe:
             quantite = self._valeur_numerique(ligne.get("quantite"))
-            prix_total_ht = self._valeur_numerique(ligne.get("prix_total_ht"))
-            if quantite <= 0 or prix_total_ht <= 0:
+            prix_unitaire_ht = self._valeur_numerique(
+                ligne.get("prix_unitaire_ht")
+                or ligne.get("prix_unitaire")
+                or ligne.get("pu")
+                or ligne.get("PU")
+                or ligne.get("P.U")
+            )
+            prix_total_ht = self._montant_local(ligne, quantite, prix_unitaire_ht)
+            if quantite <= 0:
+                rejet_quantite += 1
+                continue
+            if prix_total_ht <= 0:
+                rejet_montant += 1
                 continue
 
             signature = (
@@ -294,6 +351,7 @@ class ServicePipeline:
                 round(prix_total_ht, 2),
             )
             if signature in signatures_deja_vues:
+                rejet_doublon += 1
                 continue
             signatures_deja_vues.add(signature)
 
@@ -333,11 +391,12 @@ class ServicePipeline:
                     "designation": ligne.get("designation", ""),
                     "quantite": quantite,
                     "unite": ligne.get("unite", ""),
+                    "prix_unitaire_ht": prix_unitaire_ht,
                     "prix_total_ht": prix_total_ht,
                     "montant_local": prix_total_ht,
                     "PU_IMPORT_HT": self._valeur_numerique(capex.get("PU_IMPORT_HT")),
                     "CAPEX_IMPORT": self._valeur_numerique(capex.get("CAPEX_IMPORT")),
-                    "CAPEX_LOCAL": self._valeur_numerique(capex.get("CAPEX_LOCAL")),
+                    "CAPEX_LOCAL": self._valeur_numerique(capex.get("CAPEX_LOCAL") or prix_total_ht),
                     "ECONOMIE_NETTE": self._valeur_numerique(capex.get("ECONOMIE_NETTE")),
                     "DECISION_IMPORT": capex.get("DECISION_IMPORT", "LOCAL"),
                     "capex_optimise": self._valeur_numerique(capex.get("CAPEX_OPTIMISE", prix_total_ht)),
@@ -349,6 +408,16 @@ class ServicePipeline:
 
         _ecrire_csv(self.chemin_fact, fact_metre)
         _ecrire_csv(self.chemin_dim_famille, list(familles.values()))
+        pipeline_logger.info(
+            "dataset_bi.generated source_rows=%s capex_rows=%s fact_rows=%s dim_famille=%s rejected_quantite=%s rejected_montant=%s rejected_duplicates=%s",
+            len(lignes_dqe),
+            len(lignes_capex),
+            len(fact_metre),
+            len(familles),
+            rejet_quantite,
+            rejet_montant,
+            rejet_doublon,
+        )
 
     def _generer_audit_qualite(self, lignes_dqe: list[dict[str, Any]]) -> None:
         try:
@@ -399,10 +468,33 @@ class ServicePipeline:
         }
 
     def _valeur_numerique(self, valeur: Any) -> float:
-        try:
-            return float(valeur or 0)
-        except (TypeError, ValueError):
-            return 0.0
+        return float(nettoyer_nombre(valeur, 0) or 0)
+
+    def _montant_local(self, ligne: dict[str, Any], quantite: float, prix_unitaire_ht: float) -> float:
+        """
+        Retrouve le montant local avec plusieurs fallbacks Excel.
+
+        Beaucoup de DQE n'appellent pas le montant `prix_total_ht`. Si cette
+        valeur n'est pas trouvee mais que quantite et PU existent, on recalcule
+        le montant pour ne pas generer un FACT_METRE vide.
+        """
+        candidats = (
+            ligne.get("prix_total_ht"),
+            ligne.get("montant_total"),
+            ligne.get("montant_ht"),
+            ligne.get("total_ht"),
+            ligne.get("total"),
+            ligne.get("montant"),
+            ligne.get("MONTANT_LOCAL"),
+            ligne.get("CAPEX_LOCAL"),
+        )
+        for candidat in candidats:
+            montant = self._valeur_numerique(candidat)
+            if montant > 0:
+                return montant
+        if quantite > 0 and prix_unitaire_ht > 0:
+            return quantite * prix_unitaire_ht
+        return 0.0
 
     def _id_ligne_powerbi(self, ligne: dict[str, Any], id_ligne_source: str, cle_metier: str) -> str:
         """

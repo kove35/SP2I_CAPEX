@@ -24,6 +24,10 @@ class AnalyticsCache:
     def set(self, key: str, value: Any) -> None:
         self._store[key] = (time.time(), value)
 
+    def clear(self) -> None:
+        """Vide le cache apres une synchronisation PostgreSQL."""
+        self._store.clear()
+
     def status(self) -> dict[str, Any]:
         return {
             "backend": "in-memory",

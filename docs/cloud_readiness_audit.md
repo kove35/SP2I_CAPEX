@@ -1,29 +1,35 @@
-# Audit cloud readiness SP2I BUILD
+# Audit cloud readiness SP2I
 
 ## Objectif
 
-Ce document prepare SP2I BUILD pour un environnement reel de test :
+Ce document decrit l'etat cloud actuel de SP2I et les points a surveiller pour
+un environnement reel de test.
 
-- Backend FastAPI sur Render.
-- PostgreSQL sur Render.
-- Frontend de test Streamlit Community Cloud.
-- Power BI Service pour les dashboards.
-- OpenAI pour l'analyse intelligente DQE.
+SP2I est maintenant centre sur :
 
-L'architecture existante est conservee. Les ajouts cloud sont progressifs et ne remplacent pas le cockpit React actuel.
+- frontend React/Vite deploye sur Vercel ;
+- backend FastAPI deploye sur Render ;
+- PostgreSQL Render comme source de verite ;
+- Power BI Service comme couche analytique ;
+- OpenAI et heuristiques pour l'analyse DQE.
 
-## Architecture cible de test
+Streamlit reste une facade optionnelle de test, pas le frontend principal.
+
+---
+
+## Architecture cloud actuelle
 
 ```text
 Utilisateur
     |
     v
-Streamlit Community Cloud
+React / Vercel
     |
     v
-FastAPI Render
+FastAPI / Render
     |
     +--> OpenAI API
+    +--> Analytics Engine V1
     |
     v
 PostgreSQL Render
@@ -32,80 +38,220 @@ PostgreSQL Render
 Power BI Service
 ```
 
-## Points solides constates
+---
 
-- Le backend FastAPI est deja separe en routes, services, core et repositories.
-- La base PostgreSQL contient deja des tables analytiques et des vues KPI.
-- Le pipeline DQE sait normaliser, simuler et synchroniser `fact_metre`.
-- La logique metier reste cote backend/PostgreSQL, ce qui est sain pour Power BI.
-- Les endpoints `/health` et `/capex/summary` permettent deja un controle simple.
+## URLs de controle
 
-## Points bloquants corriges
+```text
+Frontend : https://sp-2-i-capex.vercel.app
+Backend  : https://sp2i-backend.onrender.com
+Health   : https://sp2i-backend.onrender.com/health
+Config   : https://sp2i-backend.onrender.com/debug/config
+Swagger  : https://sp2i-backend.onrender.com/docs
+```
 
-### CORS local uniquement
+---
 
-Avant, l'API acceptait seulement `localhost:5173`.
-Maintenant, les origines sont configurees avec `CORS_ORIGINS`.
+## Etat valide
 
-### Upload trop limite
+### Backend Render
 
-L'upload acceptait seulement `.xlsx` et `.xlsm`.
-Le backend accepte maintenant :
+Le backend expose :
 
-- `.xlsx`
-- `.xlsm`
-- `.xls`
-- `.csv`
+- `/health`
+- `/debug/config`
+- `/api/upload/excel`
+- `/api/upload/excel/sync`
+- `/capex/summary`
+- `/fact_metre`
+- `/simulation/*`
+- `/decision/*`
+- `/procurement/*`
+- `/logistics/*`
+- `/analytics/*`
 
-Le PDF reste gere par `/dqe/extract`.
+Au demarrage, FastAPI :
 
-### Secrets non formalises
+1. cree ou verifie les tables SQLAlchemy ;
+2. applique les migrations douces Power BI ;
+3. cree les vues Analytics Engine V1 ;
+4. active CORS pour Vercel.
 
-`.env.example` documente maintenant :
+### Frontend Vercel
 
-- `DATABASE_URL`
-- `OPENAI_API_KEY`
-- `CORS_ORIGINS`
-- `MAX_UPLOAD_MB`
-- URLs Power BI
+Le frontend de production est :
 
-### Diagnostic cloud manquant
+```text
+08_FRONTEND
+```
 
-L'endpoint `/debug/config` expose uniquement des indicateurs non sensibles :
+La variable importante est :
 
-- database configuree ou non
-- OpenAI configure ou non
-- CORS actifs
-- dashboards Power BI configures ou non
+```text
+VITE_API_URL=https://sp2i-backend.onrender.com
+```
 
-## Risques restants a surveiller
+La rewrite SPA doit permettre d'ouvrir directement :
 
-### Stockage fichier Render
+```text
+/app
+/app/dqe
+/app/analytics
+/app/procurement
+```
 
-Render fournit un disque ephemere par defaut. Les fichiers generes dans `03_DONNEES_ENTREE`, `05_RESULTATS` ou `logs` peuvent disparaitre au redeploiement.
+### PostgreSQL Render
 
-Recommandation V2 :
+PostgreSQL contient les tables et vues necessaires pour :
 
-- Stockage objet pour les fichiers sources.
-- Historisation PostgreSQL pour les resultats.
-- Volume persistant Render si necessaire.
+- `fact_metre` ;
+- dimensions Power BI ;
+- scenarios ;
+- runs de simulation ;
+- KPI views ;
+- analytics views.
 
 ### Power BI
 
-Power BI doit consommer PostgreSQL ou les vues analytiques exposees. React/Streamlit ne doivent pas recalculer les KPI metier.
+Power BI doit lire PostgreSQL ou les vues exposees. Les mesures financieres
+globales doivent utiliser le ratio des totaux, jamais la moyenne des ratios.
 
-### Migrations PostgreSQL
+---
 
-Le backend cree encore certaines tables via SQLAlchemy au demarrage. Pour la production, ajouter Alembic.
+## Variables d'environnement
+
+### Backend Render
+
+```text
+DATABASE_URL
+OPENAI_API_KEY
+ENVIRONMENT=production
+CORS_ORIGINS=https://sp-2-i-capex.vercel.app
+CORS_ORIGIN_REGEX=https://.*\.vercel\.app
+FRONTEND_URL=https://sp-2-i-capex.vercel.app
+MAX_UPLOAD_MB=50
+POWERBI_DIRECTION_URL
+POWERBI_FINANCE_URL
+POWERBI_IMPORT_URL
+POWERBI_CHANTIER_URL
+POWERBI_DQE_URL
+```
+
+### Frontend Vercel
+
+```text
+VITE_API_URL=https://sp2i-backend.onrender.com
+```
+
+---
+
+## Tests cloud recommandes
+
+### 1. Sante API
+
+```text
+GET /health
+GET /debug/config
+```
+
+Attendu :
+
+- database configuree ;
+- OpenAI configure si l'IA est active ;
+- CORS contient le domaine Vercel ;
+- Power BI URLs indiquees selon configuration.
+
+### 2. Upload DQE
+
+```text
+POST /api/upload/excel
+```
+
+Verifier :
+
+- `status = SUCCESS` ;
+- `ai_preview.quality_score` entre 0 et 1 ;
+- `lignes_normalisees_preview` non vide ;
+- anomalies affichees sans casser l'interface.
+
+### 3. Synchronisation PostgreSQL
+
+```text
+POST /api/upload/excel/sync
+GET /capex/summary
+GET /fact_metre?limit=5
+```
+
+Verifier :
+
+- les colonnes attendues existent ;
+- les montants sont coherents avec Excel ;
+- les lots ne disparaissent pas ;
+- Power BI voit les nouvelles lignes apres refresh.
+
+### 4. Analytics Engine
+
+```text
+GET /analytics/system-health
+GET /analytics/dashboard
+GET /analytics/kpis
+GET /analytics/drilldown
+```
+
+Verifier :
+
+- contrat `status = SUCCESS` ;
+- temps de reponse acceptable ;
+- `warnings` explicites si la base est vide.
+
+---
+
+## Risques restants
+
+### Base vide
+
+Une base Render neuve peut etre techniquement saine mais vide. Dans ce cas,
+React doit afficher un etat vide et non une erreur critique.
+
+### Render cold start
+
+Render peut mettre quelques secondes a reveiller l'API. Le frontend doit garder
+des timeouts suffisants pour les uploads et afficher des messages patients.
+
+### Stockage fichier ephemere
+
+Render ne garantit pas la persistance des fichiers locaux hors disque persistant.
+Il faut historiser en PostgreSQL ou ajouter un stockage objet pour les sources
+DQE en V2.
+
+### Power BI non configure
+
+Si les URLs Power BI sont absentes, `/debug/config` indique `false`. React doit
+afficher un placeholder ou un message de configuration, pas une erreur.
+
+### Migrations production
+
+Les migrations douces au startup sont pratiques pour tester. Pour une production
+plus mature, il faudra introduire Alembic.
+
+---
 
 ## Decision d'architecture
 
-Pour le test cloud, on ajoute Streamlit comme interface simple de validation :
+L'architecture cloud de reference est :
 
-- Upload DQE.
-- Preview IA.
-- Synchronisation PostgreSQL.
-- Controle KPI.
-- Integration Power BI.
+```text
+React/Vercel pour le cockpit
+FastAPI/Render pour les moteurs
+PostgreSQL/Render pour la verite analytique
+Power BI Service pour la BI strategique
+```
 
-Le frontend React existant reste disponible pour la trajectoire cockpit enterprise.
+Streamlit peut rester utile pour :
+
+- demos rapides ;
+- tests internes ;
+- validation de fichiers ;
+- prototypes data.
+
+Mais il ne doit pas etre considere comme le frontend principal de SP2I.

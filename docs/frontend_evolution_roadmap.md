@@ -1,148 +1,160 @@
-# Roadmap Frontend SP2I - Execution Progressive
+# Roadmap frontend SP2I
 
 ## Objectif
 
-Transformer le frontend SP2I en cockpit decisionnel immobilier enterprise, sans
-casser l'architecture React actuelle.
+Transformer progressivement le frontend SP2I en cockpit decisionnel immobilier
+enterprise, sans casser l'architecture React actuelle.
 
-## Etat execute dans cette passe
+---
 
-### 1. Navigation module + contexte
+## Etat deja realise
+
+### Sprint 1 - Navigation cockpit
 
 Fait :
 
-- Sidebar conservee.
-- Routes principales conservees.
-- Sous-menus convertis en contextes `?tab=` ou `?dashboard=`.
-- Administration sortie du groupe Analytics.
-
-Routes principales conservees :
+- Landing page repositionnee sur le pilotage immobilier.
+- Sidebar conservee et reorganisee autour du metier.
+- Routes principales conservees :
 
 ```text
 /app
-/app/simulation
 /app/dqe
-/app/site
+/app/simulation
 /app/procurement
 /app/logistics
+/app/site
 /app/analytics
 ```
 
-### 2. Topbar de pilotage
+- Sous-menus geres par contexte interne plutot que multiplication de pages.
+
+### Sprint 2 - Topbar et contexte
 
 Fait :
 
 - Projet actif visible.
 - Scenario actif visible.
-- Quick actions ajoutees :
-  - Importer DQE
-  - Simulation
-  - Power BI
+- Quick actions :
+  - Importer DQE.
+  - Simulation.
+  - Power BI.
 
-### 3. Simulation cockpit
-
-Fait :
-
-- Tabs internes :
-  - Simulation
-  - Scenarios
-  - Historique
-  - Comparaison
-- Layout split-screen :
-  - table simulation
-  - panneau contexte / parametres / decision summary
-- Scroll local sur la table.
-
-### 4. Procurement cockpit
+### Sprint 3 - DQE cloud
 
 Fait :
 
-- Tabs internes :
-  - Fournisseurs
-  - Import
-  - Cashflow
-  - MOQ
-  - Risques
-- Panneau contexte pour garder le CAPEX comme priorite.
+- Upload Excel connecte au backend Render.
+- Mapping frontend corrige sur la reponse reelle :
+  - `ai_preview`.
+  - `lignes_normalisees_preview`.
+  - `ai_anomalies`.
+  - `analyses`.
+- Gestion plus precise des erreurs API.
 
-### 5. Logistics cockpit
-
-Fait :
-
-- Tabs internes :
-  - Containers
-  - Shipments
-  - Freight
-  - ETA chantier
-- Layout split-screen.
-- La logistique reste un levier de securisation CAPEX.
-
-### 6. Pilotage Projet
+### Sprint 4 - Cockpits metier
 
 Fait :
 
-- Tabs internes :
-  - Planning
-  - Dependances
-  - Livraisons
-  - Criticite
-- Actions chantier visibles dans un panneau contexte.
+- Simulation en layout cockpit.
+- Procurement avec tabs internes.
+- Logistics avec tabs internes.
+- Pilotage projet prepare.
+- Analytics Power BI prepare.
 
-### 7. DQE & Data
-
-Fait :
-
-- Le module conserve l'import existant.
-- Les vues Analyse, Normalisation et Qualite sont preparees en cockpit.
-
-### 8. Power BI
+### Sprint 5 - Fondation BI React
 
 Fait :
 
-- Remplacement du modele multi-cards par un seul dashboard actif.
-- Selector dashboard :
-  - Direction
-  - CAPEX
-  - Projet
-  - Procurement
-  - Logistics
-  - Risks
-- React garde le contexte, Power BI reste le moteur analytics.
+- TanStack Query ajoute.
+- Zustand ajoute pour filtres globaux.
+- ECharts ajoute.
+- AG Grid ajoute.
+- Composants reutilisables :
+  - `EnterpriseKpiCard`.
+  - `BIChart`.
+  - `SmartDataGrid`.
+  - `GlobalFilterBar`.
 
-## Prochain sprint recommande
+---
 
-### Sprint 2 - No-scroll strict
+## Sprint suivant recommande
 
-- Faire de `.saas-shell` un viewport strict `height: 100vh`.
-- Transformer `.content-area` en zone sans scroll global.
-- Ajouter des conteneurs `.panel-scroll` sur toutes les tables.
-- Reduire la hauteur des `page-hero` en mode dense.
+### Sprint 6 - Brancher Analytics Engine V1
 
-### Sprint 3 - DQE cockpit complet
+Objectif :
 
-- Extraire les styles inline de `pages/Import.jsx`.
-- Transformer l'import DQE en layout 3 panels :
-  - upload / source
-  - preview table
-  - qualite / mapping / anomalies
-- Ajouter action directe `Envoyer vers simulation`.
+- remplacer progressivement les donnees fallback par `/analytics/*` ;
+- faire reagir les KPI, charts et tables aux filtres globaux ;
+- garder `/capex/summary` et `/fact_metre` comme compatibilite.
 
-### Sprint 4 - Drawers de details
+Actions :
 
-- Drawer ligne simulation.
-- Drawer alerte critique.
-- Drawer shipment.
-- Drawer fournisseur.
+1. Creer `analyticsService.js`.
+2. Ajouter `useAnalyticsDashboard(filters)`.
+3. Brancher `/analytics/dashboard` sur le cockpit.
+4. Brancher `/analytics/kpis` sur les KPI cards.
+5. Brancher `/analytics/drilldown` sur les vues detail.
 
-### Sprint 5 - Cache API
+### Sprint 7 - Cross-filtering
 
-- Ajouter React Query.
-- Eviter de relancer `simulateCapex` sur chaque changement de page.
-- Mutualiser scenario actif et derniere simulation.
+Objectif :
 
-### Sprint 6 - Power BI Embedded reel
+- rendre les filtres globaux actifs sur tous les dashboards.
 
-- Configurer `workspaceId`, `reportId`, `embedToken`.
-- Appliquer les filtres projet/scenario.
-- Charger uniquement le dashboard actif.
+Actions :
 
+1. Normaliser les noms de filtres frontend/backend.
+2. Ajouter les selections chart -> store Zustand.
+3. Ajouter reset filtres.
+4. Ajouter badges de filtres actifs.
+
+### Sprint 8 - No-scroll strict
+
+Objectif :
+
+- limiter le scroll vertical global.
+
+Actions :
+
+1. Faire de `.saas-shell` un viewport strict.
+2. Transformer les grandes pages en panels.
+3. Mettre les tables dans des zones `panel-scroll`.
+4. Reduire les hero sections dans `/app/*`.
+
+### Sprint 9 - Drawers de detail
+
+Objectif :
+
+- eviter les changements de page inutiles.
+
+Drawers cibles :
+
+- ligne DQE ;
+- ligne simulation ;
+- fournisseur ;
+- shipment ;
+- alerte critique ;
+- scenario.
+
+### Sprint 10 - Power BI Embedded
+
+Objectif :
+
+- integrer les dashboards Power BI dans `/app/analytics`.
+
+Pre-requis :
+
+- URLs ou embed tokens Power BI configures ;
+- strategie securite ;
+- filtres projet/scenario transmis.
+
+---
+
+## Regles de priorisation
+
+1. Toujours commencer par le workflow DQE -> PostgreSQL -> cockpit.
+2. Ne pas refaire dans React ce que Power BI sait mieux faire.
+3. Ne pas multiplier les pages si un panel ou une tab suffit.
+4. Garder les KPI decisionnels visibles au premier ecran.
+5. Favoriser les donnees reelles backend plutot que les mocks.
