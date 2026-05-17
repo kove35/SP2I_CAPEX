@@ -403,17 +403,29 @@ class ServiceAIMapping:
         if rows_in <= 0:
             return
         rows_out = len(lignes)
-        if rows_out < rows_in * 0.30 and rows_in >= 50:
+        expected_detail_rows = sum(
+            int(evaluation.get("detailed_rows") or 0)
+            for evaluation in (sheet_selection or {}).get("evaluations", [])
+            if evaluation.get("sheet_name") in set((sheet_selection or {}).get("source_fact_metre", []))
+        )
+        reference_rows = expected_detail_rows or rows_in
+        # Les DQE reels contiennent beaucoup de lignes de structure. Le garde-
+        # fou bloque les pertes catastrophiques, mais accepte un gros fichier si
+        # plus de 200 articles exploitables et un CAPEX positif ont ete trouves.
+        capex_detecte = sum(nettoyer_nombre(ligne.get("prix_total_ht"), 0) or 0 for ligne in lignes)
+        has_business_volume = rows_out >= 200 and capex_detecte > 0
+        if rows_out < reference_rows * 0.30 and reference_rows >= 50 and not has_business_volume:
             top_rejets: dict[str, int] = {}
             for row in classified_rows:
                 row_type = str(row.get("row_type") or "inconnu")
                 if row_type != "article":
                     top_rejets[row_type] = top_rejets.get(row_type, 0) + 1
             logger.error(
-                "Perte massive de lignes detectee rows_in=%s rows_out=%s lost_rows=%s selection=%s top_rejets=%s",
+                "Perte massive de lignes detectee rows_in=%s reference_rows=%s rows_out=%s lost_rows=%s selection=%s top_rejets=%s",
                 rows_in,
+                reference_rows,
                 rows_out,
-                rows_in - rows_out,
+                reference_rows - rows_out,
                 (sheet_selection or {}).get("source_fact_metre"),
                 top_rejets,
             )
@@ -421,12 +433,22 @@ class ServiceAIMapping:
                 "Perte massive de lignes detectee pendant le parsing DQE.",
                 details={
                     "rows_in": rows_in,
+                    "reference_rows": reference_rows,
+                    "expected_detail_rows": expected_detail_rows,
                     "rows_out": rows_out,
-                    "lost_rows": rows_in - rows_out,
-                    "loss_ratio": round((rows_in - rows_out) / rows_in, 3),
+                    "lost_rows": reference_rows - rows_out,
+                    "loss_ratio": round((reference_rows - rows_out) / reference_rows, 3),
                     "sheet_selection": sheet_selection or {},
                     "top_rejets": top_rejets,
                 },
+            )
+        if rows_out < rows_in * 0.30 and rows_in >= 50:
+            logger.warning(
+                "DQE parsing bruyant mais accepte rows_in=%s reference_rows=%s rows_out=%s capex_detecte=%s",
+                rows_in,
+                reference_rows,
+                rows_out,
+                capex_detecte,
             )
 
     def _normaliser_nom_feuille(self, sheet_name: str) -> str:
