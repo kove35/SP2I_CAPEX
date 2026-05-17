@@ -1,9 +1,23 @@
 import React from "react";
 import BIChart from "./BIChart";
+import { useDashboardStore } from "../../store/dashboardStore";
 
-export default function ImportDecisionSankey({ rows = [] }) {
-  const importCount = rows.filter((row) => String(row.decision_import || "").toUpperCase() === "IMPORT").length;
-  const localCount = Math.max(rows.length - importCount, 0);
+export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
+  const setFilters = useDashboardStore((state) => state.setFilters);
+  const sourceRows = rows.length ? rows : chartRows;
+  const lots = sourceRows.slice(0, 10).map((row) => ({
+    lot: row.lot || row.label || "Lot",
+    decision: String(row.decision_import || row.decision || "IMPORT").toUpperCase(),
+    value: Math.max(Number(row.capex_optimise || row.capex_brut || row.value || 0), 1),
+  }));
+  const importTotal = lots.filter((row) => row.decision === "IMPORT").reduce((sum, row) => sum + row.value, 0);
+  const localTotal = lots.filter((row) => row.decision !== "IMPORT").reduce((sum, row) => sum + row.value, 0);
+  const data = [{ name: "CAPEX" }, { name: "IMPORT" }, { name: "LOCAL" }, ...lots.map((row) => ({ name: row.lot }))];
+  const links = [
+    { source: "CAPEX", target: "IMPORT", value: importTotal || 1 },
+    { source: "CAPEX", target: "LOCAL", value: localTotal || 1 },
+    ...lots.map((row) => ({ source: row.decision === "IMPORT" ? "IMPORT" : "LOCAL", target: row.lot, value: row.value })),
+  ];
 
   return (
     <BIChart
@@ -18,20 +32,16 @@ export default function ImportDecisionSankey({ rows = [] }) {
             nodeAlign: "justify",
             lineStyle: { color: "gradient", opacity: 0.35 },
             label: { color: "#dbeafe" },
-            data: [
-              { name: "DQE" },
-              { name: "Import recommande" },
-              { name: "Local securise" },
-              { name: "CAPEX optimise" },
-            ],
-            links: [
-              { source: "DQE", target: "Import recommande", value: importCount || 1 },
-              { source: "DQE", target: "Local securise", value: localCount || 1 },
-              { source: "Import recommande", target: "CAPEX optimise", value: importCount || 1 },
-              { source: "Local securise", target: "CAPEX optimise", value: localCount || 1 },
-            ],
+            data,
+            links,
           },
         ],
+      }}
+      onEvents={{
+        click: (params) => {
+          if (params?.name?.startsWith("L")) setFilters({ lot: params.name });
+          if (params?.name === "IMPORT" || params?.name === "LOCAL") setFilters({ decisionImport: params.name });
+        },
       }}
     />
   );
