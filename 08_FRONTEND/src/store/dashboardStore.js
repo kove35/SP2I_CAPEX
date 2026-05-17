@@ -9,7 +9,8 @@ const defaultFilters = {
   famille: "",
   fournisseur: "",
   decisionImport: "",
-  periode: "",
+  periodeDebut: "",
+  periodeFin: "",
 };
 
 export const useDashboardStore = create((set) => ({
@@ -27,6 +28,12 @@ export const useDashboardStore = create((set) => ({
       filters: { ...state.filters, [key]: value },
       activeProject: key === "projet" ? value : state.activeProject,
       activeScenario: key === "scenario" ? value : state.activeScenario,
+    })),
+  setFilters: (values) =>
+    set((state) => ({
+      filters: { ...state.filters, ...values },
+      activeProject: values.projet || state.activeProject,
+      activeScenario: values.scenario || state.activeScenario,
     })),
   resetFilters: () =>
     set({

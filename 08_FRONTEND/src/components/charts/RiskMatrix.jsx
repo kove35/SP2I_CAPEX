@@ -1,13 +1,15 @@
 import React from "react";
 import BIChart from "./BIChart";
+import { useDashboardStore } from "../../store/dashboardStore";
 
 export default function RiskMatrix({ rows = [] }) {
-  const data = rows.slice(0, 30).map((row, index) => [
-    Number(row.taux_economie || row.economie || 0),
-    Number(row.score_confiance || row.global_risk_score || 0),
-    Math.max(Number(row.capex_optimise || row.capex_local || 1) / 1_000_000, 1),
-    row.designation || `Ligne ${index + 1}`,
-  ]);
+  const setFilters = useDashboardStore((state) => state.setFilters);
+  const data = rows.slice(0, 40).map((row, index) => {
+    const capex = Number(row.capex_optimise || row.capex_brut || row.capex_local || row.value || 1);
+    const gain = Number(row.taux_economie || row.economie_nette || row.economie || 0);
+    const risk = Math.min(100, Math.max(5, Number(row.global_risk_score || 100 - gain * 100 || 35 + index)));
+    return [gain, risk, Math.max(capex / 1_000_000, 1), row.designation || row.lot || `Ligne ${index + 1}`, row.lot || row.label || ""];
+  });
 
   return (
     <BIChart
@@ -15,7 +17,7 @@ export default function RiskMatrix({ rows = [] }) {
       option={{
         backgroundColor: "transparent",
         tooltip: {
-          formatter: (params) => `${params.data[3]}<br/>Gain: ${params.data[0]}<br/>Risque: ${params.data[1]}`,
+          formatter: (params) => `${params.data[3]}<br/>Gain: ${params.data[0]}<br/>Risque: ${Math.round(params.data[1])}/100`,
         },
         grid: { left: 40, right: 20, top: 25, bottom: 38 },
         xAxis: {
@@ -36,6 +38,11 @@ export default function RiskMatrix({ rows = [] }) {
             itemStyle: { color: "#5eead4", opacity: 0.82 },
           },
         ],
+      }}
+      onEvents={{
+        click: (params) => {
+          if (params?.data?.[4]) setFilters({ lot: params.data[4] });
+        },
       }}
     />
   );
