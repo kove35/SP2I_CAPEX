@@ -5,6 +5,10 @@ from typing import Any
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
 
 
+def _texte(valeur: Any) -> str:
+    return str(valeur or "").strip()
+
+
 class AIDQEParser:
     """
     Parser DQE explicable.
@@ -60,6 +64,9 @@ class AIDQEParser:
         if not text:
             return "vide", "Ligne vide.", ""
 
+        if self._is_analytics_or_ratio_line(text):
+            return "ratio_analytics", "Ligne ratio/analytics ignoree pour FACT_METRE.", ""
+
         lot = self._detect_lot(row, columns, text)
         if lot:
             return "lot", f"Contexte lot detecte: {lot}.", lot
@@ -69,12 +76,15 @@ class AIDQEParser:
             return "total", "Ligne de total/sous-total ignoree pour eviter les doubles comptes.", ""
 
         designation = str(self._value(row, columns, "designation", "")).strip()
+        if self._is_summary_designation(designation):
+            return "total", "Ligne recap/total ignoree pour eviter les doubles comptes.", ""
+
         quantity = nettoyer_nombre(self._value(row, columns, "quantite", 0), 0) or 0
         amount = nettoyer_nombre(self._value(row, columns, "prix_total_ht", 0), 0) or 0
 
         unit_price = nettoyer_nombre(self._value(row, columns, "prix_unitaire_ht", 0), 0) or 0
 
-        if designation and (quantity > 0 or amount > 0 or unit_price > 0) and current_lot:
+        if designation and quantity > 0 and (amount > 0 or unit_price > 0) and current_lot:
             return "article", "Designation avec quantite ou montant et contexte lot.", ""
 
         if designation and not current_lot:
@@ -88,7 +98,7 @@ class AIDQEParser:
             return None
 
         lot = clean_lot(self._value(row, columns, "lot", "")) or current_lot
-        if not lot:
+        if not lot or self._is_invalid_lot(lot):
             return None
 
         quantity = self._value(row, columns, "quantite", 0)
@@ -99,6 +109,10 @@ class AIDQEParser:
         numeric_total_price = nettoyer_nombre(total_price, 0) or 0
         if numeric_total_price <= 0 and numeric_quantity > 0 and numeric_unit_price > 0:
             total_price = numeric_quantity * numeric_unit_price
+            numeric_total_price = nettoyer_nombre(total_price, 0) or 0
+
+        if numeric_quantity <= 0 or numeric_total_price <= 0:
+            return None
 
         return {
             "id_ligne": str(self._value(row, columns, "id_ligne", "")),
@@ -116,9 +130,42 @@ class AIDQEParser:
     def _detect_lot(self, row: list[Any], columns: dict[str, int], text: str) -> str:
         for value in (self._value(row, columns, "lot", ""), self._value(row, columns, "designation", ""), text):
             lot = clean_lot(value)
-            if lot.startswith("LOT "):
+            if lot.startswith("LOT ") and not self._is_invalid_lot(lot):
                 return lot
         return ""
+
+    def _is_invalid_lot(self, lot: Any) -> bool:
+        texte = _texte(lot).upper()
+        if not texte:
+            return True
+        if "%" in texte:
+            return True
+        if nettoyer_nombre(texte, None) is not None:
+            return True
+        mots_interdits = ("RATIO", "TAUX", "RECAP", "SYNTHESE", "STATISTIQUE", "TOTAL")
+        return any(mot in texte for mot in mots_interdits)
+
+    def _is_summary_designation(self, designation: Any) -> bool:
+        texte = _texte(designation).lower()
+        if not texte:
+            return True
+        return (
+            "%" in texte
+            or texte.startswith("total")
+            or texte.startswith("sous-total")
+            or texte.startswith("sous total")
+            or "recap" in texte
+            or "récap" in texte
+            or "synthese" in texte
+            or "synthèse" in texte
+        )
+
+    def _is_analytics_or_ratio_line(self, text: str) -> bool:
+        valeurs = [_texte(part) for part in text.split() if _texte(part)]
+        if "%" in text and len(valeurs) <= 4:
+            return True
+        lowered = text.lower()
+        return any(mot in lowered for mot in ("répartition", "repartition", "statistique", "ratio"))
 
     def _value(self, row: list[Any], columns: dict[str, int], field: str, default: Any = "") -> Any:
         index = columns.get(field)
