@@ -5,11 +5,19 @@ import { useDashboardStore } from "../../store/dashboardStore";
 export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
   const setFilters = useDashboardStore((state) => state.setFilters);
   const sourceRows = rows.length ? rows : chartRows;
-  const lots = sourceRows.slice(0, 10).map((row) => ({
-    lot: row.lot || row.label || "Lot",
-    decision: String(row.decision_import || row.decision || "IMPORT").toUpperCase(),
-    value: Math.max(Number(row.capex_optimise || row.capex_brut || row.value || 0), 1),
-  }));
+  const lotMap = sourceRows.reduce((acc, row) => {
+    const lot = row.lot || row.label || "Lot non renseigne";
+    const decision = String(row.decision_import || row.decision || "IMPORT").toUpperCase() === "LOCAL" ? "LOCAL" : "IMPORT";
+    const key = `${decision}|${lot}`;
+    const value = Math.max(Number(row.capex_optimise || row.capex_brut || row.value || 0), 1);
+    const current = acc.get(key) || { lot, decision, value: 0 };
+    current.value += value;
+    acc.set(key, current);
+    return acc;
+  }, new Map());
+  const lots = [...lotMap.values()]
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 12);
   const importTotal = lots.filter((row) => row.decision === "IMPORT").reduce((sum, row) => sum + row.value, 0);
   const localTotal = lots.filter((row) => row.decision !== "IMPORT").reduce((sum, row) => sum + row.value, 0);
   const data = [{ name: "CAPEX" }, { name: "IMPORT" }, { name: "LOCAL" }, ...lots.map((row) => ({ name: row.lot }))];

@@ -7,13 +7,16 @@ export default function CapexHeatmap({ data = [] }) {
   const setFilters = useDashboardStore((state) => state.setFilters);
   const lots = [...new Set(data.map((row) => row.lot || "NON_RENSEIGNE"))].slice(0, 12);
   const familles = [...new Set(data.map((row) => row.famille || "default"))].slice(0, 12);
-  const matrix = data.slice(0, 144).map((row) => [
-    lots.indexOf(row.lot || "NON_RENSEIGNE"),
-    familles.indexOf(row.famille || "default"),
-    Number(row.value || 0),
-    row.lot,
-    row.famille,
-  ]);
+  const matrix = data
+    .slice(0, 144)
+    .map((row) => [
+      lots.indexOf(row.lot || "NON_RENSEIGNE"),
+      familles.indexOf(row.famille || "default"),
+      Number(row.value || 0),
+      row.lot,
+      row.famille,
+    ])
+    .filter((row) => row[0] >= 0 && row[1] >= 0);
 
   return (
     <BIChart
