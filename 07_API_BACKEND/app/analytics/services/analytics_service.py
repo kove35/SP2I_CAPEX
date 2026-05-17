@@ -76,6 +76,32 @@ class AnalyticsService:
             "metadata": analytics_cache.status(),
         }
 
+    def debug_pipeline(self) -> dict[str, Any]:
+        debug = self.repository.pipeline_debug()
+        return {
+            "status": "SUCCESS",
+            "filters": {},
+            "pagination": {"page": 1, "page_size": len(debug["preview"]), "total": debug["fact_metre_count"]},
+            "kpis": {
+                "capex_brut": round(float(debug["sums"].get("capex_local_total") or 0), 2),
+                "capex_optimise": round(float(debug["sums"].get("capex_optimise_total") or 0), 2),
+                "economie_nette": round(float(debug["sums"].get("economie_total") or 0), 2),
+                "nb_lignes": debug["fact_metre_count"],
+            },
+            "charts": {},
+            "table": debug["preview"],
+            "metadata": {
+                "engine": "SP2I Analytics Engine V1",
+                "debug": {
+                    "columns": debug["columns"],
+                    "sums": debug["sums"],
+                    "views": debug["views"],
+                    "cache": analytics_cache.status(),
+                },
+            },
+            "warnings": debug["warnings"],
+        }
+
     def query_performance(self) -> dict[str, Any]:
         start = perf_counter()
         query = AnalyticsQuery()

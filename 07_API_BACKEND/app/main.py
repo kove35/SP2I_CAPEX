@@ -159,6 +159,7 @@ def root() -> dict:
             "monitoring": "/monitoring/status",
             "analytics_dashboard": "/analytics/dashboard",
             "analytics_kpis": "/analytics/kpis",
+            "analytics_debug_pipeline": "/analytics/debug/pipeline",
             "docs": "/docs",
         },
         "description": "API metier pour analyse DQE et optimisation CAPEX import/local",

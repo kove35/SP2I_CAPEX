@@ -8,14 +8,12 @@ from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from app.core.cleaner import nettoyer_nombre
 from app.models import DimFamille, FactMetre
 
 
 def _nombre(valeur: Any) -> float:
-    try:
-        return float(valeur or 0)
-    except (TypeError, ValueError):
-        return 0.0
+    return float(nettoyer_nombre(valeur, 0) or 0)
 
 
 def _texte(valeur: Any) -> str:
@@ -44,7 +42,17 @@ class RepositorySimulation:
             seen.add(id_ligne)
 
             ids = self._resolve_dimension_ids(ligne, projet_id=None)
-            capex_local = _nombre(ligne.get("CAPEX_LOCAL") or ligne.get("capex_local") or ligne.get("montant_local") or ligne.get("prix_total_ht"))
+            quantite = _nombre(ligne.get("quantite") or ligne.get("QTE"))
+            prix_total_ht = _nombre(ligne.get("prix_total_ht") or ligne.get("montant_local") or ligne.get("montant_total"))
+            pu_local = _nombre(ligne.get("PU_LOCAL") or ligne.get("pu_local") or ligne.get("prix_unitaire_ht") or ligne.get("prix_unitaire"))
+            if prix_total_ht <= 0 and quantite > 0 and pu_local > 0:
+                prix_total_ht = quantite * pu_local
+            if pu_local <= 0 and quantite > 0 and prix_total_ht > 0:
+                pu_local = prix_total_ht / quantite
+
+            capex_local = _nombre(ligne.get("CAPEX_LOCAL") or ligne.get("capex_local") or prix_total_ht)
+            if capex_local <= 0 and quantite > 0 and pu_local > 0:
+                capex_local = quantite * pu_local
             capex_import = _nombre(ligne.get("CAPEX_IMPORT") or ligne.get("capex_import"))
             capex_optimise = _nombre(ligne.get("CAPEX_OPTIMISE") or ligne.get("capex_optimise") or capex_local)
             economie = _nombre(ligne.get("ECONOMIE_NETTE") or ligne.get("economie") or ligne.get("economie_nette"))
@@ -137,8 +145,8 @@ class RepositorySimulation:
                 {
                     "id_ligne": id_ligne,
                     "designation": _texte(ligne.get("designation")),
-                    "quantite": _nombre(ligne.get("quantite")),
-                    "prix_total_ht": _nombre(ligne.get("prix_total_ht") or ligne.get("montant_local")),
+                    "quantite": quantite,
+                    "prix_total_ht": prix_total_ht,
                     "capex_optimise": capex_optimise,
                     "economie_nette": economie,
                     "decision_import": _texte(ligne.get("DECISION_IMPORT") or ligne.get("decision_import") or "LOCAL"),
@@ -152,7 +160,7 @@ class RepositorySimulation:
                     "niveau_id": ids["niveau_id"],
                     "batiment_id": ids["batiment_id"],
                     "famille_id": ids["famille_id"],
-                    "pu_local": _nombre(ligne.get("PU_LOCAL") or ligne.get("pu_local") or ligne.get("prix_total_ht")),
+                    "pu_local": pu_local,
                     "pu_import": _nombre(ligne.get("PU_IMPORT_HT") or ligne.get("pu_import")),
                     "capex_local": capex_local,
                     "capex_import": capex_import,
