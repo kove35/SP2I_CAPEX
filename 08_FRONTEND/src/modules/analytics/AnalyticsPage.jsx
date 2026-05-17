@@ -8,6 +8,12 @@ const dashboards = [
   ["procurement", "Procurement"],
   ["logistics", "Logistics"],
   ["risks", "Risks"],
+  ["heatmaps", "Heatmaps"],
+  ["drilldown", "Drill-down"],
+  ["timeline", "Timeline"],
+  ["admin", "Administration"],
+  ["monitoring", "Monitoring"],
+  ["users", "Utilisateurs"],
 ];
 
 export default function AnalyticsPage() {
