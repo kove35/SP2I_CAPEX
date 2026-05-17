@@ -11,7 +11,7 @@ services:
     plan: free
     region: frankfurt
     buildCommand: pip install -r 07_API_BACKEND/requirements.txt
-    startCommand: uvicorn app.main:app --app-dir 07_API_BACKEND --host 0.0.0.0 --port $PORT
+    startCommand: python 07_API_BACKEND/start_render.py
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
