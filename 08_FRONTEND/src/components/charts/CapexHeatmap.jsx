@@ -17,10 +17,12 @@ export default function CapexHeatmap({ data = [] }) {
       row.famille,
     ])
     .filter((row) => row[0] >= 0 && row[1] >= 0);
+  const chartKey = `heatmap-${lots.join("|")}-${familles.join("|")}`;
 
   return (
     <BIChart
       height={310}
+      chartKey={chartKey}
       option={{
         backgroundColor: "transparent",
         tooltip: {

@@ -10,7 +10,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
     const decision = String(row.decision_import || row.decision || "IMPORT").toUpperCase() === "LOCAL" ? "LOCAL" : "IMPORT";
     const key = `${decision}|${lot}`;
     const value = Math.max(Number(row.capex_optimise || row.capex_brut || row.value || 0), 1);
-    const current = acc.get(key) || { lot, decision, value: 0 };
+    const current = acc.get(key) || { lot, decision, nodeName: `${lot} - ${decision}`, value: 0 };
     current.value += value;
     acc.set(key, current);
     return acc;
@@ -20,16 +20,23 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
     .slice(0, 12);
   const importTotal = lots.filter((row) => row.decision === "IMPORT").reduce((sum, row) => sum + row.value, 0);
   const localTotal = lots.filter((row) => row.decision !== "IMPORT").reduce((sum, row) => sum + row.value, 0);
-  const data = [{ name: "CAPEX" }, { name: "IMPORT" }, { name: "LOCAL" }, ...lots.map((row) => ({ name: row.lot }))];
+  const data = [
+    { name: "CAPEX" },
+    { name: "IMPORT" },
+    { name: "LOCAL" },
+    ...lots.map((row) => ({ name: row.nodeName, label: { formatter: row.lot } })),
+  ];
   const links = [
     { source: "CAPEX", target: "IMPORT", value: importTotal || 1 },
     { source: "CAPEX", target: "LOCAL", value: localTotal || 1 },
-    ...lots.map((row) => ({ source: row.decision === "IMPORT" ? "IMPORT" : "LOCAL", target: row.lot, value: row.value })),
+    ...lots.map((row) => ({ source: row.decision === "IMPORT" ? "IMPORT" : "LOCAL", target: row.nodeName, value: row.value })),
   ];
+  const chartKey = `sankey-${lots.map((row) => row.nodeName).join("|") || "empty"}`;
 
   return (
     <BIChart
       height={280}
+      chartKey={chartKey}
       option={{
         backgroundColor: "transparent",
         tooltip: { trigger: "item" },
@@ -47,7 +54,8 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
       }}
       onEvents={{
         click: (params) => {
-          if (params?.name?.startsWith("L")) setFilters({ lot: params.name });
+          const lot = lots.find((row) => row.nodeName === params?.name)?.lot;
+          if (lot) setFilters({ lot });
           if (params?.name === "IMPORT" || params?.name === "LOCAL") setFilters({ decisionImport: params.name });
         },
       }}
