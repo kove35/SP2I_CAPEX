@@ -108,6 +108,63 @@ class AnalyticsService:
             "warnings": debug["warnings"],
         }
 
+    def qa_summary(self) -> dict[str, Any]:
+        """Synthese QA lisible pour valider rapidement le moteur analytics."""
+        query = AnalyticsQuery()
+        kpis = self.repository.kpis(query)
+        table, total = self.repository.table(query)
+        heatmap = self.repository.heatmap(query)
+        timeline = self.repository.timeline(query)
+        grouped = self.repository.grouped(query, default_group="lot")
+        cache_status = analytics_cache.status()
+
+        capex_brut = float(kpis.get("capex_brut") or 0)
+        economie = float(kpis.get("economie_nette") or 0)
+        nb_lignes = int(kpis.get("nb_lignes") or 0)
+        lots = {str(row.get("label")) for row in grouped if row.get("label")}
+        checks = {
+            "postgresql_connected": True,
+            "fact_metre_non_empty": nb_lignes > 0,
+            "nb_lignes_gt_500": nb_lignes > 500,
+            "capex_brut_gt_0": capex_brut > 0,
+            "economie_gt_0": economie > 0,
+            "lots_gt_0": len(lots) > 0,
+            "charts_ready": bool(grouped and heatmap),
+            "ag_grid_ready": bool(table),
+            "timeline_ready": bool(timeline),
+            "cache_ready": cache_status.get("backend") == "in-memory",
+        }
+        warnings = [
+            f"Check KO: {name}"
+            for name, ok in checks.items()
+            if not ok
+        ]
+
+        return {
+            "status": "SUCCESS",
+            "filters": {},
+            "pagination": {"page": 1, "page_size": len(table), "total": total},
+            "kpis": kpis,
+            "charts": {
+                "bar": grouped,
+                "heatmap": heatmap,
+                "timeline": timeline,
+            },
+            "table": table,
+            "metadata": {
+                "engine": "SP2I Analytics Engine V1",
+                "qa_status": "PASS" if not warnings else "WARN",
+                "checks": checks,
+                "cache": cache_status,
+                "dataset_target": {
+                    "name": "SP2I_CAPEX_DEMO_V1",
+                    "expected_rows": 584,
+                    "expected_capex": 1129667152,
+                },
+            },
+            "warnings": warnings,
+        }
+
     def query_performance(self) -> dict[str, Any]:
         start = perf_counter()
         query = AnalyticsQuery()

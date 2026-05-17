@@ -1,0 +1,42 @@
+{
+  "dataset": "SP2I_CAPEX_DEMO_V1",
+  "version": "1.0.0",
+  "project": "Centre Medical Pointe-Noire",
+  "city": "Pointe-Noire",
+  "country": "Congo-Brazzaville",
+  "currency": "FCFA",
+  "nb_lignes": 584,
+  "nb_lots": 14,
+  "capex_total": 1129667152,
+  "source_file": "03_DONNEES_REFERENCE/SP2I_CAPEX_DEMO_V1.xlsx",
+  "generated_at": "2026-05-17T15:57:13+02:00",
+  "immutable": true,
+  "compatible_with": [
+    "Analytics Engine V1",
+    "FACT_METRE",
+    "Cockpit Direction",
+    "Simulation Engine",
+    "DQE AI Parser",
+    "React/Vercel dashboards",
+    "PostgreSQL Render",
+    "Power BI datasets"
+  ],
+  "quality_checks": {
+    "metre_rows": 584,
+    "bpu_rows": 584,
+    "orphan_code_bpu": 0,
+    "lots_detected": 14,
+    "capex_total_validated": true,
+    "ai_parser_validated": true,
+    "simulation_validated": true
+  },
+  "expected_kpis": {
+    "capex_brut": 1129667152,
+    "capex_import": 1017883558.43,
+    "capex_optimise": 998050922.1,
+    "economie_nette": 131616229.9,
+    "taux_economie": 0.1165,
+    "lignes_import": 412,
+    "lignes_local": 172
+  }
+}
