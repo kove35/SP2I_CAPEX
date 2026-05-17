@@ -16,6 +16,7 @@ from sqlalchemy import text
 
 from app.analytics.cache import analytics_cache
 from app.analytics.repositories import AnalyticsRepository
+from app.analytics.utils.display_text import normalize_display_text
 from app.cloud_migrations import ensure_powerbi_schema
 from app.database import Base, SessionLocal, engine
 from app.services.service_pipeline import ServicePipeline
@@ -52,6 +53,55 @@ def _validate_database(db) -> dict:
         "economie_nette": round(float(kpis.get("economie_nette") or 0), 2),
         "nb_import": int(import_count or 0),
     }
+
+
+def _repair_display_labels(db) -> int:
+    """
+    Repare les libelles corrompus avant exposition frontend/Power BI.
+
+    Power BI peut lire directement PostgreSQL. On corrige donc les libelles dans
+    les tables analytics, pas seulement dans les reponses JSON FastAPI.
+    """
+    tables = {
+        "fact_metre": ("id_ligne", ["lot", "designation", "famille", "batiment", "niveau", "decision_import"]),
+        "dim_lot": ("lot_id", ["lot"]),
+        "dim_batiment": ("batiment_id", ["batiment"]),
+        "dim_niveau": ("niveau_id", ["niveau"]),
+        "dim_famille": ("famille_id", ["famille", "libelle_famille"]),
+    }
+    repaired = 0
+
+    for table_name, (pk_column, text_columns) in tables.items():
+        try:
+            rows = db.execute(
+                text(
+                    f"""
+                    SELECT {pk_column}, {", ".join(text_columns)}
+                    FROM {table_name}
+                    """
+                )
+            ).mappings().all()
+        except Exception:
+            continue
+
+        for row in rows:
+            updates = {
+                column: normalize_display_text(row[column])
+                for column in text_columns
+                if row.get(column) != normalize_display_text(row.get(column))
+            }
+            if not updates:
+                continue
+
+            set_sql = ", ".join(f"{column} = :{column}" for column in updates)
+            db.execute(
+                text(f"UPDATE {table_name} SET {set_sql} WHERE {pk_column} = :pk_value"),
+                {**updates, "pk_value": row[pk_column]},
+            )
+            repaired += 1
+
+    db.commit()
+    return repaired
 
 
 def _empty_query():
@@ -102,6 +152,10 @@ def seed_database(dry_run: bool = True) -> dict:
         db_sync = result.get("db_sync", {})
         if db_sync.get("status") != "SUCCESS":
             raise RuntimeError(f"Synchronisation PostgreSQL en erreur: {db_sync}")
+
+        repaired_labels = _repair_display_labels(db)
+        if repaired_labels:
+            _print_ok(f"{repaired_labels} libelles affichage repares")
 
         validation = _validate_database(db)
         expected_rows = int(metadata.get("nb_lignes") or 584)

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.analytics.cache import analytics_cache
 from app.analytics.repositories import AnalyticsRepository
 from app.analytics.schemas import AnalyticsQuery
+from app.analytics.utils.display_text import normalize_payload_labels
 
 
 RACINE = Path(__file__).resolve().parents[4]
@@ -235,7 +236,7 @@ class AnalyticsService:
         total: int | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        return {
+        return normalize_payload_labels({
             "status": "SUCCESS",
             "filters": query.filters.model_dump(exclude_none=True),
             "pagination": {
@@ -247,7 +248,7 @@ class AnalyticsService:
             "charts": charts or {},
             "table": table or [],
             "metadata": metadata or {"engine": "SP2I Analytics Engine V1"},
-        }
+        })
 
     def _cached(self, prefix: str, query: AnalyticsQuery, builder) -> dict[str, Any]:
         key = f"{prefix}:{hashlib.sha1(query.model_dump_json().encode()).hexdigest()}"
