@@ -3,7 +3,15 @@ import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
 
-export default function SmartDataGrid({ rows = [], columns = [], height = 420, quickFilterText = "", onRowSelected }) {
+export default function SmartDataGrid({
+  rows = [],
+  columns = [],
+  height = 420,
+  quickFilterText = "",
+  onRowSelected,
+  getRowClass,
+  rowClassRules,
+}) {
   const defaultColDef = React.useMemo(
     () => ({
       sortable: true,
@@ -28,6 +36,8 @@ export default function SmartDataGrid({ rows = [], columns = [], height = 420, q
         suppressCellFocus
         rowSelection={{ mode: "singleRow" }}
         quickFilterText={quickFilterText}
+        getRowClass={getRowClass}
+        rowClassRules={rowClassRules}
         onRowClicked={(event) => onRowSelected?.(event.data)}
       />
     </div>

@@ -4,6 +4,7 @@ import { formatMoney } from "../../shared/formatters";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { analyticsColors } from "../../theme/colors";
 import { chartTheme } from "../../theme/chartTheme";
+import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
 
 const MILLION = 1_000_000;
 
@@ -18,9 +19,9 @@ function normalizeRiskRow(row, index) {
   const capexExpose = Number(row.capex_expose || row.capex_optimise || impact || 1);
   const probabilite = Number(row.probabilite || row.global_risk_score || 35 + index);
   const criticite = Number(row.criticite || probabilite);
-  const lot = row.lot || row.label || `Risque ${index + 1}`;
-  const fournisseur = row.fournisseur || row.famille || "SP2I Supply";
-  const decision = row.decision_import || row.decision || "LOCAL";
+  const lot = toBusinessLabel(row.lot || row.label, `Risque ${index + 1}`);
+  const fournisseur = normalizeFamily(row.fournisseur || row.famille || "SP2I Supply");
+  const decision = normalizeDecision(row.decision_import || row.decision || "LOCAL");
   return {
     lot,
     fournisseur,
@@ -51,6 +52,14 @@ function buildInsight(rows) {
   };
 }
 
+function recommendedAction(row) {
+  if (!row) return "Surveiller le perimetre filtre.";
+  if (row.criticite >= 72) return `Prioriser une mitigation sur ${row.lot} et securiser ${row.decision}.`;
+  if (row.probabilite >= 55) return `Suivre delai, prix et fournisseur sur ${row.lot}.`;
+  if (row.decision === "IMPORT") return "Conserver l'arbitrage import avec controle logistique.";
+  return "Maintenir local et surveiller les ecarts de prix.";
+}
+
 function normalizeRowsPayload(payload) {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.rows)) return payload.rows;
@@ -59,7 +68,7 @@ function normalizeRowsPayload(payload) {
 }
 
 export default function RiskMatrix({ rows = [] }) {
-  const { applyFilters } = useCrossFiltering();
+  const { applyFilters, applyDrilldown } = useCrossFiltering();
   const riskRows = useMemo(() => normalizeRowsPayload(rows).slice(0, 72).map(normalizeRiskRow), [rows]);
   const insight = useMemo(() => buildInsight(riskRows), [riskRows]);
   const maxImpactM = Math.max(...riskRows.map((row) => row.impact / MILLION), 10);
@@ -79,6 +88,7 @@ export default function RiskMatrix({ rows = [] }) {
       row.impact,
       row.economie,
       row.nbLignes,
+      recommendedAction(row),
     ],
     itemStyle: {
       color: riskColor(row.criticite),
@@ -105,7 +115,7 @@ export default function RiskMatrix({ rows = [] }) {
         </article>
       </div>
       <BIChart
-        height={360}
+        height={388}
         option={{
           backgroundColor: "transparent",
           tooltip: {
@@ -121,19 +131,25 @@ export default function RiskMatrix({ rows = [] }) {
                 `Fournisseur/famille: <b>${value[5]}</b>`,
                 `Delai: <b>${value[6]} j</b>`,
                 `Decision: <b>${value[7]}</b>`,
+                `Action recommandee: <b>${value[12]}</b>`,
+                "Cliquer pour ouvrir les lignes exposees",
               ].join("<br/>");
             },
           },
-          grid: { left: 54, right: 30, top: 30, bottom: 52 },
+          grid: { left: 68, right: 34, top: 44, bottom: 66 },
           xAxis: {
-            name: "Impact financier (M FCFA)",
+            name: "Impact financier expose (M FCFA)",
+            nameLocation: "middle",
+            nameGap: 42,
             min: 0,
             max: Math.ceil(maxImpactM * 1.15),
             axisLabel: { ...chartTheme.axisLabel, formatter: (value) => `${Math.round(value)}M` },
             splitLine: chartTheme.splitLine,
           },
           yAxis: {
-            name: "Probabilite / criticite",
+            name: "Probabilite de derive / criticite",
+            nameLocation: "middle",
+            nameGap: 48,
             min: 0,
             max: 100,
             axisLabel: chartTheme.axisLabel,
@@ -156,10 +172,15 @@ export default function RiskMatrix({ rows = [] }) {
               },
               label: {
                 show: true,
-                formatter: (params) => (params.data.value[4] >= 72 ? String(params.data.value[3]).slice(0, 14) : ""),
+                position: "right",
+                distance: 6,
+                formatter: (params) => (params.data.value[4] >= 78 ? String(params.data.value[3]).slice(0, 18) : ""),
                 color: "#dbeafe",
                 fontSize: 10,
                 fontWeight: 800,
+                backgroundColor: "rgba(2,6,23,.62)",
+                borderRadius: 4,
+                padding: [2, 4],
               },
               markLine: {
                 silent: true,
@@ -190,6 +211,14 @@ export default function RiskMatrix({ rows = [] }) {
                 famille: value[5],
                 importLocal: value[7],
               });
+              applyDrilldown(
+                { lot: value[3], famille: value[5], importLocal: value[7], decisionImport: value[7] },
+                {
+                  source: "risk",
+                  title: `Risque ${value[8]} - ${value[3]}`,
+                  metric: formatMoney(value[9] || 0),
+                }
+              );
             }
           },
         }}
