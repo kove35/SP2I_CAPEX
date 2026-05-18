@@ -183,6 +183,31 @@ class AnalyticsRepository:
         ).mappings().all()
         return [dict(row) for row in rows]
 
+    def filter_options(self) -> dict[str, list[str]]:
+        """Valeurs distinctes exposees au cockpit React pour les dropdowns BI."""
+        fields = {
+            "batiments": "batiment",
+            "niveaux": "niveau",
+            "lots": "lot",
+            "familles": "famille",
+            "import_local": "decision_import",
+        }
+        result: dict[str, list[str]] = {}
+        for key, column in fields.items():
+            rows = self.db.execute(
+                text(
+                    f"""
+                    SELECT DISTINCT {column} AS value
+                    FROM fact_metre
+                    WHERE {column} IS NOT NULL AND TRIM(CAST({column} AS text)) <> ''
+                    ORDER BY {column}
+                    LIMIT 500
+                    """
+                )
+            ).scalars().all()
+            result[key] = [normalize_display_text(str(value)) for value in rows if value]
+        return result
+
     def pipeline_debug(self) -> dict[str, Any]:
         """
         Retourne un diagnostic SQL lisible du pipeline DQE -> PostgreSQL.
