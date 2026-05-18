@@ -6,14 +6,19 @@ const apiFieldMap = {
   lot: "lot",
   famille: "famille",
   fournisseur: "fournisseur",
+  importLocal: "decision_import",
   decisionImport: "decision_import",
+  dateDebut: "periode_debut",
+  dateFin: "periode_fin",
   periodeDebut: "periode_debut",
   periodeFin: "periode_fin",
 };
 
+const ignoredValues = new Set(["", "Tous", "Toutes", "ALL", "All", "all"]);
+
 export function compactParams(params = {}) {
   return Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && !ignoredValues.has(value))
   );
 }
 
@@ -28,12 +33,15 @@ export function normalizeAnalyticsFilters(filters = {}) {
 export function buildAnalyticsParams(filters = {}, extras = {}) {
   const normalized = normalizeAnalyticsFilters(filters);
   const mapped = Object.entries(apiFieldMap).reduce((params, [filterKey, apiKey]) => {
+    if (params[apiKey]) return params;
     params[apiKey] = normalized[filterKey];
     return params;
   }, {});
-  return compactParams({ ...mapped, ...extras });
+  const params = compactParams({ ...mapped, ...extras });
+  console.log("API params", params);
+  return params;
 }
 
 export function buildAnalyticsQueryKey(scope, filters = {}, extras = {}) {
-  return ["analytics", scope, normalizeAnalyticsFilters(filters), compactParams(extras)];
+  return [`analytics-${scope}`, normalizeAnalyticsFilters(filters), compactParams(extras)];
 }

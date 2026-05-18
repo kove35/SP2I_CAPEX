@@ -2,7 +2,8 @@ import React from "react";
 import { analyticsFilterLabels, defaultAnalyticsFilters, useAnalyticsFilterStore } from "../stores/analyticsFilterStore";
 import { buildAnalyticsParams, normalizeAnalyticsFilters } from "../services/analyticsQueryBuilder";
 
-const urlKeys = Object.keys(defaultAnalyticsFilters);
+const urlKeys = ["projet", "scenario", "batiment", "niveau", "lot", "famille", "fournisseur", "importLocal", "dateDebut", "dateFin"];
+const chipKeys = urlKeys;
 
 function readFiltersFromUrl() {
   if (typeof window === "undefined") return {};
@@ -59,7 +60,8 @@ export function useAnalyticsFilters() {
   const queryParams = React.useMemo(() => buildAnalyticsParams(debouncedFilters), [debouncedFilters]);
   const activeChips = React.useMemo(
     () =>
-      Object.entries(normalizedFilters)
+      chipKeys
+        .map((key) => [key, normalizedFilters[key]])
         .filter(([key, value]) => value && value !== defaultAnalyticsFilters[key])
         .map(([key, value]) => ({ key, label: analyticsFilterLabels[key] || key, value })),
     [normalizedFilters]

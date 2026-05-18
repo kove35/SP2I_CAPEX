@@ -8,7 +8,10 @@ export const defaultAnalyticsFilters = {
   lot: "",
   famille: "",
   fournisseur: "",
+  importLocal: "",
   decisionImport: "",
+  dateDebut: "",
+  dateFin: "",
   periodeDebut: "",
   periodeFin: "",
 };
@@ -21,14 +24,29 @@ export const analyticsFilterLabels = {
   lot: "Lot",
   famille: "Famille",
   fournisseur: "Fournisseur",
+  importLocal: "Import/local",
   decisionImport: "Import/local",
+  dateDebut: "Debut",
+  dateFin: "Fin",
   periodeDebut: "Debut",
   periodeFin: "Fin",
 };
 
 function cleanFilters(filters) {
+  const normalizedAliases = {
+    ...filters,
+    decisionImport: filters.decisionImport || filters.importLocal || "",
+    importLocal: filters.importLocal || filters.decisionImport || "",
+    periodeDebut: filters.periodeDebut || filters.dateDebut || "",
+    dateDebut: filters.dateDebut || filters.periodeDebut || "",
+    periodeFin: filters.periodeFin || filters.dateFin || "",
+    dateFin: filters.dateFin || filters.periodeFin || "",
+  };
   return Object.fromEntries(
-    Object.entries({ ...defaultAnalyticsFilters, ...filters }).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value || ""])
+    Object.entries({ ...defaultAnalyticsFilters, ...normalizedAliases }).map(([key, value]) => [
+      key,
+      typeof value === "string" ? value.trim() : value || "",
+    ])
   );
 }
 

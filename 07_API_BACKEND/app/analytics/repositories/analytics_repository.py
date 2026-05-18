@@ -292,11 +292,15 @@ class AnalyticsRepository:
         clauses: list[str] = []
         params: dict[str, Any] = {}
 
-        for field in ("batiment", "niveau", "lot", "famille", "decision_import"):
+        for field in ("batiment", "niveau", "lot", "famille"):
             value = getattr(filters, field)
             if value:
-                clauses.append(f"LOWER({field}) = LOWER(:{field})")
-                params[field] = value
+                clauses.append(f"LOWER({field}) LIKE LOWER(:{field})")
+                params[field] = f"%{value}%"
+
+        if filters.decision_import:
+            clauses.append("LOWER(decision_import) = LOWER(:decision_import)")
+            params["decision_import"] = filters.decision_import
 
         if filters.periode_debut:
             clauses.append("COALESCE(date_import, created_at) >= CAST(:periode_debut AS timestamptz)")

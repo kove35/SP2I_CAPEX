@@ -74,7 +74,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
         click: (params) => {
           const lot = lots.find((row) => row.nodeName === params?.name)?.lot;
           if (lot) applyFilters({ lot });
-          if (params?.name === "IMPORT" || params?.name === "LOCAL") applyFilters({ decisionImport: params.name });
+          if (params?.name === "IMPORT" || params?.name === "LOCAL") applyFilters({ importLocal: params.name, decisionImport: params.name });
         },
       }}
     />

@@ -7,7 +7,7 @@ const fields = [
   ["niveau", "Niveau", "Tous"],
   ["lot", "Lot", "Tous"],
   ["famille", "Famille", "Toutes"],
-  ["decisionImport", "Import/local", "Tous"],
+  ["importLocal", "Import/local", "Tous"],
 ];
 
 export default function GlobalAnalyticsFilters() {
@@ -32,11 +32,11 @@ export default function GlobalAnalyticsFilters() {
         ))}
         <label>
           <span>Debut</span>
-          <input type="date" value={filters.periodeDebut || ""} onChange={(event) => applyFilter("periodeDebut", event.target.value)} />
+          <input type="date" value={filters.dateDebut || ""} onChange={(event) => applyFilter("dateDebut", event.target.value)} />
         </label>
         <label>
           <span>Fin</span>
-          <input type="date" value={filters.periodeFin || ""} onChange={(event) => applyFilter("periodeFin", event.target.value)} />
+          <input type="date" value={filters.dateFin || ""} onChange={(event) => applyFilter("dateFin", event.target.value)} />
         </label>
         <button type="button" className="icon-text-button" onClick={reset}>
           <RotateCcw size={15} />
