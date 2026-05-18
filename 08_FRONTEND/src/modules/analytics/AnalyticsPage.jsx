@@ -5,6 +5,7 @@ import CapexTimeline from "../../components/charts/CapexTimeline";
 import CapexWaterfall from "../../components/charts/CapexWaterfall";
 import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
 import RiskMatrix from "../../components/charts/RiskMatrix";
+import InsightsPanel from "../../components/analytics/InsightsPanel";
 import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilters";
 import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
@@ -26,15 +27,15 @@ const dashboards = [
 ];
 
 const dashboardCopy = {
-  direction: "Cockpit exécutif pour piloter CAPEX, économie, risque et arbitrages import/local.",
-  capex: "Lecture financière des investissements immobiliers et des optimisations CAPEX.",
-  procurement: "Analyse procurement, importabilité, familles fournisseurs et décisions local/import.",
-  logistics: "Vue logistique projet et arbitrages opérationnels alimentés par le moteur analytics.",
-  risks: "Matrice décisionnelle risque, criticité et potentiel d'économie.",
-  heatmaps: "Densité CAPEX par lot et famille pour repérer les zones de concentration.",
-  drilldown: "Exploration FACT_METRE avec sélection interactive et filtres globaux.",
-  timeline: "Evolution des simulations, économies et décisions dans le temps.",
-  monitoring: "Santé Analytics Engine, PostgreSQL, cache et cohérence QA.",
+  direction: "Cockpit executif pour piloter CAPEX, economie, risque et arbitrages import/local.",
+  capex: "Lecture financiere des investissements immobiliers et des optimisations CAPEX.",
+  procurement: "Analyse procurement, importabilite, familles fournisseurs et decisions local/import.",
+  logistics: "Vue logistique projet et arbitrages operationnels alimentes par le moteur analytics.",
+  risks: "Matrice decisionnelle risque, criticite et potentiel d'economie.",
+  heatmaps: "Densite CAPEX par lot et famille pour reperer les zones de concentration.",
+  drilldown: "Exploration FACT_METRE avec selection interactive et filtres globaux.",
+  timeline: "Evolution des simulations, economies et decisions dans le temps.",
+  monitoring: "Sante Analytics Engine, PostgreSQL, cache et coherence QA.",
 };
 
 function useDashboardFromUrl() {
@@ -84,11 +85,11 @@ export default function AnalyticsPage() {
     <main className="cockpit-page analytics-engine-page">
       <section className="page-hero compact analytics-engine-hero">
         <p className="eyebrow">SP2I Analytics Engine</p>
-        <h1>Decision intelligence immobilière pilotée par Analytics Engine V1</h1>
+        <h1>Decision intelligence immobiliere pilotee par Analytics Engine V1</h1>
         <p>{dashboardCopy[dashboard] || dashboardCopy.direction}</p>
         <button type="button" className="icon-text-button" onClick={refreshAll}>
           <RefreshCcw size={15} />
-          Rafraîchir
+          Rafraichir
         </button>
       </section>
 
@@ -113,28 +114,29 @@ export default function AnalyticsPage() {
 
           {engine.isLoading ? <Skeleton rows={4} /> : null}
 
-          <section className="bi-dashboard-grid">
+          <section className="analytics-command-grid">
+            <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
             <AnalyticsCard title="Waterfall CAPEX" eyebrow="CAPEX brut vers CAPEX final">
               <CapexWaterfall summary={kpis} />
             </AnalyticsCard>
-            <AnalyticsCard title="Sankey import/local" eyebrow="Décisions par lots">
+          </section>
+
+          <section className="bi-dashboard-grid">
+            <AnalyticsCard title="Sankey import/local" eyebrow="Decisions par lots">
               <ImportDecisionSankey rows={table} chartRows={barRows} />
             </AnalyticsCard>
             <AnalyticsCard title="Heatmap CAPEX" eyebrow="Lot x famille">
               <CapexHeatmap data={heatmapRows} />
             </AnalyticsCard>
-            <AnalyticsCard title="Risk matrix" eyebrow="Probabilité x criticité">
+            <AnalyticsCard title="Risk matrix" eyebrow="Probabilite x criticite">
               <RiskMatrix rows={riskRows} />
             </AnalyticsCard>
-          </section>
-
-          <section className="bi-dashboard-wide">
-            <AnalyticsCard title="Timeline CAPEX" eyebrow="Evolution simulation et économie">
+            <AnalyticsCard title="Timeline CAPEX" eyebrow="Evolution simulation et economie">
               <CapexTimeline data={timelineRows} />
             </AnalyticsCard>
           </section>
 
-          <AnalyticsCard title="Drill-down FACT_METRE" eyebrow="AG Grid décisionnel">
+          <AnalyticsCard title="Drill-down FACT_METRE" eyebrow="AG Grid decisionnel">
             <FactMetreGrid rows={table} total={total} />
           </AnalyticsCard>
         </>

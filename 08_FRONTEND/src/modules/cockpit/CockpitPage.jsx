@@ -1,88 +1,69 @@
 import React from "react";
+import CapexHeatmap from "../../components/charts/CapexHeatmap";
+import CapexTimeline from "../../components/charts/CapexTimeline";
 import CapexWaterfall from "../../components/charts/CapexWaterfall";
 import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
 import RiskMatrix from "../../components/charts/RiskMatrix";
-import GlobalFilterBar from "../../components/filters/GlobalFilterBar";
-import SmartDataGrid from "../../components/grids/SmartDataGrid";
-import EnterpriseKpiCard from "../../components/kpi/EnterpriseKpiCard";
-import { useDashboardData } from "../../hooks/useDashboardData";
+import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilters";
+import FactMetreGrid from "../../components/grids/FactMetreGrid";
+import InsightsPanel from "../../components/analytics/InsightsPanel";
+import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
+import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import Skeleton from "../../ui/Skeleton";
-import { formatMoney } from "../../shared/formatters";
-import { defaultSimulationPayload, simulateCapex } from "../../services/simulationService";
 
 export default function CockpitPage() {
-  const [simulation, setSimulation] = React.useState(null);
-  const [error, setError] = React.useState("");
-  const { summary, factMetre, scenarios, isLoading } = useDashboardData();
-
-  React.useEffect(() => {
-    simulateCapex({ ...defaultSimulationPayload, scenario_name: "COCKPIT_OVERVIEW" })
-      .then(setSimulation)
-      .catch((apiError) => setError(`Simulation cockpit indisponible : ${apiError.message}`));
-  }, []);
-
-  const kpi = summary.data || simulation?.kpi || {};
-  const lines = factMetre.data?.length ? factMetre.data : simulation?.lignes || [];
-  const containers = lines.filter((line) => line.container_strategy).length;
-  const averageEta = lines.length
-    ? Math.round(lines.reduce((sum, line) => sum + Number(line.lead_time_total || 0), 0) / lines.length)
-    : 0;
-  const scenarioCount = scenarios.data?.scenarios?.length || 0;
-  const gridColumns = React.useMemo(
-    () => [
-      { field: "lot", headerName: "Lot" },
-      { field: "famille", headerName: "Famille" },
-      { field: "designation", headerName: "Designation", flex: 1, minWidth: 260 },
-      { field: "capex_local", headerName: "CAPEX local", type: "numericColumn" },
-      { field: "capex_optimise", headerName: "CAPEX optimise", type: "numericColumn" },
-      { field: "decision_import", headerName: "Decision" },
-    ],
-    []
-  );
+  const engine = useAnalyticsEngine("direction");
+  const mainPayload = engine.dashboard.data || {};
+  const capexPayload = engine.capex.data || {};
+  const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
+  const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
+  const total = mainPayload.pagination?.total || engine.drilldown.data?.pagination?.total || table.length;
+  const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
+  const heatmapRows = engine.heatmap.data?.charts?.heatmap || mainPayload.charts?.heatmap || [];
+  const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
+  const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || table;
 
   return (
-    <main className="cockpit-page">
+    <main className="cockpit-page analytics-engine-page">
       <section className="page-hero compact">
         <p className="eyebrow">Cockpit decisionnel immobilier</p>
         <h1>Pilotage CAPEX, risques, scenarios et decisions projet</h1>
-        <p>React orchestre les workflows operationnels. Power BI reste la couche analytique strategique.</p>
+        <p>SP2I Analytics Engine orchestre les KPI, les filtres, le drill-down et les decisions import/local en temps reel.</p>
       </section>
 
-      {error ? <div className="app-error">{error}</div> : null}
+      {engine.error ? <div className="app-error">{engine.error.message}</div> : null}
 
-      <GlobalFilterBar />
+      <GlobalAnalyticsFilters />
+      {engine.isFetching ? <div className="live-refresh">Synchronisation du cockpit en cours...</div> : null}
 
-      <section className="metric-grid enterprise-metric-grid">
-        <EnterpriseKpiCard label="CAPEX brut" value={formatMoney(kpi.capex_local)} helper="PostgreSQL Render" />
-        <EnterpriseKpiCard label="CAPEX optimise" value={formatMoney(kpi.capex_optimise)} tone="green" helper="Moteur CAPEX" />
-        <EnterpriseKpiCard label="Economie nette" value={formatMoney(kpi.economie || kpi.economie_nette)} tone="amber" helper="Ratio des totaux" />
-        <EnterpriseKpiCard label="Scenarios" value={scenarioCount} helper="Historisation" />
-        <EnterpriseKpiCard label="ETA moyen" value={`${averageEta} j`} tone="cyan" helper={`${containers} moteurs logistiques`} />
-      </section>
+      <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
+      {engine.isLoading ? <Skeleton /> : null}
 
-      {isLoading ? <Skeleton /> : null}
-
-      <section className="dashboard-grid">
+      <section className="analytics-command-grid">
+        <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
         <AnalyticsCard title="Waterfall CAPEX" eyebrow="Direction">
-          <CapexWaterfall summary={kpi} />
+          <CapexWaterfall summary={kpis} />
         </AnalyticsCard>
-        <AnalyticsCard title="Matrice import/local" eyebrow="DecisionEngine">
-          <ImportDecisionSankey rows={lines} />
+      </section>
+
+      <section className="bi-dashboard-grid">
+        <AnalyticsCard title="Sankey import/local" eyebrow="DecisionEngine">
+          <ImportDecisionSankey rows={table} chartRows={barRows} />
+        </AnalyticsCard>
+        <AnalyticsCard title="Heatmap CAPEX" eyebrow="Lot x famille">
+          <CapexHeatmap data={heatmapRows} />
         </AnalyticsCard>
         <AnalyticsCard title="Risk matrix" eyebrow="Pilotage projet">
-          <RiskMatrix rows={lines} />
+          <RiskMatrix rows={riskRows} />
         </AnalyticsCard>
-        <AnalyticsCard title="Alertes decisionnelles" eyebrow="Pilotage projet">
-          <ul className="signal-list">
-            <li>CAPEX optimise a valider sur scenario actif</li>
-            <li>Criticite chantier a surveiller sur lots techniques</li>
-            <li>Dashboards Power BI disponibles pour direction et finance</li>
-          </ul>
+        <AnalyticsCard title="Timeline CAPEX" eyebrow="Simulation et economie">
+          <CapexTimeline data={timelineRows} />
         </AnalyticsCard>
       </section>
-      <AnalyticsCard title="Drill-down lignes CAPEX" eyebrow={`${lines.length} lignes chargees`}>
-        <SmartDataGrid rows={lines} columns={gridColumns} height={460} />
+
+      <AnalyticsCard title="Drill-down lignes CAPEX" eyebrow={`${Number(total || table.length).toLocaleString("fr-FR")} lignes chargees`}>
+        <FactMetreGrid rows={table} total={total} />
       </AnalyticsCard>
     </main>
   );
