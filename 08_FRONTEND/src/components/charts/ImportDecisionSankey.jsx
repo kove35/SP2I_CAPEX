@@ -1,12 +1,12 @@
 import React from "react";
 import BIChart from "./BIChart";
 import { formatMoney } from "../../shared/formatters";
-import { useDashboardStore } from "../../store/dashboardStore";
+import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { analyticsColors } from "../../theme/colors";
 import { chartTheme } from "../../theme/chartTheme";
 
 export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
-  const setFilters = useDashboardStore((state) => state.setFilters);
+  const { applyFilters } = useCrossFiltering();
   const sourceRows = rows.length ? rows : chartRows;
   const lotMap = sourceRows.reduce((acc, row) => {
     const lot = row.lot || row.label || "Lot non renseigne";
@@ -73,8 +73,8 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [] }) {
       onEvents={{
         click: (params) => {
           const lot = lots.find((row) => row.nodeName === params?.name)?.lot;
-          if (lot) setFilters({ lot });
-          if (params?.name === "IMPORT" || params?.name === "LOCAL") setFilters({ decisionImport: params.name });
+          if (lot) applyFilters({ lot });
+          if (params?.name === "IMPORT" || params?.name === "LOCAL") applyFilters({ decisionImport: params.name });
         },
       }}
     />
