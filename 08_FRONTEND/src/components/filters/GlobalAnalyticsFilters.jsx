@@ -23,7 +23,7 @@ export default function GlobalAnalyticsFilters() {
   const options = filterOptions.data || {};
 
   return (
-    <section className="global-analytics-panel" aria-label="Filtres globaux analytics">
+    <section className="global-analytics-panel" aria-label="Filtres de pilotage">
       <div className="global-analytics-filters">
         <label className="filter-project">
           <span>Projet</span>
@@ -54,11 +54,11 @@ export default function GlobalAnalyticsFilters() {
         </label>
         <button type="button" className="icon-text-button" onClick={reset}>
           <RotateCcw size={15} />
-          Reset
+          Reinitialiser
         </button>
         <div className="filter-live-chip">
           <Search size={14} />
-          Cross-filter actif
+          Filtres synchronises
         </div>
       </div>
 

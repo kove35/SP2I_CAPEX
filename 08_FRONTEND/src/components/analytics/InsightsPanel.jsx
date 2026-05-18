@@ -12,14 +12,14 @@ export default function InsightsPanel({ kpis = {}, barRows = [], table = [] }) {
   const insights = [
     {
       icon: CircleDollarSign,
-      label: "Optimisation CAPEX",
+      label: "Economies budgetaires",
       text: `Les arbitrages import/local generent ${formatMoney(kpis.economie_nette || kpis.economie)} d'economie nette.`,
     },
     {
       icon: Layers3,
       label: "Concentration lot",
       text: topLot
-        ? `${topLot.label || topLot.lot} concentre ${formatPercent(topLotShare)} du CAPEX brut.`
+        ? `${topLot.label || topLot.lot} concentre ${formatPercent(topLotShare)} du budget initial.`
         : "Les donnees par lot seront visibles apres synchronisation.",
     },
     {
@@ -29,7 +29,7 @@ export default function InsightsPanel({ kpis = {}, barRows = [], table = [] }) {
     },
     {
       icon: Brain,
-      label: "Decision intelligence",
+      label: "Aide a la decision",
       text: `${importRows.length} lignes en decision IMPORT et ${localRows.length} lignes conservees en LOCAL dans le preview courant.`,
     },
   ];
@@ -37,8 +37,8 @@ export default function InsightsPanel({ kpis = {}, barRows = [], table = [] }) {
   return (
     <aside className="insights-panel">
       <header>
-        <span>SP2I Decision Intelligence</span>
-        <strong>Insights executifs</strong>
+        <span>SP2I aide a la decision</span>
+        <strong>Points cles pour la direction</strong>
       </header>
       <div>
         {insights.map(({ icon: Icon, label, text }) => (

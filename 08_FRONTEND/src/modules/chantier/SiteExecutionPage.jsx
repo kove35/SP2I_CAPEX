@@ -9,7 +9,7 @@ export default function SiteExecutionPage() {
   }, [window.location.search]);
 
   const messages = {
-    planning: ["Synchroniser les simulations CAPEX avec le planning directeur.", "Prioriser les lots qui bloquent le chemin critique."],
+    planning: ["Synchroniser les scenarios budgetaires avec le planning directeur.", "Prioriser les lots qui bloquent le chemin critique."],
     dependencies: ["Identifier les dependances entre lots techniques et gros oeuvre.", "Eviter les validations achat qui creent un retard chantier."],
     deliveries: ["Suivre les ETA critiques et les livraisons attendues sur site.", "Prioriser les containers necessaires a la prochaine phase."],
     criticality: ["Classer les lots par criticite chantier et risque financier.", "Remonter les alertes vers le cockpit global."],
@@ -18,7 +18,7 @@ export default function SiteExecutionPage() {
   return (
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
-        <p className="eyebrow">Site Execution</p>
+        <p className="eyebrow">Pilotage chantier</p>
         <h1>Planning, dependances, livraisons et stockage chantier</h1>
       </section>
       <div className="tab-row">
@@ -34,17 +34,17 @@ export default function SiteExecutionPage() {
         <KpiCard label="ETA a surveiller" value="2" />
       </section>
       <section className="cockpit-split">
-        <AnalyticsCard title={`Pilotage ${tab}`} eyebrow="Execution cockpit">
+        <AnalyticsCard title={`Pilotage ${tab}`} eyebrow="Suivi operationnel">
           <ul className="signal-list">
             {(messages[tab] || messages.planning).map((message) => <li key={message}>{message}</li>)}
           </ul>
         </AnalyticsCard>
         <aside className="context-panel">
-          <AnalyticsCard title="Actions chantier" eyebrow="Decision rapide">
+          <AnalyticsCard title="Actions chantier" eyebrow="Priorites de decision">
             <ul className="signal-list">
               <li>Valider les lots qui securisent le planning.</li>
-              <li>Ouvrir Power BI pour l'analyse direction si besoin.</li>
-              <li>Eviter de multiplier les pages : chaque tab garde le contexte.</li>
+              <li>Consulter le cockpit direction pour l'analyse budgetaire.</li>
+              <li>Conserver le contexte chantier pour chaque decision.</li>
             </ul>
           </AnalyticsCard>
         </aside>

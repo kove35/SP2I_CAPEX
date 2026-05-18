@@ -7,7 +7,7 @@ export default function ScenarioComparison({ rows = [] }) {
         <thead>
           <tr>
             <th>Scenario</th>
-            <th>CAPEX optimise</th>
+            <th>Budget optimise</th>
             <th>Economie</th>
             <th>Taux economie</th>
           </tr>

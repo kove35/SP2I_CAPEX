@@ -27,7 +27,7 @@ import {
 
 export const sidebarQuickActions = [
   { label: "Importer DQE", path: "/app/dqe?tab=import", icon: Upload },
-  { label: "Simulation", path: "/app/simulation", icon: Play },
+  { label: "Tester un scenario", path: "/app/simulation", icon: Play },
   { label: "Nouveau scenario", path: "/app/simulation?tab=scenarios", icon: GitCompare },
 ];
 
@@ -38,17 +38,17 @@ export const sidebarSections = [
     icon: Home,
     badge: "Live",
     items: [
-      { label: "Dashboard global", path: "/app", icon: Gauge },
-      { label: "KPIs", path: "/app/analytics?dashboard=direction", icon: BarChart3 },
-      { label: "CAPEX", path: "/app/analytics?dashboard=capex", icon: CircleDollarSign },
-      { label: "ROI", path: "/app/simulation?tab=compare", icon: Target },
-      { label: "Cashflow", path: "/app/procurement?tab=cashflow", icon: CircleDollarSign },
+      { label: "Vue d'ensemble", path: "/app", icon: Gauge },
+      { label: "Indicateurs cles", path: "/app/analytics?dashboard=direction", icon: BarChart3 },
+      { label: "Budget travaux", path: "/app/analytics?dashboard=capex", icon: CircleDollarSign },
+      { label: "Retour sur economie", path: "/app/simulation?tab=compare", icon: Target },
+      { label: "Tresorerie projet", path: "/app/procurement?tab=cashflow", icon: CircleDollarSign },
       { label: "Alertes", path: "/app/analytics?dashboard=risks", icon: Bell, badge: "3" },
     ],
   },
   {
     id: "site",
-    title: "Chantier & Planning",
+    title: "Chantier & planning",
     icon: Building2,
     items: [
       { label: "Planning", path: "/app/site?tab=planning", icon: Clock3 },
@@ -59,10 +59,10 @@ export const sidebarSections = [
   },
   {
     id: "procurement",
-    title: "Import & Procurement",
+    title: "Achats & import",
     icon: PackageSearch,
     items: [
-      { label: "Optimisation import", path: "/app/procurement?tab=import", icon: Ship },
+      { label: "Arbitrage import", path: "/app/procurement?tab=import", icon: Ship },
       { label: "Fournisseurs", path: "/app/procurement?tab=suppliers", icon: Users },
       { label: "Containers", path: "/app/logistics?tab=containers", icon: Boxes },
       { label: "Couts logistiques", path: "/app/logistics?tab=freight", icon: Truck },
@@ -71,24 +71,24 @@ export const sidebarSections = [
   },
   {
     id: "analytics",
-    title: "Analytics",
+    title: "Pilotage financier",
     icon: BarChart3,
     items: [
-      { label: "Heatmaps", path: "/app/analytics?dashboard=heatmaps", icon: LayoutGrid },
-      { label: "Drill-down", path: "/app/analytics?dashboard=drilldown", icon: Route },
-      { label: "Risk matrix", path: "/app/analytics?dashboard=risks", icon: AlertTriangle },
-      { label: "Timeline", path: "/app/analytics?dashboard=timeline", icon: Clock3 },
-      { label: "Dashboards", path: "/app/analytics?dashboard=direction", icon: BarChart3 },
+      { label: "Zones les plus couteuses", path: "/app/analytics?dashboard=heatmaps", icon: LayoutGrid },
+      { label: "Analyse detaillee", path: "/app/analytics?dashboard=drilldown", icon: Route },
+      { label: "Carte des risques projet", path: "/app/analytics?dashboard=risks", icon: AlertTriangle },
+      { label: "Evolution financiere", path: "/app/analytics?dashboard=timeline", icon: Clock3 },
+      { label: "Tableaux de pilotage", path: "/app/analytics?dashboard=direction", icon: BarChart3 },
     ],
   },
   {
     id: "dqe",
-    title: "Donnees & DQE",
+    title: "DQE & donnees projet",
     icon: FileSpreadsheet,
     items: [
-      { label: "Upload DQE", path: "/app/dqe?tab=import", icon: Upload },
+      { label: "Importer un DQE", path: "/app/dqe?tab=import", icon: Upload },
       { label: "Analyse IA", path: "/app/dqe?tab=analysis", icon: Database },
-      { label: "Synchronisation", path: "/app/dqe?tab=import", icon: GitCompare },
+      { label: "Envoyer en base", path: "/app/dqe?tab=import", icon: GitCompare },
       { label: "Qualite donnees", path: "/app/dqe?tab=quality", icon: BarChart3 },
       { label: "Historique imports", path: "/app/dqe?tab=analysis", icon: Clock3 },
     ],
@@ -98,10 +98,10 @@ export const sidebarSections = [
     title: "Parametres",
     icon: Settings,
     items: [
-      { label: "Parametres CAPEX", path: "/app/simulation?tab=simulation", icon: SlidersHorizontal },
+      { label: "Parametres budget", path: "/app/simulation?tab=simulation", icon: SlidersHorizontal },
       { label: "Taux import", path: "/app/procurement?tab=import", icon: CircleDollarSign },
       { label: "Configuration", path: "/app/analytics?dashboard=admin", icon: Settings },
-      { label: "Monitoring", path: "/app/analytics?dashboard=monitoring", icon: Gauge },
+      { label: "Etat du systeme", path: "/app/analytics?dashboard=monitoring", icon: Gauge },
       { label: "Utilisateurs", path: "/app/analytics?dashboard=users", icon: Users },
     ],
   },

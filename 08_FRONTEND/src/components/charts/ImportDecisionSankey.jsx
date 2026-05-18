@@ -8,6 +8,7 @@ import { compactLabel, normalizeDecision, normalizeFamily, toBusinessLabel } fro
 
 const nodeColors = {
   CAPEX: analyticsColors.blue,
+  Budget: analyticsColors.blue,
   IMPORT: analyticsColors.green,
   LOCAL: analyticsColors.amber,
 };
@@ -19,8 +20,10 @@ function truncateLabel(label = "", size = 22) {
 function aggregateLinks(links = []) {
   const map = new Map();
   links.forEach((link) => {
-    const key = `${link.source}|${link.target}`;
-    const current = map.get(key) || { ...link, value: 0, economie: 0, gain: 0, roiTotal: 0, roiCount: 0, nb_lignes: 0 };
+    const source = link.source === "CAPEX" ? "Budget" : link.source;
+    const target = link.target === "CAPEX" ? "Budget" : link.target;
+    const key = `${source}|${target}`;
+    const current = map.get(key) || { ...link, source, target, value: 0, economie: 0, gain: 0, roiTotal: 0, roiCount: 0, nb_lignes: 0 };
     current.value += Number(link.value || 0);
     current.economie += Number(link.economie || 0);
     current.gain += Number(link.gain || link.economie || 0);
@@ -53,7 +56,7 @@ function buildFallbackLinks(rows = [], chartRows = []) {
   }, new Map());
 
   return [...lotMap.values()].sort((a, b) => b.value - a.value).slice(0, 18).flatMap((row) => [
-    { source: "CAPEX", target: row.decision, value: row.value, ...row },
+    { source: "Budget", target: row.decision, value: row.value, ...row },
     { source: row.decision, target: row.fournisseur, value: row.value, ...row },
     { source: row.fournisseur, target: row.lot, value: row.value, ...row },
   ]);
@@ -72,7 +75,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
     }));
   }, [links]);
   const kpis = React.useMemo(() => {
-    const terminal = links.filter((link) => link.source !== "CAPEX" && link.target !== "IMPORT" && link.target !== "LOCAL");
+    const terminal = links.filter((link) => !["CAPEX", "Budget"].includes(link.source) && link.target !== "IMPORT" && link.target !== "LOCAL");
     const total = terminal.reduce((sum, link) => sum + Number(link.value || 0), 0) || 1;
     const importTotal = terminal.filter((link) => link.decision === "IMPORT").reduce((sum, link) => sum + Number(link.value || 0), 0);
     const localTotal = terminal.filter((link) => link.decision === "LOCAL").reduce((sum, link) => sum + Number(link.value || 0), 0);
@@ -109,7 +112,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
                 `Famille/fournisseur: <b>${normalizeFamily(item.fournisseur || "SP2I Supply")}</b>`,
                 `Decision: <b>${item.decision || item.target}</b>`,
                 `Delai logistique: <b>${Math.round(Number(item.delai || 0))} j</b>`,
-                "Cliquer pour synchroniser KPI, Heatmap et FACT_METRE",
+                "Cliquer pour synchroniser les indicateurs, les zones couteuses et les lignes budgetaires",
               ].join("<br/>");
             },
           },
@@ -156,7 +159,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
               applyFilters(filters);
               applyDrilldown(filters, {
                 source: "sankey",
-                title: `Flux ${link.source || "CAPEX"} -> ${link.target || name}`,
+                  title: `Repartition des achats ${link.source || "Budget"} -> ${link.target || name}`,
                 metric: formatMoney(link.value || 0),
               });
             }

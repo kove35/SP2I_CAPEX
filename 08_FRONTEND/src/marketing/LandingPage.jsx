@@ -13,17 +13,17 @@ import {
 } from "lucide-react";
 
 const decisionPillars = [
-  ["CAPEX", "Pilotage financier", CircleDollarSign],
+  ["Budget travaux", "Pilotage financier", CircleDollarSign],
   ["DQE", "Donnees structurees", FileSpreadsheet],
   ["Decision", "Arbitrages strategiques", ShieldCheck],
   ["Chantier", "Suivi execution", Building2],
-  ["Power BI", "Analytics direction", BarChart3],
+  ["Pilotage", "Tableaux direction", BarChart3],
 ];
 
 const optimizationEngines = [
-  "Procurement",
+  "Achats",
   "Import",
-  "Supply chain",
+  "Chaine logistique",
   "Logistique chantier",
 ];
 
@@ -42,9 +42,9 @@ export default function LandingPage({ onNavigate }) {
               </summary>
               <div className="landing-menu-panel">
                 <button type="button" onClick={() => onNavigate("/app")}>Cockpit</button>
-                <button type="button" onClick={() => onNavigate("/app/simulation")}>Simulation CAPEX</button>
-                <button type="button" onClick={() => onNavigate("/app/dqe")}>DQE & Data</button>
-                <button type="button" onClick={() => onNavigate("/app/analytics")}>Analytics Power BI</button>
+                <button type="button" onClick={() => onNavigate("/app/simulation")}>Tester un scenario</button>
+                <button type="button" onClick={() => onNavigate("/app/dqe")}>DQE & donnees</button>
+                <button type="button" onClick={() => onNavigate("/app/analytics")}>Tableaux de pilotage</button>
               </div>
             </details>
           </div>
@@ -55,7 +55,7 @@ export default function LandingPage({ onNavigate }) {
             <p className="eyebrow">Pointe-Noire | Congo-Brazzaville</p>
             <h1>Systeme de Pilotage des Investissements Immobiliers</h1>
             <p>
-              Plateforme decisionnelle de pilotage CAPEX, d'analyse strategique
+              Plateforme decisionnelle de pilotage budgetaire, d'analyse strategique
               et d'optimisation immobiliere pour les projets et chantiers a
               Pointe-Noire.
             </p>
@@ -65,7 +65,7 @@ export default function LandingPage({ onNavigate }) {
                 Lancer une simulation <ArrowRight size={17} />
               </button>
               <button type="button" onClick={() => onNavigate("/app")}>Voir le cockpit</button>
-              <button type="button" onClick={() => onNavigate("/app/analytics")}>Power BI</button>
+              <button type="button" onClick={() => onNavigate("/app/analytics")}>Pilotage direction</button>
             </div>
 
             <div className="local-commercial-strip">
@@ -80,13 +80,13 @@ export default function LandingPage({ onNavigate }) {
               <strong>Live</strong>
             </div>
             <div className="mockup-grid">
-              <article><span>CAPEX optimise</span><strong>1.9 Md</strong></article>
+              <article><span>Budget optimise</span><strong>1.9 Md</strong></article>
               <article><span>Rentabilite</span><strong>+14.6%</strong></article>
               <article><span>Scenarios</span><strong>12</strong></article>
               <article><span>Risque global</span><strong>MEDIUM</strong></article>
             </div>
             <div className="route-line">
-              <span>DQE</span><i /><LineChart size={18} /><i /><span>Decision</span><i /><Gauge size={18} /><i /><span>Power BI</span>
+              <span>DQE</span><i /><LineChart size={18} /><i /><span>Decision</span><i /><Gauge size={18} /><i /><span>Pilotage</span>
             </div>
           </div>
         </div>
@@ -112,7 +112,7 @@ export default function LandingPage({ onNavigate }) {
                 <span key={item}><CheckCircle2 size={15} /> {item}</span>
               ))}
             </div>
-            <p>Import, containers et supply chain restent des leviers au service du pilotage CAPEX.</p>
+            <p>Import, containers et logistique restent des leviers au service du budget travaux.</p>
           </section>
         </div>
       </section>

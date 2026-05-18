@@ -106,7 +106,7 @@ export default function RiskMatrix({ rows = [] }) {
           <strong>{insight.top?.lot || "Aucun risque"}</strong>
         </article>
         <article>
-          <span>CAPEX expose</span>
+        <span>Budget expose</span>
           <strong>{formatMoney(insight.exposed)}</strong>
         </article>
         <article>
@@ -138,7 +138,7 @@ export default function RiskMatrix({ rows = [] }) {
           },
           grid: { left: 68, right: 34, top: 44, bottom: 66 },
           xAxis: {
-            name: "Impact financier expose (M FCFA)",
+            name: "Budget expose (M FCFA)",
             nameLocation: "middle",
             nameGap: 42,
             min: 0,
@@ -224,7 +224,7 @@ export default function RiskMatrix({ rows = [] }) {
         }}
       />
       <div className="risk-recommendation">
-        <span>SP2I Decision Intelligence</span>
+        <span>SP2I aide a la decision</span>
         <strong>{insight.recommendation}</strong>
       </div>
     </div>

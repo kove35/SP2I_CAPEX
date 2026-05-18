@@ -53,8 +53,8 @@ export default function CapexHeatmap({ data = [] }) {
             return [
               `<b>${heatmap.xLabels[x] || "Lot"}</b>`,
               `Famille: <b>${heatmap.yLabels[y] || "Famille"}</b>`,
-              `CAPEX optimise: <b>${formatMoney(value)}</b>`,
-              "Cliquer pour ouvrir le drill-down FACT_METRE",
+              `Budget optimise: <b>${formatMoney(value)}</b>`,
+              "Cliquer pour ouvrir les lignes budgetaires detaillees",
             ].join("<br/>");
           },
         },
@@ -106,7 +106,7 @@ export default function CapexHeatmap({ data = [] }) {
           applyFilters(filters);
           applyDrilldown(filters, {
             source: "heatmap",
-            title: `Drill-down ${filters.lot} / ${filters.famille}`,
+            title: `Analyse detaillee ${filters.lot} / ${filters.famille}`,
             metric: formatMoney(params?.data?.[2] || 0),
           });
         },

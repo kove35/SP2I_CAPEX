@@ -28,11 +28,11 @@ function buildWaterfallModel(summary = {}) {
   const budgetTarget = Math.max(capexBrut * (1 - Math.max(tauxEconomie * 1.12, 0.08)), 0);
 
   return [
-    { key: "local", label: "Local", value: capexBrut, kind: "start", filter: { importLocal: "LOCAL", decisionImport: "LOCAL" }, insight: "Scenario local de reference" },
+    { key: "local", label: "Budget initial", value: capexBrut, kind: "start", filter: { importLocal: "LOCAL", decisionImport: "LOCAL" }, insight: "Scenario local de reference" },
     { key: "optimisation", label: "Optimisations", value: -optimisation, kind: "optimisation", filter: {}, insight: "Rationalisation DQE / familles" },
     { key: "import", label: "Gains import", value: -gainsImport, kind: "import", filter: { importLocal: "IMPORT", decisionImport: "IMPORT" }, insight: "Arbitrage procurement international" },
     { key: "surcouts", label: "Surcouts", value: surcouts, kind: "cost", filter: { importLocal: "LOCAL", decisionImport: "LOCAL" }, insight: "Risques logistiques / contraintes locales" },
-    { key: "final", label: "CAPEX final", value: capexFinal, kind: "final", filter: {}, insight: "Scenario mixte optimise" },
+    { key: "final", label: "Budget final", value: capexFinal, kind: "final", filter: {}, insight: "Scenario mixte optimise" },
     { key: "aggressive", label: "Import agressif", value: Math.max(capexFinal - gainsImport * 0.18, 0), kind: "scenario", filter: { importLocal: "IMPORT", decisionImport: "IMPORT" }, insight: "Projection multi-scenario" },
   ].map((step, index, steps) => ({
     ...step,
@@ -140,7 +140,7 @@ export default function CapexWaterfall({ summary = {} }) {
                 `Cumul: <b>${formatMoney(cumul)}</b>`,
                 `Budget cible: <b>${formatMoney(budgetTarget)}</b>`,
                 `Scenario actif: <b>${filters.scenario || "FRONT_COCKPIT_TEST"}</b>`,
-                `Top lots: <b>Electricite, Alucobond, Gros oeuvre</b>`,
+                `Lots principaux: <b>Electricite, Alucobond, Gros oeuvre</b>`,
                 `Top fournisseurs: <b>SP2I Supply / Import Chine</b>`,
               ].join("<br/>");
             },
@@ -169,7 +169,7 @@ export default function CapexWaterfall({ summary = {} }) {
               silent: true,
             },
             {
-              name: "CAPEX",
+              name: "Budget travaux",
               type: "bar",
               stack: "waterfall",
               barWidth: 34,
@@ -206,7 +206,7 @@ export default function CapexWaterfall({ summary = {} }) {
             applyFilters(nextFilters);
             applyDrilldown(nextFilters, {
               source: "waterfall",
-              title: `Waterfall CAPEX - ${step.label}`,
+              title: `Evolution budgetaire - ${step.label}`,
               metric: formatMoney(Math.abs(step.value || 0)),
             });
           },
