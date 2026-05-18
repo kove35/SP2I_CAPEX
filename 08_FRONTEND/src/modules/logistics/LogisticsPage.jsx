@@ -48,33 +48,33 @@ export default function LogisticsPage() {
   return (
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
-        <p className="eyebrow">Supply chain projet</p>
-        <h1>Logistique chantier comme levier de securisation CAPEX</h1>
+        <p className="eyebrow">Logistique projet</p>
+        <h1>Livraisons, transport et stockage pour securiser le chantier</h1>
       </section>
       <div className="tab-row">
         <button className={tab === "containers" ? "active" : ""} onClick={() => setTab("containers")} type="button">Containers</button>
-        <button className={tab === "shipments" ? "active" : ""} onClick={() => setTab("shipments")} type="button">Shipments</button>
-        <button className={tab === "freight" ? "active" : ""} onClick={() => setTab("freight")} type="button">Freight</button>
+        <button className={tab === "shipments" ? "active" : ""} onClick={() => setTab("shipments")} type="button">Expeditions</button>
+        <button className={tab === "freight" ? "active" : ""} onClick={() => setTab("freight")} type="button">Transport</button>
         <button className={tab === "site" ? "active" : ""} onClick={() => setTab("site")} type="button">ETA chantier</button>
       </div>
       {error ? <div className="app-error">{error}</div> : null}
       <section className="metric-grid">
         <KpiCard label="Containers" value={data.containers.length} />
-        <KpiCard label="Fill rate moyen" value={`${Math.round(avgFill * 100)}%`} tone="success" />
-        <KpiCard label="Cout shipment" value={formatMoney(totalFreight)} tone="warning" />
+        <KpiCard label="Taux de remplissage" value={`${Math.round(avgFill * 100)}%`} tone="success" />
+        <KpiCard label="Cout transport" value={formatMoney(totalFreight)} tone="warning" />
         <KpiCard label="Livraisons site" value={data.site.length} />
       </section>
       <section className="cockpit-split">
-        <AnalyticsCard title={tab === "shipments" ? "Shipments" : tab === "freight" ? "Couts freight" : tab === "site" ? "Livraison chantier" : "Containers"} eyebrow="LogisticsEngine">
+        <AnalyticsCard title={tab === "shipments" ? "Expeditions" : tab === "freight" ? "Couts de transport" : tab === "site" ? "Livraison chantier" : "Containers"} eyebrow="Logistique projet">
           <div className="panel-scroll">
             {tab === "shipments" ? <ShipmentTable rows={data.shipments} /> : <ContainerTable rows={data.containers} />}
           </div>
         </AnalyticsCard>
         <aside className="context-panel">
-          <AnalyticsCard title="Impact chantier" eyebrow="No-scroll context">
+          <AnalyticsCard title="Impact chantier" eyebrow="Contexte decisionnel">
             <ul className="signal-list">
-              <li>Containers, shipments et freight restent dans le meme cockpit.</li>
-              <li>Les details logistiques ne doivent pas voler le contexte CAPEX.</li>
+              <li>Containers, expeditions et transport restent dans le meme cockpit.</li>
+              <li>Les details logistiques doivent rester relies au budget travaux.</li>
               <li>Les retards critiques doivent remonter dans Pilotage Projet.</li>
             </ul>
           </AnalyticsCard>

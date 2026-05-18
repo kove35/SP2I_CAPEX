@@ -30,8 +30,8 @@ export default function AppShell({ activePath, onNavigate, children }) {
             <span><Gauge size={16} /> Scenario : {state.activeScenario}</span>
             <span><AlertTriangle size={16} /> Risque global moyen</span>
             <button type="button" onClick={() => onNavigate("/app/dqe?tab=import")}><FileSpreadsheet size={16} /> Importer DQE</button>
-            <button type="button" onClick={() => onNavigate("/app/simulation")}><Play size={16} /> Simulation</button>
-            <button type="button" onClick={() => onNavigate("/app/analytics?dashboard=direction")}><BarChart3 size={16} /> Analytics</button>
+            <button type="button" onClick={() => onNavigate("/app/simulation")}><Play size={16} /> Tester un scenario</button>
+            <button type="button" onClick={() => onNavigate("/app/analytics?dashboard=direction")}><BarChart3 size={16} /> Pilotage</button>
           </div>
           <AlertCenter />
         </header>

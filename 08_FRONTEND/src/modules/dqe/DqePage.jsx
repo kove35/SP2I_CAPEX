@@ -40,7 +40,7 @@ export default function DqePage() {
   const qualityScore = Math.round(Number(aiPreview.quality_score ?? bestAnalysis.score_dqe ?? 0) * 100);
   const recognizedColumns = aiPreview.recognized_columns ?? "-";
   const lotsDetected = aiPreview.lots_detected ?? "-";
-  const estimatedCapex = Number(aiPreview.estimated_capex_detected || 0);
+  const estimatedBudget = Number(aiPreview.estimated_capex_detected || 0);
   const warningCount = bestAnalysis.avertissements?.length || 0;
 
   const handleFileChange = (event) => {
@@ -102,7 +102,7 @@ export default function DqePage() {
       const result = await validateAiMapping(analysis.file_id, bestAnalysis.mapping || []);
       setValidationResult(result);
     } catch (apiError) {
-      setError(`Validation mapping indisponible : ${apiError.message}`);
+      setError(`Validation de la correspondance indisponible : ${apiError.message}`);
     } finally {
       setLoading(false);
     }
@@ -135,13 +135,13 @@ export default function DqePage() {
   return (
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
-        <p className="eyebrow">DQE & Data</p>
-        <h1>Import Excel, analyse DQE et qualite des donnees</h1>
+        <p className="eyebrow">DQE & donnees projet</p>
+        <h1>Importer, verifier et fiabiliser le budget du projet</h1>
       </section>
       <div className="tab-row">
-        <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Import Excel</button>
+        <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Importer le DQE</button>
         <button className={tab === "analysis" ? "active" : ""} onClick={() => setTab("analysis")} type="button">Analyse DQE</button>
-        <button className={tab === "mapping" ? "active" : ""} onClick={() => setTab("mapping")} type="button">Normalisation</button>
+        <button className={tab === "mapping" ? "active" : ""} onClick={() => setTab("mapping")} type="button">Correspondance</button>
         <button className={tab === "quality" ? "active" : ""} onClick={() => setTab("quality")} type="button">Qualite donnees</button>
       </div>
       {error ? <div className="app-error">{error}</div> : null}
@@ -152,7 +152,7 @@ export default function DqePage() {
         <KpiCard label="Lots detectes" value={lotsDetected} />
       </section>
       <section className="cockpit-split">
-        <AnalyticsCard title={tab === "mapping" ? "Mapping standard SP2I" : tab === "quality" ? "Controle qualite" : "Preview Excel DQE"} eyebrow="Upload intelligent">
+        <AnalyticsCard title={tab === "mapping" ? "Correspondance des colonnes" : tab === "quality" ? "Controle qualite" : "Apercu du DQE importe"} eyebrow="Import assiste">
           {tab === "import" ? (
             <div className="excel-upload-zone">
               <label>
@@ -164,10 +164,10 @@ export default function DqePage() {
                   {loading ? "Analyse..." : "Analyser Excel"}
                 </button>
                 <button className="primary-action secondary-action" type="button" onClick={runValidateMapping} disabled={!analysis?.file_id || loading}>
-                  Valider mapping IA
+                  Valider la correspondance
                 </button>
                 <button className="primary-action secondary-action" type="button" onClick={runSync} disabled={!file || loading}>
-                  Synchroniser PostgreSQL
+                  Envoyer en base projet
                 </button>
               </div>
               {file ? <p>Fichier selectionne : <strong>{file.name}</strong></p> : <p>Formats acceptes : .xlsx, .xlsm, .xls et .csv.</p>}
@@ -180,7 +180,7 @@ export default function DqePage() {
                 <span>Colonnes reconnues <strong>{recognizedColumns}</strong></span>
                 <span>Colonnes ambigues <strong>{aiPreview.ambiguous_columns ?? "-"}</strong></span>
                 <span>Anomalies <strong>{aiPreview.invalid_rows ?? aiAnomalies.length}</strong></span>
-                <span>CAPEX detecte <strong>{estimatedCapex.toLocaleString("fr-FR")}</strong></span>
+                <span>Budget detecte <strong>{estimatedBudget.toLocaleString("fr-FR")}</strong></span>
               </div>
               <div className="data-table-wrap panel-scroll">
                 <table className="data-table">
@@ -195,7 +195,7 @@ export default function DqePage() {
                         <td>{row.prix_unitaire_ht || row.pu_local || 0}</td>
                       </tr>
                     ))}
-                    {!previewRows.length ? <tr><td colSpan="5">Analyse un fichier Excel pour afficher la preview normalisee.</td></tr> : null}
+                    {!previewRows.length ? <tr><td colSpan="5">Analyse un fichier Excel pour afficher l'apercu nettoye.</td></tr> : null}
                   </tbody>
                 </table>
               </div>
@@ -215,7 +215,7 @@ export default function DqePage() {
                       <td>{mapping.raison}</td>
                     </tr>
                   ))}
-                  {!bestAnalysis.mapping?.length ? <tr><td colSpan="4">Aucun mapping disponible avant analyse Excel.</td></tr> : null}
+                  {!bestAnalysis.mapping?.length ? <tr><td colSpan="4">Aucune correspondance disponible avant analyse Excel.</td></tr> : null}
                 </tbody>
               </table>
             </div>
@@ -227,28 +227,28 @@ export default function DqePage() {
               <li>Confiance globale IA : {Math.round(Number(aiConfidence.global_confidence || 0) * 100)}%.</li>
               <li>{warningCount} avertissement(s) mapping et {aiAnomalies.length} anomalie(s) detectees.</li>
               <li>Feuille recommandee : {recommendedSheet}.</li>
-              <li>{validationResult ? "Mapping valide humainement." : "Validation humaine recommandee avant synchronisation."}</li>
+              <li>{validationResult ? "Correspondance validee humainement." : "Validation humaine recommandee avant synchronisation."}</li>
               <li>{syncResult ? "Synchronisation pipeline effectuee." : "Synchronise seulement apres controle de la preview."}</li>
             </ul>
           ) : null}
         </AnalyticsCard>
         <aside className="context-panel">
-          <AnalyticsCard title="Action suivante" eyebrow="Workflow">
+          <AnalyticsCard title="Action suivante" eyebrow="Parcours projet">
             <ul className="signal-list">
               <li>1. Selectionner le fichier Excel DQE/BPU.</li>
               {(aiSuggestions.next_actions || [
                 "2. Lancer l'analyse pour verifier feuille, lignes et mapping.",
                 "3. Synchroniser PostgreSQL uniquement si la preview est correcte.",
-                "4. Lancer ensuite la simulation CAPEX.",
+                "4. Lancer ensuite la simulation budgetaire.",
               ]).map((action) => <li key={action}>{action}</li>)}
             </ul>
           </AnalyticsCard>
-          <AnalyticsCard title="Statut pipeline" eyebrow="Excel vers SP2I">
+          <AnalyticsCard title="Statut de l'import" eyebrow="DQE vers SP2I">
             <ul className="signal-list">
               <li>File ID : {analysis?.file_id || "-"}</li>
-              <li>Preview IA : {analysis ? "OK" : "en attente"}</li>
+              <li>Apercu IA : {analysis ? "OK" : "en attente"}</li>
               <li>Validation humaine : {validationResult ? "OK" : "non validee"}</li>
-              <li>Sync PostgreSQL : {syncResult ? "OK" : "non lancee"}</li>
+              <li>Envoi en base projet : {syncResult ? "OK" : "non lance"}</li>
               <li>Endpoint preview : /api/upload/excel</li>
               <li>Endpoint sync : /api/upload/excel/sync</li>
             </ul>

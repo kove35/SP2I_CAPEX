@@ -29,8 +29,8 @@ export default function CockpitPage() {
     <main className="cockpit-page analytics-engine-page">
       <section className="page-hero compact">
         <p className="eyebrow">Cockpit decisionnel immobilier</p>
-        <h1>Pilotage CAPEX, risques, scenarios et decisions projet</h1>
-        <p>SP2I Analytics Engine orchestre les KPI, les filtres, le drill-down et les decisions import/local en temps reel.</p>
+        <h1>Piloter le budget, les risques et les arbitrages du projet</h1>
+        <p>Le moteur de pilotage SP2I consolide les indicateurs, les filtres et les decisions local/import en temps reel.</p>
       </section>
 
       {engine.error ? <div className="app-error">{engine.error.message}</div> : null}
@@ -43,27 +43,27 @@ export default function CockpitPage() {
 
       <section className="analytics-command-grid">
         <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
-        <AnalyticsCard title="Waterfall CAPEX" eyebrow="Direction">
+        <AnalyticsCard title="Du budget initial au budget optimise" eyebrow="Vue direction">
           <CapexWaterfall summary={kpis} />
         </AnalyticsCard>
       </section>
 
       <section className="bi-dashboard-grid">
-        <AnalyticsCard title="Sankey import/local" eyebrow="DecisionEngine">
+        <AnalyticsCard title="Repartition des achats local / import" eyebrow="Arbitrage achats">
           <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} />
         </AnalyticsCard>
-        <AnalyticsCard title="Heatmap CAPEX" eyebrow="Lot x famille">
+        <AnalyticsCard title="Zones les plus couteuses" eyebrow="Lots et familles">
           <CapexHeatmap data={heatmapRows} />
         </AnalyticsCard>
-        <AnalyticsCard title="Risk matrix" eyebrow="Pilotage projet">
+        <AnalyticsCard title="Carte des risques projet" eyebrow="Pilotage projet">
           <RiskMatrix rows={riskRows} />
         </AnalyticsCard>
-        <AnalyticsCard title="Timeline CAPEX" eyebrow="Simulation et economie">
+        <AnalyticsCard title="Evolution financiere du projet" eyebrow="Scenarios et economies">
           <CapexTimeline data={timelineRows} />
         </AnalyticsCard>
       </section>
 
-      <AnalyticsCard title="Drill-down lignes CAPEX" eyebrow={`${Number(total || table.length).toLocaleString("fr-FR")} lignes chargees`}>
+      <AnalyticsCard title="Analyse detaillee des lignes budgetaires" eyebrow={`${Number(total || table.length).toLocaleString("fr-FR")} lignes chargees`}>
         <FactMetreGrid rows={table} total={total} />
       </AnalyticsCard>
     </main>

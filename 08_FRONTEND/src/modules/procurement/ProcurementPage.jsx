@@ -69,7 +69,7 @@ export default function ProcurementPage() {
         console.warn("PROCUREMENT HISTORY UNAVAILABLE", historyError);
       }
     } catch (apiError) {
-      setError(`Analyse procurement indisponible : ${apiError.message}`);
+      setError(`Analyse des achats indisponible : ${apiError.message}`);
     }
   };
 
@@ -79,27 +79,27 @@ export default function ProcurementPage() {
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
         <p className="eyebrow">Moteur d'optimisation integre</p>
-        <h1>Procurement, import et supply chain au service du CAPEX</h1>
+        <h1>Achats, import et fournisseurs au service du budget travaux</h1>
       </section>
       <div className="tab-row">
         <button className={tab === "suppliers" ? "active" : ""} onClick={() => setTab("suppliers")} type="button">Fournisseurs</button>
         <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Import</button>
-        <button className={tab === "cashflow" ? "active" : ""} onClick={() => setTab("cashflow")} type="button">Cashflow</button>
-        <button className={tab === "moq" ? "active" : ""} onClick={() => setTab("moq")} type="button">MOQ</button>
+        <button className={tab === "cashflow" ? "active" : ""} onClick={() => setTab("cashflow")} type="button">Tresorerie</button>
+        <button className={tab === "moq" ? "active" : ""} onClick={() => setTab("moq")} type="button">Quantites mini</button>
         <button className={tab === "risks" ? "active" : ""} onClick={() => setTab("risks")} type="button">Risques</button>
       </div>
       {error ? <div className="app-error">{error}</div> : null}
       <section className="metric-grid">
         <KpiCard label="Risque moyen" value={`${Math.round(average(rows.risk, "global_risk_score"))}/100`} />
-        <KpiCard label="Lead time" value={`${Math.round(average(rows.lead, "lead_time_days"))} j`} />
-        <KpiCard label="Cashflow score" value={`${Math.round(average(rows.cash, "cashflow_score"))}/100`} tone="success" />
+        <KpiCard label="Delai moyen" value={`${Math.round(average(rows.lead, "lead_time_days"))} j`} />
+        <KpiCard label="Impact tresorerie" value={`${Math.round(average(rows.cash, "cashflow_score"))}/100`} tone="success" />
         <KpiCard label="Complexite" value={`${Math.round(average(rows.complexity, "complexity_score"))}/100`} tone="warning" />
       </section>
       <section className="cockpit-split">
-        <AnalyticsCard title="Analyse procurement" eyebrow={`Vue ${tab}`}>
+        <AnalyticsCard title="Analyse des achats" eyebrow={`Vue ${tab}`}>
         <div className="data-table-wrap panel-scroll">
           <table className="data-table">
-            <thead><tr><th>Produit</th><th>Risque</th><th>Lead time</th><th>Cashflow</th><th>Complexite</th></tr></thead>
+            <thead><tr><th>Produit</th><th>Risque</th><th>Delai</th><th>Tresorerie</th><th>Complexite</th></tr></thead>
             <tbody>
               {rows.risk.map((row, index) => (
                 <tr key={row.id_ligne}>
@@ -115,11 +115,11 @@ export default function ProcurementPage() {
         </div>
         </AnalyticsCard>
         <aside className="context-panel">
-          <AnalyticsCard title="Priorite cockpit" eyebrow="Optimisation CAPEX">
+          <AnalyticsCard title="Priorite de pilotage" eyebrow="Economies budgetaires">
             <ul className="signal-list">
-              <li>{tab === "suppliers" ? "Comparer les fournisseurs par risque, qualite et delai." : "Conserver le CAPEX comme decision principale."}</li>
-              <li>{tab === "cashflow" ? "Identifier les lignes rentables mais dangereuses pour la tresorerie." : "Les analyses cashflow restent disponibles en un clic."}</li>
-              <li>{tab === "risks" ? "Remonter les risques critiques vers le cockpit global." : "Les risques alimentent le DecisionEngine."}</li>
+              <li>{tab === "suppliers" ? "Comparer les fournisseurs par risque, qualite et delai." : "Garder le budget travaux comme decision principale."}</li>
+              <li>{tab === "cashflow" ? "Identifier les lignes rentables mais sensibles pour la tresorerie." : "Les analyses de tresorerie restent disponibles en un clic."}</li>
+              <li>{tab === "risks" ? "Remonter les risques critiques vers le cockpit global." : "Les risques alimentent les arbitrages de direction."}</li>
             </ul>
           </AnalyticsCard>
         </aside>

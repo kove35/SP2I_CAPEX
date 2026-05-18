@@ -17,7 +17,7 @@ function normalizeTimeline(data = []) {
     roi: Number(row.roi || row.roi_import || 0),
     risque: Number(row.risque || row.risk || row.global_risk_score || 35),
     scenario: row.scenario || row.scenario_nom || (index === rows.length - 1 ? "Scenario actif" : "Historique"),
-    jalon: row.jalon || row.event || "Point CAPEX",
+    jalon: row.jalon || row.event || "Point budget",
     nbLignes: Number(row.nb_lignes || 0),
   }));
 }
@@ -28,7 +28,7 @@ function buildInsights(rows) {
   const capexDelta = Number(first.capex || 0) - Number(last.capex || 0);
   const riskDelta = Number(first.risque || 0) - Number(last.risque || 0);
   return [
-    { label: "CAPEX reduit", value: formatMoney(capexDelta) },
+    { label: "Budget reduit", value: formatMoney(capexDelta) },
     { label: "Economies cumulees", value: formatMoney(last.economie || 0) },
     { label: "ROI courant", value: formatPercent(last.roi || 0) },
     { label: "Risque reduit", value: `${Math.round(riskDelta)} pts` },
@@ -77,7 +77,7 @@ export default function CapexTimeline({ data = [] }) {
               return [
                 `<b>${row.date} - ${row.scenario}</b>`,
                 `Jalon: <b>${row.jalon}</b>`,
-                `CAPEX: <b>${formatMoney(row.capex)}</b>`,
+                `Budget: <b>${formatMoney(row.capex)}</b>`,
                 `Economies: <b>${formatMoney(row.economie)}</b>`,
                 `ROI: <b>${formatPercent(row.roi)}</b>`,
                 `Risque: <b>${Math.round(row.risque || 0)}/100</b>`,
@@ -95,7 +95,7 @@ export default function CapexTimeline({ data = [] }) {
           yAxis: [
             {
               type: "value",
-              name: "CAPEX",
+              name: "Budget travaux",
               axisLabel: { color: analyticsColors.muted, formatter: (value) => `${Math.round(value / 1_000_000)}M` },
               splitLine: chartTheme.splitLine,
             },
@@ -110,7 +110,7 @@ export default function CapexTimeline({ data = [] }) {
           ],
           series: [
             {
-              name: "CAPEX",
+              name: "Budget",
               type: "line",
               smooth: true,
               data: capex,

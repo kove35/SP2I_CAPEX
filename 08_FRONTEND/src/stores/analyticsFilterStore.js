@@ -79,7 +79,7 @@ export const useAnalyticsFilterStore = create((set, get) => ({
     set((state) => ({
       drilldownTarget: {
         source: target?.source || "analytics",
-        title: target?.title || "Detail FACT_METRE",
+        title: target?.title || "Detail des lignes budgetaires",
         filters: cleanFilters({ ...state.filters, ...(target?.filters || {}) }),
         metric: target?.metric || "",
         openedAt: Date.now(),
