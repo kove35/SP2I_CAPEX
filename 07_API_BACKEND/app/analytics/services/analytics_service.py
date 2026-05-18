@@ -33,7 +33,7 @@ class AnalyticsService:
         return self._cached("kpis", query, lambda: self._response(query, kpis=self.repository.kpis(query)))
 
     def risk(self, query: AnalyticsQuery) -> dict[str, Any]:
-        return self._cached("risk", query, lambda: self._response(query, charts={"risk_matrix": self.repository.heatmap_rows(query)}))
+        return self._cached("risk", query, lambda: self._response(query, charts={"risk_matrix": self.repository.risk_matrix(query)}))
 
     def procurement(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("procurement", query, lambda: self._build_dashboard(query, "procurement"))
@@ -231,6 +231,7 @@ class AnalyticsService:
                 "bar": self.repository.grouped(query, default_group=group_default),
                 "heatmap": self.repository.heatmap(query),
                 "timeline": self.repository.timeline(query),
+                "sankey": self.repository.sankey(query),
             },
             table=table,
             total=total,

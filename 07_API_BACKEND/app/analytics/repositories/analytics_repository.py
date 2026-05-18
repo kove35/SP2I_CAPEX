@@ -173,6 +173,158 @@ class AnalyticsRepository:
             "min": min((item[2] for item in data), default=0),
         }
 
+    def sankey(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        where_sql, params = self._where(query)
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COALESCE(decision_import, 'LOCAL') AS decision,
+                    COALESCE(famille, 'SP2I Supply') AS fournisseur,
+                    COALESCE(lot, 'NON_RENSEIGNE') AS lot,
+                    COALESCE(SUM(capex_optimise), 0) AS value,
+                    COALESCE(SUM(economie), 0) AS economie,
+                    CASE WHEN COALESCE(SUM(capex_import), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_import), 0)
+                    END AS roi,
+                    COUNT(*) AS nb_lignes
+                FROM fact_metre
+                {where_sql}
+                GROUP BY COALESCE(decision_import, 'LOCAL'), COALESCE(famille, 'SP2I Supply'), COALESCE(lot, 'NON_RENSEIGNE')
+                ORDER BY value DESC
+                LIMIT 80
+                """
+            ),
+            params,
+        ).mappings().all()
+        links: list[dict[str, Any]] = []
+        for row in rows:
+            decision = normalize_display_text(str(row["decision"] or "LOCAL")).upper()
+            fournisseur = normalize_display_text(str(row["fournisseur"] or "SP2I Supply"))
+            lot = normalize_display_text(str(row["lot"] or "NON_RENSEIGNE"))
+            value = float(row["value"] or 0)
+            economie = float(row["economie"] or 0)
+            roi = float(row["roi"] or 0)
+            delai = 75 if decision == "IMPORT" else 14
+            links.extend([
+                {
+                    "source": "CAPEX",
+                    "target": decision,
+                    "value": value,
+                    "roi": roi,
+                    "gain": economie,
+                    "economie": economie,
+                    "fournisseur": fournisseur,
+                    "delai": delai,
+                    "decision": decision,
+                    "lot": lot,
+                    "nb_lignes": int(row["nb_lignes"] or 0),
+                },
+                {
+                    "source": decision,
+                    "target": fournisseur,
+                    "value": value,
+                    "roi": roi,
+                    "gain": economie,
+                    "economie": economie,
+                    "fournisseur": fournisseur,
+                    "delai": delai,
+                    "decision": decision,
+                    "lot": lot,
+                    "nb_lignes": int(row["nb_lignes"] or 0),
+                },
+                {
+                    "source": fournisseur,
+                    "target": lot,
+                    "value": value,
+                    "roi": roi,
+                    "gain": economie,
+                    "economie": economie,
+                    "fournisseur": fournisseur,
+                    "delai": delai,
+                    "decision": decision,
+                    "lot": lot,
+                    "nb_lignes": int(row["nb_lignes"] or 0),
+                },
+            ])
+        return links
+
+    def risk_matrix(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        """Dataset risques agrege pour le cockpit enterprise.
+
+        Le risque est volontairement explicable: il combine l'impact financier,
+        le choix import/local, l'economie attendue et la densite de lignes.
+        """
+        where_sql, params = self._where(query)
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COALESCE(lot, 'NON_RENSEIGNE') AS lot,
+                    COALESCE(famille, 'SP2I Supply') AS fournisseur,
+                    COALESCE(decision_import, 'LOCAL') AS decision_import,
+                    COALESCE(SUM(capex_local), 0) AS impact,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_expose,
+                    COALESCE(SUM(economie), 0) AS economie,
+                    CASE WHEN COALESCE(SUM(capex_local), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_local), 0)
+                    END AS economie_rate,
+                    COUNT(*) AS nb_lignes
+                FROM fact_metre
+                {where_sql}
+                GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE(famille, 'SP2I Supply'), COALESCE(decision_import, 'LOCAL')
+                ORDER BY impact DESC
+                LIMIT 96
+                """
+            ),
+            params,
+        ).mappings().all()
+        max_impact = max((float(row["impact"] or 0) for row in rows), default=1) or 1
+        risks: list[dict[str, Any]] = []
+
+        for row in rows:
+            lot = normalize_display_text(str(row["lot"] or "NON_RENSEIGNE"))
+            fournisseur = normalize_display_text(str(row["fournisseur"] or "SP2I Supply"))
+            decision = normalize_display_text(str(row["decision_import"] or "LOCAL")).upper()
+            impact = float(row["impact"] or 0)
+            capex_expose = float(row["capex_expose"] or impact)
+            economie = float(row["economie"] or 0)
+            economie_rate = float(row["economie_rate"] or 0)
+            nb_lignes = int(row["nb_lignes"] or 0)
+
+            impact_score = min((impact / max_impact) * 100, 100)
+            import_penalty = 20 if decision == "IMPORT" else 7
+            density_penalty = min(nb_lignes / 4, 18)
+            savings_volatility = min(max(economie_rate, 0) * 100, 24)
+            probabilite = self._clamp(24 + import_penalty + density_penalty + savings_volatility, 5, 95)
+            criticite = self._clamp((impact_score * 0.48) + (probabilite * 0.52), 5, 100)
+            delai = 75 if decision == "IMPORT" else 14
+
+            if criticite >= 72:
+                risque_type = "Critique"
+            elif probabilite >= 55:
+                risque_type = "Surveillance"
+            elif impact_score >= 50:
+                risque_type = "Quick wins"
+            else:
+                risque_type = "Faible priorite"
+
+            risks.append({
+                "lot": lot,
+                "impact": round(impact, 2),
+                "probabilite": round(probabilite, 2),
+                "criticite": round(criticite, 2),
+                "capex_expose": round(capex_expose, 2),
+                "delai": delai,
+                "fournisseur": fournisseur,
+                "risque_type": risque_type,
+                "decision_import": decision,
+                "economie": round(economie, 2),
+                "nb_lignes": nb_lignes,
+            })
+
+        return risks
+
     def scenarios(self) -> list[dict[str, Any]]:
         rows = self.db.execute(
             text(
@@ -370,3 +522,7 @@ class AnalyticsRepository:
             "next": DRILLDOWN[index + 1] if index + 1 < len(DRILLDOWN) else None,
             "path": DRILLDOWN,
         }
+
+    @staticmethod
+    def _clamp(value: float, low: float, high: float) -> float:
+        return max(low, min(high, value))
