@@ -1,26 +1,7 @@
 import { request } from "./apiClient";
+import { buildAnalyticsParams } from "./analyticsQueryBuilder";
 
-function compactParams(params = {}) {
-  return Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== "")
-  );
-}
-
-export function toAnalyticsParams(filters = {}, extras = {}) {
-  return compactParams({
-    projet: filters.projet,
-    scenario: filters.scenario,
-    batiment: filters.batiment,
-    niveau: filters.niveau,
-    lot: filters.lot,
-    famille: filters.famille,
-    fournisseur: filters.fournisseur,
-    decision_import: filters.decisionImport,
-    periode_debut: filters.periodeDebut,
-    periode_fin: filters.periodeFin,
-    ...extras,
-  });
-}
+export const toAnalyticsParams = buildAnalyticsParams;
 
 export function getAnalyticsDashboard(filters, dashboardType = "direction", extras = {}) {
   return request({

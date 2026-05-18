@@ -1,10 +1,10 @@
 import React from "react";
 import BIChart from "./BIChart";
 import { formatMoney } from "../../shared/formatters";
-import { useDashboardStore } from "../../store/dashboardStore";
+import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 
 export default function CapexHeatmap({ data = [] }) {
-  const setFilters = useDashboardStore((state) => state.setFilters);
+  const { applyFilters } = useCrossFiltering();
   const lots = [...new Set(data.map((row) => row.lot || "NON_RENSEIGNE"))].slice(0, 12);
   const familles = [...new Set(data.map((row) => row.famille || "default"))].slice(0, 12);
   const matrix = data
@@ -45,7 +45,7 @@ export default function CapexHeatmap({ data = [] }) {
       onEvents={{
         click: (params) => {
           const row = params?.data;
-          if (row) setFilters({ lot: row[3], famille: row[4] });
+          if (row) applyFilters({ lot: row[3], famille: row[4] });
         },
       }}
     />
