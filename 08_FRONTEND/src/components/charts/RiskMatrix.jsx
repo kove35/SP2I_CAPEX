@@ -163,11 +163,12 @@ export default function RiskMatrix({ rows = [] }) {
               markArea: {
                 silent: true,
                 label: { color: "rgba(226,232,240,.72)", fontWeight: 900, fontSize: 11 },
+                itemStyle: { color: "rgba(15,23,42,.08)" },
                 data: [
-                  [{ name: "Faible priorite", xAxis: 0, yAxis: 0, itemStyle: { color: "rgba(34,197,94,.07)" } }, { xAxis: xThreshold, yAxis: 50 }],
-                  [{ name: "Quick wins", xAxis: xThreshold, yAxis: 0, itemStyle: { color: "rgba(45,212,191,.08)" } }, { xAxis: Math.ceil(maxImpactM * 1.15), yAxis: 50 }],
-                  [{ name: "Surveillance", xAxis: 0, yAxis: 50, itemStyle: { color: "rgba(245,158,11,.08)" } }, { xAxis: xThreshold, yAxis: 100 }],
-                  [{ name: "Critique", xAxis: xThreshold, yAxis: 50, itemStyle: { color: "rgba(239,68,68,.10)" } }, { xAxis: Math.ceil(maxImpactM * 1.15), yAxis: 100 }],
+                  [{ name: "Faible priorite", xAxis: 0, yAxis: 0 }, { xAxis: xThreshold, yAxis: 50 }],
+                  [{ name: "Quick wins", xAxis: xThreshold, yAxis: 0 }, { xAxis: Math.ceil(maxImpactM * 1.15), yAxis: 50 }],
+                  [{ name: "Surveillance", xAxis: 0, yAxis: 50 }, { xAxis: xThreshold, yAxis: 100 }],
+                  [{ name: "Critique", xAxis: xThreshold, yAxis: 50 }, { xAxis: Math.ceil(maxImpactM * 1.15), yAxis: 100 }],
                 ],
               },
             },
