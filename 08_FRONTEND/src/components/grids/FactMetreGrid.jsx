@@ -62,7 +62,7 @@ function buildDecisionReport(rows, metrics, selectedRow) {
   return JSON.stringify(
     {
       generated_at: new Date().toISOString(),
-      scope: "SP2I FACT_METRE operational drill-down",
+      scope: "SP2I analyse operationnelle des lignes budgetaires",
       metrics,
       selected_line: selectedRow,
       opportunities: rows
@@ -116,8 +116,8 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
       { field: "fournisseur", headerName: "Fournisseur", minWidth: 160 },
       { field: "delai", headerName: "Delai", minWidth: 95, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))} j`, type: "numericColumn" },
       { field: "risque", headerName: "Risque", minWidth: 105, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
-      { field: "capex_local", headerName: "CAPEX brut", valueFormatter: ({ value }) => formatMoney(value), type: "numericColumn", tooltipValueGetter: ({ value }) => formatMoney(value) },
-      { field: "capex_optimise", headerName: "Optimise", valueFormatter: ({ value }) => formatMoney(value), type: "numericColumn" },
+      { field: "capex_local", headerName: "Budget initial", valueFormatter: ({ value }) => formatMoney(value), type: "numericColumn", tooltipValueGetter: ({ value }) => formatMoney(value) },
+      { field: "capex_optimise", headerName: "Budget optimise", valueFormatter: ({ value }) => formatMoney(value), type: "numericColumn" },
       { field: "economie", headerName: "Economie", valueFormatter: ({ value }) => formatMoney(value), type: "numericColumn" },
       { field: "roi", headerName: "ROI", valueFormatter: ({ value }) => formatPercent(value), type: "numericColumn" },
       { field: "taux_economie", headerName: "Taux", valueFormatter: ({ value }) => formatPercent(value), type: "numericColumn" },
@@ -125,8 +125,8 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
     []
   );
 
-  const exportCsv = () => downloadBlob(toCsv(normalizedRows), "sp2i_fact_metre.csv", "text/csv;charset=utf-8");
-  const exportExcel = () => downloadBlob(buildExcelHtml(normalizedRows), "sp2i_fact_metre_analytics.xls", "application/vnd.ms-excel;charset=utf-8");
+  const exportCsv = () => downloadBlob(toCsv(normalizedRows), "sp2i_lignes_budgetaires.csv", "text/csv;charset=utf-8");
+  const exportExcel = () => downloadBlob(buildExcelHtml(normalizedRows), "sp2i_lignes_budgetaires.xls", "application/vnd.ms-excel;charset=utf-8");
   const exportReport = () => downloadBlob(buildDecisionReport(normalizedRows, metrics, selectedRow), "sp2i_rapport_decisionnel.json", "application/json;charset=utf-8");
   const printSnapshot = () => window.print();
 
@@ -145,12 +145,12 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
     <section className={fullscreen ? "fact-grid-shell fullscreen" : "fact-grid-shell"} data-fact-metre-grid>
       <header className="fact-grid-toolbar sticky">
         <div>
-          <strong>{Number(total || normalizedRows.length).toLocaleString("fr-FR")} lignes FACT_METRE</strong>
-          <span>Centre operationnel analytics connecte a SP2I Analytics Engine</span>
+          <strong>{Number(total || normalizedRows.length).toLocaleString("fr-FR")} lignes budgetaires</strong>
+          <span>Centre operationnel connecte au moteur de pilotage SP2I</span>
         </div>
         <div className="fact-grid-metrics">
           <span>Selection {metrics.lignes}</span>
-          <span>CAPEX {formatMoney(metrics.capex)}</span>
+          <span>Budget {formatMoney(metrics.capex)}</span>
           <span>ROI {formatPercent(metrics.roi)}</span>
           <span>Gain {formatMoney(metrics.savings)}</span>
           <span>IMPORT {metrics.importRows}</span>
@@ -166,7 +166,7 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
       {drilldownTarget ? (
         <div className="fact-grid-drilldown">
           <div>
-            <span>Drill-down actif</span>
+          <span>Analyse detaillee active</span>
             <strong>{drilldownTarget.title}</strong>
             {drilldownTarget.metric ? <small>{drilldownTarget.metric}</small> : null}
           </div>
@@ -195,7 +195,7 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
             <>
               <strong>{selectedRow.designation}</strong>
               <dl>
-                <div><dt>CAPEX</dt><dd>{formatMoney(selectedRow.capex_local)}</dd></div>
+                <div><dt>Budget</dt><dd>{formatMoney(selectedRow.capex_local)}</dd></div>
                 <div><dt>Gain</dt><dd>{formatMoney(selectedRow.economie)}</dd></div>
                 <div><dt>ROI</dt><dd>{formatPercent(selectedRow.roi)}</dd></div>
                 <div><dt>Fournisseur</dt><dd>{selectedRow.fournisseur}</dd></div>

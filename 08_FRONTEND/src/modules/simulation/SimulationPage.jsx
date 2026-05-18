@@ -63,8 +63,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   return (
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
-        <p className="eyebrow">CAPEX & Simulation</p>
-        <h1>Simuler, historiser et comparer les scenarios</h1>
+        <p className="eyebrow">Budget & scenarios</p>
+        <h1>Tester les options et comparer les decisions projet</h1>
       </section>
 
       <div className="tab-row">
@@ -79,25 +79,25 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
       {tab === "simulation" ? (
         <>
           <section className="metric-grid">
-            <KpiCard label="CAPEX local" value={formatMoney(kpi.capex_local)} />
-            <KpiCard label="CAPEX optimise" value={formatMoney(kpi.capex_optimise)} tone="success" />
+            <KpiCard label="Budget local" value={formatMoney(kpi.capex_local)} />
+            <KpiCard label="Budget optimise" value={formatMoney(kpi.capex_optimise)} tone="success" />
             <KpiCard label="Economies" value={formatMoney(kpi.economie_nette)} tone="warning" />
             <KpiCard label="Imports recommandes" value={`${importedLines}%`} />
           </section>
           <section className="cockpit-split">
-            <AnalyticsCard title="Table simulation" eyebrow={simulation?.metadata?.simulation_id || "simulation active"}>
+            <AnalyticsCard title="Lignes du scenario teste" eyebrow={simulation?.metadata?.simulation_id || "scenario actif"}>
               <div className="panel-scroll">
                 {loading ? <Skeleton /> : <SimulationTable rows={lines} />}
               </div>
             </AnalyticsCard>
             <aside className="context-panel">
               <SimulationToolbar running={loading} onRun={runSimulation} scenarioName={scenarioName} onScenarioNameChange={setScenarioName} />
-              <AnalyticsCard title="Decision summary" eyebrow="DecisionEngine">
+              <AnalyticsCard title="Synthese de decision" eyebrow="Arbitrage projet">
                 <ul className="signal-list">
                   <li>{lines.length} lignes analysees dans le scenario actif.</li>
                   <li>{importedLines}% d'imports recommandes par le moteur.</li>
                   <li>{criticalLines} lignes a risque eleve a verifier.</li>
-                  <li>Les details financiers restent consolides dans PostgreSQL et Power BI.</li>
+                  <li>Les details financiers restent consolides dans la base projet et le cockpit direction.</li>
                 </ul>
               </AnalyticsCard>
             </aside>

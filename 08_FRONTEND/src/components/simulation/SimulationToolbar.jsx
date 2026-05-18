@@ -20,7 +20,7 @@ export default function SimulationToolbar({ running, onRun, scenarioName, onScen
         <input value="15%" readOnly />
       </label>
       <label>
-        Cashflow
+        Tresorerie
         <input value="30/70" readOnly />
       </label>
       <button type="button" onClick={onRun} disabled={running}>

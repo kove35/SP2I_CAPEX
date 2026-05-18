@@ -14,7 +14,7 @@ export default function AnalyticsHealthPage({ qa }) {
 
   return (
     <section className="analytics-health-grid">
-      <AnalyticsCard title="Santé Analytics Engine" eyebrow={metadata.qa_status || "QA"}>
+      <AnalyticsCard title="Etat du pilotage SP2I" eyebrow={metadata.qa_status || "Controle"}>
         <div className="health-list">
           {Object.entries(checks).map(([key, ok]) => (
             <span key={key} className={ok ? "ok" : "ko"}>
@@ -23,19 +23,19 @@ export default function AnalyticsHealthPage({ qa }) {
           ))}
         </div>
       </AnalyticsCard>
-      <AnalyticsCard title="PostgreSQL & Cache" eyebrow="Runtime">
+      <AnalyticsCard title="Donnees projet et rapidite" eyebrow="Base cloud">
         <ul className="signal-list">
-          <li>Backend cache : {cache.backend || "n/a"}</li>
-          <li>Entrées cache : {cache.entries ?? "n/a"}</li>
-          <li>FACT_METRE : {data.kpis?.nb_lignes || 0} lignes</li>
-          <li>CAPEX : {Number(data.kpis?.capex_brut || 0).toLocaleString("fr-FR")} FCFA</li>
+          <li>Memoire de calcul : {cache.backend || "n/a"}</li>
+          <li>Donnees en cache : {cache.entries ?? "n/a"}</li>
+          <li>Lignes budgetaires : {data.kpis?.nb_lignes || 0} lignes</li>
+          <li>Budget travaux : {Number(data.kpis?.capex_brut || 0).toLocaleString("fr-FR")} FCFA</li>
         </ul>
       </AnalyticsCard>
-      <AnalyticsCard title="Warnings" eyebrow="Observabilité">
+      <AnalyticsCard title="Points d'attention" eyebrow="Controle qualite">
         {data.warnings?.length ? (
           <ul className="signal-list">{data.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
         ) : (
-          <p className="empty-state">Aucune anomalie QA critique détectée.</p>
+          <p className="empty-state">Aucune anomalie critique detectee.</p>
         )}
       </AnalyticsCard>
     </section>

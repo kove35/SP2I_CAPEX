@@ -17,7 +17,7 @@ export default function Sidebar({ activePath, onNavigate }) {
           <div className="brand-mark">S</div>
           <div className="brand-copy">
             <strong>SP2I</strong>
-            <span>CAPEX cockpit</span>
+            <span>Pilotage immobilier</span>
           </div>
           <button className="icon-button sidebar-close-mobile" type="button" onClick={closeMobile} title="Fermer">
             <X size={18} />
