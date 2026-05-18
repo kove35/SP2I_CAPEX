@@ -1,17 +1,26 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import { RotateCcw, Search, X } from "lucide-react";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
+import { getAnalyticsFilters } from "../../services/filterService";
+import AnalyticsSelect from "./AnalyticsSelect";
 
-const fields = [
-  ["batiment", "Batiment", "Tous"],
-  ["niveau", "Niveau", "Tous"],
-  ["lot", "Lot", "Tous"],
-  ["famille", "Famille", "Toutes"],
-  ["importLocal", "Import/local", "Tous"],
+const selectFields = [
+  ["batiment", "Batiment", "Tous", "batiments"],
+  ["niveau", "Niveau", "Tous", "niveaux"],
+  ["lot", "Lot", "Tous", "lots"],
+  ["famille", "Famille", "Toutes", "familles"],
+  ["importLocal", "Import/local", "Tous", "importLocal"],
 ];
 
 export default function GlobalAnalyticsFilters() {
   const { filters, activeChips, applyFilter, clearFilter, reset } = useCrossFiltering();
+  const filterOptions = useQuery({
+    queryKey: ["analytics-filter-options"],
+    queryFn: getAnalyticsFilters,
+    staleTime: 5 * 60_000,
+  });
+  const options = filterOptions.data || {};
 
   return (
     <section className="global-analytics-panel" aria-label="Filtres globaux analytics">
@@ -24,11 +33,16 @@ export default function GlobalAnalyticsFilters() {
           <span>Scenario</span>
           <input value={filters.scenario || ""} onChange={(event) => applyFilter("scenario", event.target.value)} />
         </label>
-        {fields.map(([key, label, placeholder]) => (
-          <label key={key}>
-            <span>{label}</span>
-            <input value={filters[key] || ""} onChange={(event) => applyFilter(key, event.target.value)} placeholder={placeholder} />
-          </label>
+        {selectFields.map(([key, label, placeholder, optionKey]) => (
+          <AnalyticsSelect
+            key={key}
+            label={label}
+            value={filters[key] || ""}
+            options={options[optionKey] || []}
+            placeholder={placeholder}
+            loading={filterOptions.isLoading}
+            onChange={(nextValue) => applyFilter(key, nextValue)}
+          />
         ))}
         <label>
           <span>Debut</span>
