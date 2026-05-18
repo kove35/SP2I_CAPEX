@@ -23,9 +23,10 @@ export default function SmartDataGrid({ rows = [], columns = [], height = 420, q
         defaultColDef={defaultColDef}
         pagination
         paginationPageSize={25}
+        paginationPageSizeSelector={[25, 50, 100]}
         animateRows
         suppressCellFocus
-        rowSelection="single"
+        rowSelection={{ mode: "singleRow" }}
         quickFilterText={quickFilterText}
         onRowClicked={(event) => onRowSelected?.(event.data)}
       />

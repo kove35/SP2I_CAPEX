@@ -1,6 +1,8 @@
 import React from "react";
 import BIChart from "./BIChart";
 import { formatMoney } from "../../shared/formatters";
+import { analyticsColors } from "../../theme/colors";
+import { chartTheme } from "../../theme/chartTheme";
 
 export default function CapexWaterfall({ summary = {} }) {
   const capexLocal = Number(summary.capex_brut || summary.capex_local || 0);
@@ -10,35 +12,58 @@ export default function CapexWaterfall({ summary = {} }) {
 
   return (
     <BIChart
-      height={300}
+      height={320}
       option={{
         backgroundColor: "transparent",
+        color: chartTheme.color,
         tooltip: {
+          ...chartTheme.tooltip,
           trigger: "axis",
           axisPointer: { type: "shadow" },
-          formatter: (params) => params.map((item) => `${item.name}<br/><b>${formatMoney(item.value)}</b>`).join(""),
+          formatter: (params) =>
+            params
+              .filter((item) => item.seriesName !== "Base")
+              .map((item) => `${item.marker}${item.name}<br/><b>${formatMoney(item.value)}</b>`)
+              .join("<br/>"),
         },
-        grid: { left: 42, right: 20, top: 30, bottom: 36 },
+        grid: { left: 54, right: 20, top: 38, bottom: 42 },
         xAxis: {
           type: "category",
           data: ["CAPEX brut", "Optimisations", "Economies", "CAPEX final"],
-          axisLabel: { color: "#9fb4d1" },
+          axisLabel: { color: analyticsColors.muted },
         },
         yAxis: {
           type: "value",
-          axisLabel: { color: "#9fb4d1" },
-          splitLine: { lineStyle: { color: "rgba(148,163,184,.12)" } },
+          axisLabel: { color: analyticsColors.muted, formatter: (value) => `${Math.round(value / 1_000_000)}M` },
+          splitLine: chartTheme.splitLine,
         },
         series: [
           {
+            name: "Base",
             type: "bar",
-            data: [
-              { value: capexLocal, itemStyle: { color: "#60a5fa" } },
-              { value: optimisations, itemStyle: { color: "#22d3ee" } },
-              { value: economie, itemStyle: { color: "#34d399" } },
-              { value: capexOptimise, itemStyle: { color: "#f59e0b" } },
-            ],
+            stack: "total",
+            itemStyle: { color: "transparent" },
+            emphasis: { itemStyle: { color: "transparent" } },
+            data: [0, capexOptimise, capexOptimise, 0],
+          },
+          {
+            name: "CAPEX",
+            type: "bar",
+            stack: "total",
             barWidth: 34,
+            label: {
+              show: true,
+              position: "top",
+              color: analyticsColors.text,
+              fontWeight: 800,
+              formatter: ({ value }) => `${Math.round(Number(value || 0) / 1_000_000)}M`,
+            },
+            data: [
+              { value: capexLocal, itemStyle: { color: analyticsColors.blue } },
+              { value: optimisations, itemStyle: { color: analyticsColors.cyan } },
+              { value: economie, itemStyle: { color: analyticsColors.green } },
+              { value: capexOptimise, itemStyle: { color: analyticsColors.amber } },
+            ],
           },
         ],
       }}

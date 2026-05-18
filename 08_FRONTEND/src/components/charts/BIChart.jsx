@@ -19,7 +19,7 @@ class ChartErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="chart-fallback" style={{ minHeight: this.props.height }}>
-          Visualisation momentanément indisponible.
+          Visualisation momentanement indisponible.
         </div>
       );
     }
@@ -28,11 +28,13 @@ class ChartErrorBoundary extends React.Component {
 }
 
 export default function BIChart({ option, height = 280, onEvents, chartKey }) {
+  const safeOption = React.useMemo(() => option || { series: [] }, [option]);
+
   return (
     <ChartErrorBoundary key={chartKey || "chart"} height={height}>
       <ReactECharts
         key={chartKey}
-        option={option}
+        option={safeOption}
         style={{ height, width: "100%" }}
         notMerge
         lazyUpdate={false}
