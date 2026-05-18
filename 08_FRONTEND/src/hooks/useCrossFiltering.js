@@ -12,6 +12,7 @@ export function useCrossFiltering() {
   const setFilter = useAnalyticsFilterStore((state) => state.setFilter);
   const setFilters = useAnalyticsFilterStore((state) => state.setFilters);
   const resetFilters = useAnalyticsFilterStore((state) => state.resetFilters);
+  const openDrilldown = useAnalyticsFilterStore((state) => state.openDrilldown);
   const syncLegacyFilters = useDashboardStore((state) => state.setFilters);
   const resetLegacyFilters = useDashboardStore((state) => state.resetFilters);
 
@@ -49,6 +50,19 @@ export function useCrossFiltering() {
     [invalidateAnalytics, setFilters, syncLegacyFilters]
   );
 
+  const applyDrilldown = React.useCallback(
+    (values, metadata = {}) => {
+      setFilters(values);
+      syncLegacyFilters(values);
+      openDrilldown({ ...metadata, filters: values });
+      invalidateAnalytics();
+      window.requestAnimationFrame(() => {
+        document.querySelector("[data-fact-metre-grid]")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    [invalidateAnalytics, openDrilldown, setFilters, syncLegacyFilters]
+  );
+
   const clearFilter = React.useCallback(
     (key) => {
       const value = defaultAnalyticsFilters[key] || "";
@@ -70,6 +84,7 @@ export function useCrossFiltering() {
     activeChips,
     applyFilter,
     applyFilters,
+    applyDrilldown,
     clearFilter,
     reset,
     invalidateAnalytics,
