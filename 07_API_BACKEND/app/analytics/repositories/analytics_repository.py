@@ -129,7 +129,7 @@ class AnalyticsRepository:
         ).mappings().all()
         return [dict(row) for row in rows]
 
-    def heatmap(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+    def heatmap_rows(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self._where(query)
         rows = self.db.execute(
             text(
@@ -149,6 +149,29 @@ class AnalyticsRepository:
             params,
         ).mappings().all()
         return [dict(row) for row in rows]
+
+    def heatmap(self, query: AnalyticsQuery) -> dict[str, Any]:
+        rows = self.heatmap_rows(query)
+        x_labels = list(dict.fromkeys(str(row.get("lot") or "NON_RENSEIGNE") for row in rows))
+        y_labels = list(dict.fromkeys(str(row.get("famille") or "default") for row in rows))
+        x_index = {label: index for index, label in enumerate(x_labels)}
+        y_index = {label: index for index, label in enumerate(y_labels)}
+        data = [
+            [
+                x_index[str(row.get("lot") or "NON_RENSEIGNE")],
+                y_index[str(row.get("famille") or "default")],
+                float(row.get("value") or 0),
+            ]
+            for row in rows
+        ]
+        return {
+            "xLabels": x_labels,
+            "yLabels": y_labels,
+            "data": data,
+            "rows": rows,
+            "max": max((item[2] for item in data), default=0),
+            "min": min((item[2] for item in data), default=0),
+        }
 
     def scenarios(self) -> list[dict[str, Any]]:
         rows = self.db.execute(
