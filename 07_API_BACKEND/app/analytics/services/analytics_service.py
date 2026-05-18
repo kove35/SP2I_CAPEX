@@ -55,6 +55,16 @@ class AnalyticsService:
     def timeline(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._response(query, charts={"timeline": self.repository.timeline(query)})
 
+    def filter_options(self) -> dict[str, Any]:
+        options = self.repository.filter_options()
+        return normalize_payload_labels({
+            "batiments": options.get("batiments", []),
+            "niveaux": options.get("niveaux", []),
+            "lots": options.get("lots", []),
+            "familles": options.get("familles", []),
+            "import_local": options.get("import_local", []),
+        })
+
     def system_health(self) -> dict[str, Any]:
         return {
             "status": "SUCCESS",

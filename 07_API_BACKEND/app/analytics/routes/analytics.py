@@ -102,6 +102,11 @@ def timeline(query=Depends(analytics_query), db: Session = Depends(get_db)) -> d
     return AnalyticsService(db).timeline(query)
 
 
+@router.get("/filters")
+def filters(db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).filter_options()
+
+
 @router.get("/dashboard", response_model=AnalyticsResponse)
 def dashboard(
     dashboard_type: str = "direction",
