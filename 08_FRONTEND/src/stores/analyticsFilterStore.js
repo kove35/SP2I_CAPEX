@@ -52,6 +52,7 @@ function cleanFilters(filters) {
 
 export const useAnalyticsFilterStore = create((set, get) => ({
   filters: defaultAnalyticsFilters,
+  drilldownTarget: null,
   revision: 0,
   setFilter: (key, value) =>
     set((state) => ({
@@ -71,8 +72,21 @@ export const useAnalyticsFilterStore = create((set, get) => ({
   resetFilters: () =>
     set((state) => ({
       filters: defaultAnalyticsFilters,
+      drilldownTarget: null,
       revision: state.revision + 1,
     })),
+  openDrilldown: (target) =>
+    set((state) => ({
+      drilldownTarget: {
+        source: target?.source || "analytics",
+        title: target?.title || "Detail FACT_METRE",
+        filters: cleanFilters({ ...state.filters, ...(target?.filters || {}) }),
+        metric: target?.metric || "",
+        openedAt: Date.now(),
+      },
+      revision: state.revision + 1,
+    })),
+  clearDrilldown: () => set({ drilldownTarget: null }),
   getActiveFilters: () =>
     Object.entries(get().filters).filter(([key, value]) => {
       if (!value) return false;

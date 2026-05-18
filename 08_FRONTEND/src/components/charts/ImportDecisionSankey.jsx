@@ -4,6 +4,7 @@ import { formatMoney, formatPercent } from "../../shared/formatters";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { analyticsColors } from "../../theme/colors";
 import { chartTheme } from "../../theme/chartTheme";
+import { compactLabel, normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
 
 const nodeColors = {
   CAPEX: analyticsColors.blue,
@@ -12,7 +13,7 @@ const nodeColors = {
 };
 
 function truncateLabel(label = "", size = 22) {
-  return label.length > size ? `${label.slice(0, size - 1)}...` : label;
+  return compactLabel(label, size);
 }
 
 function aggregateLinks(links = []) {
@@ -37,9 +38,9 @@ function aggregateLinks(links = []) {
 function buildFallbackLinks(rows = [], chartRows = []) {
   const sourceRows = rows.length ? rows : chartRows;
   const lotMap = sourceRows.reduce((acc, row) => {
-    const lot = row.lot || row.label || "Lot non renseigne";
-    const decision = String(row.decision_import || row.decision || "IMPORT").toUpperCase() === "LOCAL" ? "LOCAL" : "IMPORT";
-    const fournisseur = row.famille || "SP2I Supply";
+    const lot = toBusinessLabel(row.lot || row.label, "Lot non renseigne");
+    const decision = normalizeDecision(row.decision_import || row.decision || "IMPORT");
+    const fournisseur = normalizeFamily(row.famille || "SP2I Supply");
     const key = `${decision}|${fournisseur}|${lot}`;
     const value = Math.max(Number(row.capex_optimise || row.capex_brut || row.value || 0), 1);
     const economie = Number(row.economie || row.economie_nette || 0);
@@ -59,7 +60,7 @@ function buildFallbackLinks(rows = [], chartRows = []) {
 }
 
 export default function ImportDecisionSankey({ rows = [], chartRows = [], sankeyRows = [] }) {
-  const { applyFilters } = useCrossFiltering();
+  const { applyFilters, applyDrilldown } = useCrossFiltering();
   const rawLinks = sankeyRows.length ? sankeyRows : buildFallbackLinks(rows, chartRows);
   const links = React.useMemo(() => aggregateLinks(rawLinks).filter((link) => Number(link.value || 0) > 0), [rawLinks]);
   const nodes = React.useMemo(() => {
@@ -67,7 +68,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
     return names.map((name) => ({
       name,
       label: { formatter: truncateLabel(name) },
-      itemStyle: { color: nodeColors[name] || (name.startsWith("L") ? analyticsColors.cyan : "#64748b") },
+      itemStyle: { color: nodeColors[name] || (String(name).startsWith("L") ? analyticsColors.cyan : "#64748b") },
     }));
   }, [links]);
   const kpis = React.useMemo(() => {
@@ -105,9 +106,10 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
                 `Montant: <b>${formatMoney(item.value)}</b>`,
                 `ROI: <b>${formatPercent(item.roi)}</b>`,
                 `Gain net: <b>${formatMoney(item.gain || item.economie)}</b>`,
-                `Fournisseur: <b>${item.fournisseur || "SP2I Supply"}</b>`,
+                `Famille/fournisseur: <b>${normalizeFamily(item.fournisseur || "SP2I Supply")}</b>`,
                 `Decision: <b>${item.decision || item.target}</b>`,
                 `Delai logistique: <b>${Math.round(Number(item.delai || 0))} j</b>`,
+                "Cliquer pour synchroniser KPI, Heatmap et FACT_METRE",
               ].join("<br/>");
             },
           },
@@ -146,9 +148,18 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
           click: (params) => {
             const name = params?.name;
             const link = params?.data || {};
-            if (name === "IMPORT" || name === "LOCAL") applyFilters({ importLocal: name, decisionImport: name });
-            else if (link?.lot || name?.startsWith("L")) applyFilters({ lot: link.lot || name });
-            else if (link?.fournisseur) applyFilters({ famille: link.fournisseur });
+            let filters = {};
+            if (name === "IMPORT" || name === "LOCAL") filters = { importLocal: name, decisionImport: name };
+            else if (link?.lot || String(name || "").startsWith("L")) filters = { lot: link.lot || name };
+            else if (link?.fournisseur) filters = { famille: normalizeFamily(link.fournisseur) };
+            if (Object.keys(filters).length) {
+              applyFilters(filters);
+              applyDrilldown(filters, {
+                source: "sankey",
+                title: `Flux ${link.source || "CAPEX"} -> ${link.target || name}`,
+                metric: formatMoney(link.value || 0),
+              });
+            }
           },
         }}
       />
