@@ -51,9 +51,16 @@ function buildInsight(rows) {
   };
 }
 
+function normalizeRowsPayload(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.rows)) return payload.rows;
+  if (Array.isArray(payload?.table)) return payload.table;
+  return [];
+}
+
 export default function RiskMatrix({ rows = [] }) {
   const { applyFilters } = useCrossFiltering();
-  const riskRows = useMemo(() => rows.slice(0, 72).map(normalizeRiskRow), [rows]);
+  const riskRows = useMemo(() => normalizeRowsPayload(rows).slice(0, 72).map(normalizeRiskRow), [rows]);
   const insight = useMemo(() => buildInsight(riskRows), [riskRows]);
   const maxImpactM = Math.max(...riskRows.map((row) => row.impact / MILLION), 10);
   const xThreshold = maxImpactM * 0.5;
