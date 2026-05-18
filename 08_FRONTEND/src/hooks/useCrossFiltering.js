@@ -4,6 +4,8 @@ import { analyticsFilterLabels, defaultAnalyticsFilters, useAnalyticsFilterStore
 import { normalizeAnalyticsFilters } from "../services/analyticsQueryBuilder";
 import { useDashboardStore } from "../store/dashboardStore";
 
+const chipKeys = ["projet", "scenario", "batiment", "niveau", "lot", "famille", "fournisseur", "importLocal", "dateDebut", "dateFin"];
+
 export function useCrossFiltering() {
   const queryClient = useQueryClient();
   const filters = useAnalyticsFilterStore((state) => state.filters);
@@ -16,14 +18,17 @@ export function useCrossFiltering() {
   const normalizedFilters = React.useMemo(() => normalizeAnalyticsFilters(filters), [filters]);
   const activeChips = React.useMemo(
     () =>
-      Object.entries(normalizedFilters)
+      chipKeys
+        .map((key) => [key, normalizedFilters[key]])
         .filter(([key, value]) => value && value !== defaultAnalyticsFilters[key])
         .map(([key, value]) => ({ key, label: analyticsFilterLabels[key] || key, value })),
     [normalizedFilters]
   );
 
   const invalidateAnalytics = React.useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["analytics"] });
+    queryClient.invalidateQueries({
+      predicate: (query) => String(query.queryKey?.[0] || "").startsWith("analytics"),
+    });
   }, [queryClient]);
 
   const applyFilter = React.useCallback(
