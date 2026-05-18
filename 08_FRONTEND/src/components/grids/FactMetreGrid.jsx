@@ -2,7 +2,7 @@ import React from "react";
 import { Download, Maximize2 } from "lucide-react";
 import SmartDataGrid from "./SmartDataGrid";
 import { formatMoney, formatPercent } from "../../shared/formatters";
-import { useDashboardStore } from "../../store/dashboardStore";
+import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 
 function toCsv(rows) {
   if (!rows.length) return "";
@@ -12,7 +12,7 @@ function toCsv(rows) {
 }
 
 export default function FactMetreGrid({ rows = [], total = 0 }) {
-  const setFilters = useDashboardStore((state) => state.setFilters);
+  const { applyFilters } = useCrossFiltering();
   const [quickSearch, setQuickSearch] = React.useState("");
   const [fullscreen, setFullscreen] = React.useState(false);
   const metrics = React.useMemo(() => {
@@ -80,7 +80,7 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
         columns={columns}
         height={fullscreen ? 720 : 470}
         quickFilterText={quickSearch}
-        onRowSelected={(row) => setFilters({ lot: row.lot, famille: row.famille, batiment: row.batiment, niveau: row.niveau })}
+        onRowSelected={(row) => applyFilters({ lot: row.lot, famille: row.famille, batiment: row.batiment, niveau: row.niveau })}
       />
     </section>
   );

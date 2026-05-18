@@ -9,55 +9,56 @@ import {
   getAnalyticsRisk,
   getAnalyticsTimeline,
 } from "../services/analyticsService";
-import { useDashboardStore } from "../store/dashboardStore";
+import { buildAnalyticsQueryKey } from "../services/analyticsQueryBuilder";
+import { useAnalyticsFilters } from "./useAnalyticsFilters";
 
 export function useAnalyticsEngine(dashboardType = "direction") {
-  const filters = useDashboardStore((state) => state.filters);
+  const { filters, debouncedFilters } = useAnalyticsFilters();
 
   const dashboard = useQuery({
-    queryKey: ["analytics-dashboard", dashboardType, filters],
-    queryFn: () => getAnalyticsDashboard(filters, dashboardType),
+    queryKey: buildAnalyticsQueryKey("dashboard", debouncedFilters, { dashboardType }),
+    queryFn: () => getAnalyticsDashboard(debouncedFilters, dashboardType),
     staleTime: 20_000,
   });
 
   const capex = useQuery({
-    queryKey: ["analytics-capex", filters],
-    queryFn: () => getAnalyticsCapex(filters),
+    queryKey: buildAnalyticsQueryKey("capex", debouncedFilters),
+    queryFn: () => getAnalyticsCapex(debouncedFilters),
     staleTime: 20_000,
   });
 
   const procurement = useQuery({
-    queryKey: ["analytics-procurement", filters],
-    queryFn: () => getAnalyticsProcurement(filters),
+    queryKey: buildAnalyticsQueryKey("procurement", debouncedFilters),
+    queryFn: () => getAnalyticsProcurement(debouncedFilters),
     staleTime: 20_000,
   });
 
   const heatmap = useQuery({
-    queryKey: ["analytics-heatmap", filters],
-    queryFn: () => getAnalyticsHeatmap(filters),
+    queryKey: buildAnalyticsQueryKey("heatmap", debouncedFilters),
+    queryFn: () => getAnalyticsHeatmap(debouncedFilters),
     staleTime: 20_000,
   });
 
   const risk = useQuery({
-    queryKey: ["analytics-risk", filters],
-    queryFn: () => getAnalyticsRisk(filters),
+    queryKey: buildAnalyticsQueryKey("risk", debouncedFilters),
+    queryFn: () => getAnalyticsRisk(debouncedFilters),
     staleTime: 20_000,
   });
 
   const timeline = useQuery({
-    queryKey: ["analytics-timeline", filters],
-    queryFn: () => getAnalyticsTimeline(filters),
+    queryKey: buildAnalyticsQueryKey("timeline", debouncedFilters),
+    queryFn: () => getAnalyticsTimeline(debouncedFilters),
     staleTime: 20_000,
   });
 
   const drilldown = useQuery({
-    queryKey: ["analytics-drilldown", filters],
-    queryFn: () => getAnalyticsDrilldown(filters),
+    queryKey: buildAnalyticsQueryKey("drilldown", debouncedFilters),
+    queryFn: () => getAnalyticsDrilldown(debouncedFilters),
     staleTime: 20_000,
   });
 
   const qa = useQuery({
-    queryKey: ["analytics-qa-summary"],
+    queryKey: buildAnalyticsQueryKey("qa-summary", debouncedFilters),
     queryFn: getAnalyticsQaSummary,
     staleTime: 30_000,
   });

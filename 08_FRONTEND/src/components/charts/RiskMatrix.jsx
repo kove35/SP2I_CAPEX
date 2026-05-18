@@ -1,7 +1,7 @@
 import React from "react";
 import BIChart from "./BIChart";
 import { formatMoney } from "../../shared/formatters";
-import { useDashboardStore } from "../../store/dashboardStore";
+import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { analyticsColors } from "../../theme/colors";
 import { chartTheme } from "../../theme/chartTheme";
 
@@ -12,7 +12,7 @@ function riskColor(value) {
 }
 
 export default function RiskMatrix({ rows = [] }) {
-  const setFilters = useDashboardStore((state) => state.setFilters);
+  const { applyFilters } = useCrossFiltering();
   const data = rows.slice(0, 48).map((row, index) => {
     const capex = Number(row.capex_optimise || row.capex_brut || row.capex_local || row.value || 1);
     const gain = Number(row.taux_economie || row.economie_nette || row.economie || 0);
@@ -73,7 +73,7 @@ export default function RiskMatrix({ rows = [] }) {
       }}
       onEvents={{
         click: (params) => {
-          if (params?.data?.value?.[4]) setFilters({ lot: params.data.value[4] });
+          if (params?.data?.value?.[4]) applyFilters({ lot: params.data.value[4] });
         },
       }}
     />
