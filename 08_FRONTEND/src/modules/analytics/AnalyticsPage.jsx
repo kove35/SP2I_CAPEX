@@ -67,6 +67,7 @@ export default function AnalyticsPage() {
   const total = mainPayload.pagination?.total || engine.drilldown.data?.pagination?.total || table.length;
   const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
   const heatmapRows = engine.heatmap.data?.charts?.heatmap || mainPayload.charts?.heatmap || [];
+  const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
   const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || [];
 
@@ -123,7 +124,7 @@ export default function AnalyticsPage() {
 
           <section className="bi-dashboard-grid">
             <AnalyticsCard title="Sankey import/local" eyebrow="Decisions par lots">
-              <ImportDecisionSankey rows={table} chartRows={barRows} />
+              <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} />
             </AnalyticsCard>
             <AnalyticsCard title="Heatmap CAPEX" eyebrow="Lot x famille">
               <CapexHeatmap data={heatmapRows} />
