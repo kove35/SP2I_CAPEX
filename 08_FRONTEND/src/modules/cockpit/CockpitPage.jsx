@@ -53,12 +53,12 @@ export default function CockpitPage() {
           <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} />
         </AnalyticsCard>
         <AnalyticsCard title="Zones les plus couteuses" eyebrow="Lots et familles">
-          <CapexHeatmap data={heatmapRows} />
+          <CapexHeatmap data={heatmapRows} rows={table} />
         </AnalyticsCard>
         <AnalyticsCard title="Carte des risques projet" eyebrow="Pilotage projet">
           <RiskMatrix rows={riskRows} />
         </AnalyticsCard>
-        <AnalyticsCard title="Evolution financiere du projet" eyebrow="Scenarios et economies">
+        <AnalyticsCard title="Evolution financiere du projet" eyebrow="Strategies et economies">
           <CapexTimeline data={timelineRows} />
         </AnalyticsCard>
       </section>

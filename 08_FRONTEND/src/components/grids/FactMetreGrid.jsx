@@ -1,5 +1,5 @@
 import React from "react";
-import { Download, FileText, Maximize2, Printer, Sparkles } from "lucide-react";
+import { Download, FileText, Maximize2, Printer, Search, Sparkles } from "lucide-react";
 import SmartDataGrid from "./SmartDataGrid";
 import { formatMoney, formatPercent } from "../../shared/formatters";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
@@ -27,7 +27,7 @@ function normalizeRow(row = {}) {
     economie,
     taux_economie: Number(row.taux_economie || (capexLocal ? economie / capexLocal : 0)),
     roi,
-    fournisseur: row.fournisseur || row.famille || "SP2I Supply",
+    fournisseur: row.fournisseur || normalizeFamily(row.famille) || "Fournisseur a confirmer",
     delai: Number(row.delai || (decision === "IMPORT" ? 75 : 14)),
     risque: Number(row.risque || row.criticite || (decision === "IMPORT" ? 58 : 32)),
     statut_achat: row.statut_achat || (decision === "IMPORT" ? "A arbitrer" : "Local securise"),
@@ -100,20 +100,20 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
 
   const columns = React.useMemo(
     () => [
-      { field: "lot", headerName: "Lot", minWidth: 210, pinned: "left", tooltipField: "lot" },
-      { field: "designation", headerName: "Designation", flex: 1, minWidth: 310, pinned: "left", tooltipField: "designation" },
+      { field: "lot", headerName: "Lot", minWidth: 210, pinned: "left", tooltipField: "lot", filter: "agSetColumnFilter" },
+      { field: "designation", headerName: "Prestation", flex: 1, minWidth: 310, pinned: "left", tooltipField: "designation", filter: "agTextColumnFilter" },
       {
         field: "decision_import",
-        headerName: "Decision",
+        headerName: "Arbitrage",
         minWidth: 124,
         pinned: "left",
         cellRenderer: ({ value }) => <span className={`decision-badge ${String(value || "").toLowerCase()}`}>{value || "LOCAL"}</span>,
         tooltipValueGetter: ({ data }) => `${data?.statut_achat || "Statut achat"} - delai ${data?.delai || 0} j`,
       },
-      { field: "famille", headerName: "Famille", minWidth: 160, tooltipField: "famille" },
-      { field: "batiment", headerName: "Batiment", minWidth: 170 },
-      { field: "niveau", headerName: "Niveau", minWidth: 140 },
-      { field: "fournisseur", headerName: "Fournisseur", minWidth: 160 },
+      { field: "famille", headerName: "Famille metier", minWidth: 170, tooltipField: "famille", filter: "agSetColumnFilter" },
+      { field: "batiment", headerName: "Batiment", minWidth: 170, filter: "agSetColumnFilter" },
+      { field: "niveau", headerName: "Niveau", minWidth: 140, filter: "agSetColumnFilter" },
+      { field: "fournisseur", headerName: "Fournisseur", minWidth: 160, filter: "agSetColumnFilter" },
       { field: "delai", headerName: "Delai", minWidth: 95, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))} j`, type: "numericColumn" },
       { field: "risque", headerName: "Risque", minWidth: 105, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
       { field: "capex_local", headerName: "Budget initial", valueFormatter: ({ value }) => formatMoney(value), type: "numericColumn", tooltipValueGetter: ({ value }) => formatMoney(value) },
@@ -156,9 +156,12 @@ export default function FactMetreGrid({ rows = [], total = 0 }) {
           <span>IMPORT {metrics.importRows}</span>
           <span>LOCAL {metrics.localRows}</span>
         </div>
-        <input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Recherche rapide" />
+        <label className="fact-grid-search">
+          <Search size={15} />
+          <input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Rechercher une prestation, un lot ou un batiment..." />
+        </label>
         <button type="button" onClick={() => setFullscreen((value) => !value)}><Maximize2 size={15} />Plein ecran</button>
-        <button type="button" onClick={exportCsv}><Download size={15} />CSV</button>
+        <button type="button" onClick={exportCsv}><Download size={15} />Exporter</button>
         <button type="button" onClick={exportExcel}><Download size={15} />Excel</button>
         <button type="button" onClick={exportReport}><FileText size={15} />Rapport</button>
         <button type="button" onClick={printSnapshot}><Printer size={15} />Snapshot</button>

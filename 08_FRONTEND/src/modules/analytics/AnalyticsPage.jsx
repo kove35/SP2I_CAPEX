@@ -27,16 +27,124 @@ const dashboards = [
 ];
 
 const dashboardCopy = {
-  direction: "Cockpit executif pour piloter budget, economies, risques et arbitrages local/import.",
-  capex: "Lecture financiere claire des investissements immobiliers et des economies possibles.",
+  direction: "Synthese courte pour suivre les indicateurs essentiels et les alertes de direction.",
+  capex: "Lecture financiere detaillee du budget travaux, des economies et des postes les plus couteux.",
   procurement: "Analyse des achats, de l'importabilite, des fournisseurs et des decisions local/import.",
   logistics: "Vue logistique du projet pour securiser les livraisons, les couts et les delais.",
   risks: "Carte decisionnelle des risques, de la criticite et du potentiel d'economie.",
   heatmaps: "Repere les lots, familles ou zones qui concentrent le plus de budget.",
   drilldown: "Analyse detaillee des lignes budgetaires avec selection interactive et filtres globaux.",
-  timeline: "Evolution des scenarios, des economies et des decisions dans le temps.",
+  timeline: "Evolution des strategies, des economies et des decisions dans le temps.",
   monitoring: "Etat du systeme, qualite des donnees, base projet et coherence des indicateurs.",
 };
+
+function DirectionIndicatorsView({ engine, kpis, barRows, table, riskRows }) {
+  return (
+    <>
+      <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
+      {engine.isLoading ? <Skeleton rows={3} /> : null}
+      <section className="analytics-command-grid">
+        <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
+        <AnalyticsCard title="Alertes de direction" eyebrow="Priorites a surveiller">
+          <RiskMatrix rows={riskRows} />
+        </AnalyticsCard>
+      </section>
+    </>
+  );
+}
+
+function BudgetWorksView({ engine, kpis, heatmapRows, table, total }) {
+  return (
+    <>
+      <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
+      {engine.isLoading ? <Skeleton rows={3} /> : null}
+      <section className="analytics-command-grid">
+        <AnalyticsCard title="Du budget initial au budget optimise" eyebrow="Lecture financiere">
+          <CapexWaterfall summary={kpis} />
+        </AnalyticsCard>
+        <AnalyticsCard title="Postes les plus couteux" eyebrow="Concentration budgetaire">
+          <CapexHeatmap data={heatmapRows} rows={table} />
+        </AnalyticsCard>
+      </section>
+      <AnalyticsCard title="Lignes budgetaires du projet" eyebrow={`${Number(total || table.length).toLocaleString("fr-FR")} postes analyses`}>
+        <FactMetreGrid rows={table} total={total} />
+      </AnalyticsCard>
+    </>
+  );
+}
+
+function ProcurementView({ table, barRows, sankeyRows }) {
+  return (
+    <section className="bi-dashboard-grid">
+      <AnalyticsCard title="Repartition des achats local / import" eyebrow="Arbitrages par lots">
+        <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} />
+      </AnalyticsCard>
+      <AnalyticsCard title="Analyse detaillee des achats" eyebrow="Postes concernes">
+        <FactMetreGrid rows={table} total={table.length} />
+      </AnalyticsCard>
+    </section>
+  );
+}
+
+function RiskView({ riskRows, table }) {
+  return (
+    <>
+      <AnalyticsCard title="Carte des risques projet" eyebrow="Impact et probabilite">
+        <RiskMatrix rows={riskRows} />
+      </AnalyticsCard>
+      <AnalyticsCard title="Postes exposes" eyebrow="Lignes a surveiller">
+        <FactMetreGrid rows={table} total={table.length} />
+      </AnalyticsCard>
+    </>
+  );
+}
+
+function CostMapView({ heatmapRows, table }) {
+  return (
+    <>
+      <AnalyticsCard title="Cartographie des couts" eyebrow="Lots et familles metier">
+        <CapexHeatmap data={heatmapRows} rows={table} />
+      </AnalyticsCard>
+      <AnalyticsCard title="Details des zones couteuses" eyebrow="Postes budgetaires">
+        <FactMetreGrid rows={table} total={table.length} />
+      </AnalyticsCard>
+    </>
+  );
+}
+
+function DetailView({ table, total }) {
+  return (
+    <AnalyticsCard title="Analyse detaillee des lignes budgetaires" eyebrow={`${Number(total || table.length).toLocaleString("fr-FR")} postes disponibles`}>
+      <FactMetreGrid rows={table} total={total} />
+    </AnalyticsCard>
+  );
+}
+
+function TimelineView({ timelineRows, kpis }) {
+  return (
+    <section className="analytics-command-grid">
+      <AnalyticsCard title="Evolution financiere du projet" eyebrow="Strategies et economies">
+        <CapexTimeline data={timelineRows} />
+      </AnalyticsCard>
+      <AnalyticsCard title="Budget final projete" eyebrow="Trajectoire budgetaire">
+        <CapexWaterfall summary={kpis} />
+      </AnalyticsCard>
+    </section>
+  );
+}
+
+function LogisticsView({ table, timelineRows }) {
+  return (
+    <section className="analytics-command-grid">
+      <AnalyticsCard title="Impact logistique sur le projet" eyebrow="Delais et livraisons">
+        <CapexTimeline data={timelineRows} />
+      </AnalyticsCard>
+      <AnalyticsCard title="Postes sensibles aux delais" eyebrow="Approvisionnement">
+        <FactMetreGrid rows={table} total={table.length} />
+      </AnalyticsCard>
+    </section>
+  );
+}
 
 function useDashboardFromUrl() {
   const [dashboard, setDashboard] = React.useState(new URLSearchParams(window.location.search).get("dashboard") || "direction");
@@ -82,6 +190,35 @@ export default function AnalyticsPage() {
     engine.qa.refetch();
   };
 
+  const renderDashboard = () => {
+    if (dashboard === "monitoring") return <AnalyticsHealthPage qa={engine.qa} />;
+    if (dashboard === "direction") {
+      return <DirectionIndicatorsView engine={engine} kpis={kpis} barRows={barRows} table={table} riskRows={riskRows} />;
+    }
+    if (dashboard === "capex") {
+      return <BudgetWorksView engine={engine} kpis={kpis} heatmapRows={heatmapRows} table={table} total={total} />;
+    }
+    if (dashboard === "procurement") {
+      return <ProcurementView table={table} barRows={barRows} sankeyRows={sankeyRows} />;
+    }
+    if (dashboard === "logistics") {
+      return <LogisticsView table={table} timelineRows={timelineRows} />;
+    }
+    if (dashboard === "risks") {
+      return <RiskView riskRows={riskRows} table={table} />;
+    }
+    if (dashboard === "heatmaps") {
+      return <CostMapView heatmapRows={heatmapRows} table={table} />;
+    }
+    if (dashboard === "drilldown") {
+      return <DetailView table={table} total={total} />;
+    }
+    if (dashboard === "timeline") {
+      return <TimelineView timelineRows={timelineRows} kpis={kpis} />;
+    }
+    return <DirectionIndicatorsView engine={engine} kpis={kpis} barRows={barRows} table={table} riskRows={riskRows} />;
+  };
+
   return (
     <main className="cockpit-page analytics-engine-page">
       <section className="page-hero compact analytics-engine-hero">
@@ -107,41 +244,7 @@ export default function AnalyticsPage() {
       {engine.error ? <div className="analytics-error">{engine.error.message}</div> : null}
       {engine.isFetching ? <div className="live-refresh">Mise a jour des indicateurs en cours...</div> : null}
 
-      {dashboard === "monitoring" ? (
-        <AnalyticsHealthPage qa={engine.qa} />
-      ) : (
-        <>
-          <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
-
-          {engine.isLoading ? <Skeleton rows={4} /> : null}
-
-          <section className="analytics-command-grid">
-            <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
-            <AnalyticsCard title="Du budget initial au budget optimise" eyebrow="Avant / apres arbitrage">
-              <CapexWaterfall summary={kpis} />
-            </AnalyticsCard>
-          </section>
-
-          <section className="bi-dashboard-grid">
-            <AnalyticsCard title="Repartition des achats local / import" eyebrow="Decisions par lots">
-              <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} />
-            </AnalyticsCard>
-            <AnalyticsCard title="Zones les plus couteuses" eyebrow="Lots et familles">
-              <CapexHeatmap data={heatmapRows} />
-            </AnalyticsCard>
-            <AnalyticsCard title="Carte des risques projet" eyebrow="Probabilite et impact">
-              <RiskMatrix rows={riskRows} />
-            </AnalyticsCard>
-            <AnalyticsCard title="Evolution financiere du projet" eyebrow="Scenarios et economies">
-              <CapexTimeline data={timelineRows} />
-            </AnalyticsCard>
-          </section>
-
-          <AnalyticsCard title="Analyse detaillee des lignes budgetaires" eyebrow="Tableau operationnel">
-            <FactMetreGrid rows={table} total={total} />
-          </AnalyticsCard>
-        </>
-      )}
+      {renderDashboard()}
     </main>
   );
 }
