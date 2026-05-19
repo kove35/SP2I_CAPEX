@@ -425,6 +425,58 @@ class AnalyticsRepository:
             result[key] = [normalize_display_text(str(value)) for value in rows if value]
         return result
 
+    def quality_metrics(self) -> dict[str, Any]:
+        row = self.db.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) AS nb_lignes,
+                    COALESCE(SUM(capex_local), 0) AS capex_local_total,
+                    SUM(CASE WHEN quantite IS NULL OR quantite <= 0 THEN 1 ELSE 0 END) AS lignes_quantite_invalide,
+                    SUM(CASE WHEN capex_local IS NULL OR capex_local <= 0 THEN 1 ELSE 0 END) AS lignes_capex_invalide,
+                    SUM(CASE WHEN lot IS NULL OR TRIM(lot) = '' THEN 1 ELSE 0 END) AS lignes_sans_lot,
+                    SUM(CASE WHEN designation IS NULL OR TRIM(designation) = '' THEN 1 ELSE 0 END) AS lignes_sans_designation,
+                    SUM(CASE WHEN famille IS NULL OR TRIM(famille) = '' OR LOWER(famille) IN ('default', 'unknown') THEN 1 ELSE 0 END) AS lignes_famille_a_classer,
+                    COUNT(DISTINCT lot) AS lots_distincts,
+                    COUNT(DISTINCT batiment) AS batiments_distincts,
+                    COUNT(DISTINCT niveau) AS niveaux_distincts
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        return self._json_safe(dict(row))
+
+    def import_audit_history(self, limit: int = 10) -> list[dict[str, Any]]:
+        try:
+            rows = self.db.execute(
+                text(
+                    """
+                    SELECT
+                        import_id,
+                        fichier,
+                        statut,
+                        score_qualite,
+                        lignes_excel,
+                        lignes_parsees,
+                        lignes_fact_metre,
+                        capex_source,
+                        capex_fact_metre,
+                        ecart_capex,
+                        ecart_capex_pct,
+                        lots_detectes,
+                        colonnes_reconnues,
+                        created_at
+                    FROM dqe_import_audit
+                    ORDER BY created_at DESC
+                    LIMIT :limit
+                    """
+                ),
+                {"limit": limit},
+            ).mappings().all()
+            return [self._json_safe(dict(row)) for row in rows]
+        except Exception:
+            return []
+
     def pipeline_debug(self) -> dict[str, Any]:
         """
         Retourne un diagnostic SQL lisible du pipeline DQE -> PostgreSQL.

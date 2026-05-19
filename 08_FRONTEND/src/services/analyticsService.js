@@ -40,3 +40,7 @@ export function getAnalyticsDrilldown(filters, extras = {}) {
 export function getAnalyticsQaSummary() {
   return request({ url: "/analytics/qa-summary" });
 }
+
+export function getAnalyticsDataQuality() {
+  return request({ url: "/analytics/data-quality" });
+}

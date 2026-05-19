@@ -59,13 +59,13 @@ export const sidebarSections = [
   },
   {
     id: "procurement",
-    title: "Achats & import",
+    title: "Approvisionnement strategique",
     icon: PackageSearch,
     items: [
-      { label: "Arbitrage import", path: "/app/procurement?tab=import", icon: Ship },
+      { label: "Arbitrage local / import", path: "/app/procurement?tab=import", icon: Ship },
       { label: "Fournisseurs", path: "/app/procurement?tab=suppliers", icon: Users },
-      { label: "Containers", path: "/app/logistics?tab=containers", icon: Boxes },
-      { label: "Couts logistiques", path: "/app/logistics?tab=freight", icon: Truck },
+      { label: "Containers", path: "/app/procurement?tab=containers", icon: Boxes },
+      { label: "Cout rendu chantier", path: "/app/procurement?tab=costs", icon: Truck },
       { label: "Risques import", path: "/app/procurement?tab=risks", icon: AlertTriangle },
     ],
   },
@@ -88,9 +88,9 @@ export const sidebarSections = [
     items: [
       { label: "Importer un DQE", path: "/app/dqe?tab=import", icon: Upload },
       { label: "Analyse IA", path: "/app/dqe?tab=analysis", icon: Database },
-      { label: "Envoyer en base", path: "/app/dqe?tab=import", icon: GitCompare },
+      { label: "Envoyer en base", path: "/app/dqe?tab=sync", icon: GitCompare },
       { label: "Qualite donnees", path: "/app/dqe?tab=quality", icon: BarChart3 },
-      { label: "Historique imports", path: "/app/dqe?tab=analysis", icon: Clock3 },
+      { label: "Historique imports", path: "/app/dqe?tab=history", icon: Clock3 },
     ],
   },
   {
