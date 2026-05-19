@@ -176,6 +176,95 @@ class AnalyticsService:
             "warnings": warnings,
         }
 
+    def data_quality(self) -> dict[str, Any]:
+        """Controle qualite bout-en-bout Excel -> FACT_METRE -> cockpit."""
+        query = AnalyticsQuery()
+        debug = self.repository.pipeline_debug()
+        metrics = self.repository.quality_metrics()
+        source = self._latest_pipeline_source()
+        history = self.repository.import_audit_history()
+        source_rows = int(source.get("rows_in_source_json") or 0)
+        source_capex = float(source.get("capex_source") or 0)
+        fact_rows = int(metrics.get("nb_lignes") or debug.get("fact_metre_count") or 0)
+        analytics_capex = float(metrics.get("capex_local_total") or 0)
+        capex_delta = analytics_capex - source_capex
+        capex_delta_pct = abs(capex_delta) / source_capex if source_capex else 0
+        line_delta = fact_rows - source_rows
+        line_delta_pct = abs(line_delta) / source_rows if source_rows else 0
+        family_pending = int(metrics.get("lignes_famille_a_classer") or 0)
+        invalid_rows = (
+            int(metrics.get("lignes_quantite_invalide") or 0)
+            + int(metrics.get("lignes_capex_invalide") or 0)
+            + int(metrics.get("lignes_sans_lot") or 0)
+            + int(metrics.get("lignes_sans_designation") or 0)
+        )
+        anomalies = list(source.get("ai_anomalies") or [])
+        warnings: list[str] = []
+        if not source.get("available"):
+            warnings.append("Aucun fichier source pipeline disponible.")
+        if capex_delta_pct > 0.005:
+            warnings.append("Ecart financier superieur a la tolerance de 0,5 %.")
+        if source_rows and fact_rows != source_rows:
+            warnings.append("Le nombre de lignes source et FACT_METRE differe.")
+        if family_pending:
+            warnings.append(f"{family_pending} lignes restent sans classification metier robuste.")
+        if invalid_rows:
+            warnings.append(f"{invalid_rows} controles ligne sont en anomalie dans FACT_METRE.")
+
+        score = 100.0
+        score -= min(35, capex_delta_pct * 1000)
+        score -= min(20, line_delta_pct * 100)
+        score -= min(20, (family_pending / max(fact_rows, 1)) * 100)
+        score -= min(15, (invalid_rows / max(fact_rows, 1)) * 100)
+        score -= min(10, len(anomalies) * 1.5)
+        score = round(max(0, score), 1)
+
+        checks = {
+            "excel_source_available": bool(source.get("available")),
+            "financial_reconciliation_ok": capex_delta_pct <= 0.005,
+            "pipeline_rows_ok": bool(source_rows and fact_rows == source_rows),
+            "fact_metre_non_empty": fact_rows > 0,
+            "taxonomy_ok": family_pending == 0,
+            "line_quality_ok": invalid_rows == 0,
+        }
+
+        return normalize_payload_labels({
+            "status": "SUCCESS",
+            "filters": {},
+            "pagination": {"page": 1, "page_size": len(anomalies), "total": len(anomalies)},
+            "kpis": {
+                "score_qualite": score,
+                "capex_source": round(source_capex, 2),
+                "capex_analytics": round(analytics_capex, 2),
+                "ecart_capex": round(capex_delta, 2),
+                "ecart_capex_pct": round(capex_delta_pct, 6),
+                "lignes_excel": source_rows,
+                "lignes_fact_metre": fact_rows,
+                "lignes_rejetees": max(source_rows - fact_rows, 0),
+                "lignes_famille_a_classer": family_pending,
+                "anomalies": len(anomalies) + invalid_rows,
+            },
+            "charts": {
+                "pipeline": [
+                    {"label": "Excel source", "value": source_rows},
+                    {"label": "Parsing IA", "value": source_rows},
+                    {"label": "FACT_METRE", "value": fact_rows},
+                    {"label": "Cockpit", "value": fact_rows},
+                ],
+                "checks": checks,
+            },
+            "table": anomalies[:100],
+            "metadata": {
+                "engine": "SP2I Data Quality Center",
+                "qa_status": "PASS" if not warnings else "WARN",
+                "tolerance_capex_pct": 0.005,
+                "source": source,
+                "metrics": metrics,
+                "history": history,
+            },
+            "warnings": warnings,
+        })
+
     def query_performance(self) -> dict[str, Any]:
         start = perf_counter()
         query = AnalyticsQuery()
@@ -203,16 +292,40 @@ class AnalyticsService:
         audit_excel = payload.get("audit_excel", {}) if isinstance(payload, dict) else {}
         sheet_selection = audit_excel.get("sheet_selection", {})
         ai_preview = audit_excel.get("ai_preview", {})
+        lignes = payload.get("lignes", []) if isinstance(payload, dict) else []
+        capex_source = 0.0
+        for ligne in lignes:
+            if not isinstance(ligne, dict):
+                continue
+            montant = (
+                ligne.get("prix_total_ht")
+                or ligne.get("montant_total")
+                or ligne.get("montant_ht")
+                or ligne.get("total_ht")
+                or ligne.get("CAPEX_LOCAL")
+                or ligne.get("CAPEX_LOCAL_MONTANT")
+            )
+            try:
+                capex_source += float(str(montant or 0).replace(" ", "").replace(",", "."))
+            except ValueError:
+                quantite = ligne.get("quantite") or 0
+                pu = ligne.get("prix_unitaire_ht") or ligne.get("PU_LOCAL") or 0
+                try:
+                    capex_source += float(quantite or 0) * float(pu or 0)
+                except (TypeError, ValueError):
+                    pass
         return {
             "available": True,
             "source": payload.get("source") if isinstance(payload, dict) else None,
-            "rows_in_source_json": len(payload.get("lignes", [])) if isinstance(payload, dict) else 0,
+            "rows_in_source_json": len(lignes),
+            "capex_source": round(capex_source, 2),
             "source_fact_metre": sheet_selection.get("source_fact_metre", []),
             "selection_reason": sheet_selection.get("reason"),
             "sheet_evaluations": sheet_selection.get("evaluations", []),
             "ignored_sheets": sheet_selection.get("ignored_sheets", []),
             "blacklist_active": sheet_selection.get("blacklist_active", []),
             "ai_preview": ai_preview,
+            "ai_anomalies": audit_excel.get("ai_anomalies", []),
         }
 
     def _build_dashboard(self, query: AnalyticsQuery, dashboard_type: str) -> dict[str, Any]:

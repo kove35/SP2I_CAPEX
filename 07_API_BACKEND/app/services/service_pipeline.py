@@ -167,6 +167,8 @@ class ServicePipeline:
             self._nettoyer_dimensions_orphelines()
             total_sql = self.db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one()
             total_capex = self.db.execute(text("SELECT COALESCE(SUM(capex_local), 0) FROM fact_metre")).scalar_one()
+            source_quality = self._calculer_qualite_source(total_sql, total_capex)
+            self._historiser_import_dqe(source_quality, logs)
             analytics_cache.clear()
             logs.append(f"DB sync OK: {faits} lignes FACT_METRE.")
             logs.append(f"DB sync OK: {familles} lignes DIM_FAMILLE.")
@@ -187,6 +189,7 @@ class ServicePipeline:
                 "fact_metre_sql_count": int(total_sql or 0),
                 "capex_local_sql_total": round(float(total_capex or 0), 2),
                 "analytics_cache_cleared": True,
+                "data_quality": source_quality,
                 "logs": logs,
             }
         except Exception as erreur:
@@ -248,6 +251,123 @@ class ServicePipeline:
         for statement in statements:
             self.db.execute(text(statement))
         self.db.commit()
+
+    def _calculer_qualite_source(self, lignes_fact: Any, capex_fact: Any) -> dict[str, Any]:
+        """Reconcilie le dernier fichier source avec le FACT_METRE synchronise."""
+        payload: dict[str, Any] = {}
+        if self.chemin_source.exists():
+            try:
+                payload = json.loads(self.chemin_source.read_text(encoding="utf-8-sig"))
+            except Exception:
+                payload = {}
+
+        lignes_source = payload.get("lignes", []) if isinstance(payload, dict) else []
+        audit_excel = payload.get("audit_excel", {}) if isinstance(payload, dict) else {}
+        ai_preview = audit_excel.get("ai_preview", {}) if isinstance(audit_excel, dict) else {}
+        capex_source = sum(self._montant_local_source(ligne) for ligne in lignes_source if isinstance(ligne, dict))
+        capex_fact_float = float(capex_fact or 0)
+        ecart = capex_fact_float - capex_source
+        ecart_pct = abs(ecart) / capex_source if capex_source else 0
+        lignes_excel = int(ai_preview.get("lignes_detectees") or len(lignes_source) or 0)
+        lignes_parsees = len(lignes_source)
+        lignes_fact_int = int(lignes_fact or 0)
+        pertes = max(lignes_excel - lignes_parsees, 0)
+
+        score = 100.0
+        if capex_source and ecart_pct > 0.005:
+            score -= min(35, ecart_pct * 1000)
+        if lignes_excel and lignes_fact_int:
+            line_gap = abs(lignes_fact_int - lignes_parsees) / max(lignes_parsees, 1)
+            score -= min(25, line_gap * 100)
+        if pertes:
+            score -= min(15, (pertes / max(lignes_excel, 1)) * 100)
+        score = max(0, round(score, 1))
+
+        return {
+            "score_qualite": score,
+            "fichier": payload.get("source", "") if isinstance(payload, dict) else "",
+            "lignes_excel": lignes_excel,
+            "lignes_parsees": lignes_parsees,
+            "lignes_fact_metre": lignes_fact_int,
+            "lignes_rejetees": pertes,
+            "capex_source": round(capex_source, 2),
+            "capex_fact_metre": round(capex_fact_float, 2),
+            "ecart_capex": round(ecart, 2),
+            "ecart_capex_pct": round(ecart_pct, 6),
+            "lots_detectes": int(ai_preview.get("lots_detected") or 0),
+            "colonnes_reconnues": int(ai_preview.get("recognized_columns") or 0),
+            "anomalies": audit_excel.get("ai_anomalies", []) if isinstance(audit_excel, dict) else [],
+            "sheet_selection": audit_excel.get("sheet_selection", {}) if isinstance(audit_excel, dict) else {},
+        }
+
+    def _montant_local_source(self, ligne: dict[str, Any]) -> float:
+        quantite = self._valeur_numerique(ligne.get("quantite"))
+        pu = self._valeur_numerique(ligne.get("prix_unitaire_ht") or ligne.get("pu_local") or ligne.get("PU_LOCAL"))
+        return self._montant_local(ligne, quantite, pu)
+
+    def _historiser_import_dqe(self, quality: dict[str, Any], logs: list[str]) -> None:
+        """Stocke un audit minimal du dernier import si la table existe."""
+        if self.db is None:
+            return
+        try:
+            self.db.execute(
+                text(
+                    """
+                    INSERT INTO dqe_import_audit (
+                        fichier,
+                        statut,
+                        score_qualite,
+                        lignes_excel,
+                        lignes_parsees,
+                        lignes_fact_metre,
+                        capex_source,
+                        capex_fact_metre,
+                        ecart_capex,
+                        ecart_capex_pct,
+                        lots_detectes,
+                        colonnes_reconnues,
+                        anomalies_json,
+                        metadata_json
+                    )
+                    VALUES (
+                        :fichier,
+                        'SUCCESS',
+                        :score_qualite,
+                        :lignes_excel,
+                        :lignes_parsees,
+                        :lignes_fact_metre,
+                        :capex_source,
+                        :capex_fact_metre,
+                        :ecart_capex,
+                        :ecart_capex_pct,
+                        :lots_detectes,
+                        :colonnes_reconnues,
+                        CAST(:anomalies_json AS jsonb),
+                        CAST(:metadata_json AS jsonb)
+                    )
+                    """
+                ),
+                {
+                    "fichier": quality.get("fichier", ""),
+                    "score_qualite": quality.get("score_qualite", 0),
+                    "lignes_excel": quality.get("lignes_excel", 0),
+                    "lignes_parsees": quality.get("lignes_parsees", 0),
+                    "lignes_fact_metre": quality.get("lignes_fact_metre", 0),
+                    "capex_source": quality.get("capex_source", 0),
+                    "capex_fact_metre": quality.get("capex_fact_metre", 0),
+                    "ecart_capex": quality.get("ecart_capex", 0),
+                    "ecart_capex_pct": quality.get("ecart_capex_pct", 0),
+                    "lots_detectes": quality.get("lots_detectes", 0),
+                    "colonnes_reconnues": quality.get("colonnes_reconnues", 0),
+                    "anomalies_json": json.dumps(quality.get("anomalies", []), ensure_ascii=False, default=str),
+                    "metadata_json": json.dumps({"sheet_selection": quality.get("sheet_selection", {})}, ensure_ascii=False, default=str),
+                },
+            )
+            self.db.commit()
+            logs.append("DB sync OK: audit qualite DQE historise.")
+        except Exception as exc:
+            self.db.rollback()
+            logs.append(f"DB sync WARN: audit qualite non historise ({exc}).")
 
     def _executer_moteur_backend(self) -> dict[str, Any]:
         """
