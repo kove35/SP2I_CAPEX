@@ -265,6 +265,10 @@ function buildGainWaterfallOption(items = [], currency = "FCFA") {
   };
 }
 
+function buildDecisionWaterfallOption(items = [], currency = "FCFA") {
+  return buildGainWaterfallOption(items, currency);
+}
+
 function GainPotentialCard({ gainAnalysis, fallbackGain, currency, onOpen }) {
   const kpis = gainAnalysis?.kpis || {};
   const gainNet = Number(kpis.gain_net || fallbackGain || 0);
@@ -445,6 +449,13 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
       filter: "agSetColumnFilter",
     },
     { field: "score_confiance_ia", headerName: "Confiance IA", minWidth: 130, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
+    {
+      field: "decision_reasons",
+      headerName: "Pourquoi ?",
+      minWidth: 220,
+      valueGetter: ({ data: row }) => (row?.decision_reasons || []).map((reason) => reason.label).join(" | "),
+      tooltipValueGetter: ({ value }) => value,
+    },
   ], [currency]);
 
   const handleSelect = (row) => {
@@ -503,6 +514,11 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
               </article>
             </div>
             <p>{selectedRow.storytelling}</p>
+            <div className="decision-reason-list">
+              {(selectedRow.decision_reasons || []).map((reason) => (
+                <span className={reason.type} key={reason.label}>{reason.type === "positive" ? "OK" : reason.type === "warning" ? "!" : "-"} {reason.label}</span>
+              ))}
+            </div>
             <dl>
               <div><dt>Maritime</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.maritime, currency)}</dd></div>
               <div><dt>Douane</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.douane, currency)}</dd></div>
@@ -515,6 +531,98 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
           <p>Selectionner une ligne pour ouvrir le detail fournisseur local vs Chine, le landed cost, la timeline et la recommandation IA.</p>
         )}
       </aside>
+    </section>
+  );
+}
+
+function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
+  const kpis = data?.kpis || {};
+  const charts = data?.charts || {};
+  const metadata = data?.metadata || {};
+  const comparison = charts.comparison || {};
+  const activeTitle = metadata.family_scope || "Famille selectionnee";
+
+  if (!data?.table?.length) {
+    return null;
+  }
+
+  return (
+    <section className="family-cockpit-page">
+      <header className="family-cockpit-hero">
+        <div>
+          <span>Cockpit strategique famille</span>
+          <h2>Cockpit strategique - {activeTitle}</h2>
+          <p>{metadata.storytelling?.[0]}</p>
+        </div>
+        <div className="family-cockpit-actions">
+          <button type="button" onClick={onOpenGain}>Detail du gain</button>
+          <button type="button" onClick={onExport}>Exporter dossier {activeTitle}</button>
+        </div>
+      </header>
+
+      <div className="family-kpi-grid">
+        <span><b>{formatCurrency(kpis.capex_local, currency)}</b> CAPEX local</span>
+        <span><b>{formatCurrency(kpis.capex_chine_rendu_chantier, currency)}</b> Chine rendu chantier</span>
+        <span><b>{formatCurrency(kpis.gain_net_total, currency)}</b> Gain net reel</span>
+        <span><b>{formatPercent(kpis.roi_moyen)}</b> ROI import</span>
+        <span><b>{kpis.nb_lignes || 0}</b> Lignes</span>
+        <span><b>{kpis.nb_fournisseurs || 0}</b> Fournisseurs</span>
+        <span><b>{Math.round(Number(comparison.china?.lead_time || 0))} j</b> Delai moyen Chine</span>
+        <span><b>{Math.round(Number(kpis.risque_moyen || 0))}/100</b> Risque moyen</span>
+        <span><b>{formatCurrency(kpis.cout_logistique, currency)}</b> Cout logistique</span>
+        <span><b>{formatCurrency(kpis.cout_douane, currency)}</b> Cout douane</span>
+        <span><b>{kpis.containers || 0}</b> Containers</span>
+        <span><b>{formatPercent(kpis.part_capex_projet)}</b> Part projet</span>
+      </div>
+
+      <section className="family-story-card">
+        <div>
+          <span>Resume IA decisionnel</span>
+          {(metadata.storytelling || []).map((line) => <p key={line}>{line}</p>)}
+        </div>
+        <div className="hybrid-strategy-card">
+          <span>Mode hybride</span>
+          <strong>Importer le standard, garder le critique en local</strong>
+          <p>IMPORT : lignes a ROI positif et faible risque. LOCAL : composants critiques delai/SAV. HYBRIDE : lots techniques avec volume importable mais dependance chantier.</p>
+        </div>
+      </section>
+
+      <section className="family-comparison-grid">
+        <article>
+          <span>LOCAL</span>
+          <strong>{formatCurrency(comparison.local?.cost, currency)}</strong>
+          <p>Delai {comparison.local?.lead_time || 0} j | Qualite {comparison.local?.quality || 0}/100 | Risque {comparison.local?.risk || 0}/100</p>
+          <small>{comparison.local?.availability}</small>
+        </article>
+        <article>
+          <span>CHINE</span>
+          <strong>{formatCurrency(comparison.china?.cost, currency)}</strong>
+          <p>Delai {comparison.china?.lead_time || 0} j | Qualite {comparison.china?.quality || 0}/100 | Risque {comparison.china?.risk || 0}/100</p>
+          <small>{comparison.china?.availability}</small>
+        </article>
+        <article className="wide">
+          <span>Waterfall gain famille</span>
+          <BIChart option={buildDecisionWaterfallOption(charts.waterfall || [], currency)} height={260} chartKey={`family-waterfall-${activeTitle}-${currency}`} />
+        </article>
+      </section>
+
+      <section className="family-logistics-grid">
+        <article>
+          <span>Timeline import</span>
+          {(charts.timeline || []).map((step) => (
+            <div key={step.step}>
+              <b>{step.step}</b>
+              <small>{step.days} j | Risque {step.risk}</small>
+            </div>
+          ))}
+        </article>
+        <article>
+          <span>Containers</span>
+          <strong>{charts.containers?.count || 0} container(s)</strong>
+          <p>{charts.containers?.cbm || 0} CBM estimes. {charts.containers?.mutualisation}</p>
+          <b>{formatCurrency(charts.containers?.logistics_cost, currency)} de cout logistique</b>
+        </article>
+      </section>
     </section>
   );
 }
@@ -692,6 +800,12 @@ export default function ProcurementPage() {
       <section className="cockpit-split">
         {tab === "import" ? (
           <>
+            <FamilyStrategicCockpit
+              data={procurementLines}
+              currency={activeCurrency}
+              onOpenGain={() => setGainDrawerOpen(true)}
+              onExport={handleProcurementExport}
+            />
             <AnalyticsCard title="Repartition des achats" eyebrow="Lots vers fournisseurs et arbitrage">
               <ImportDecisionSankey rows={rows} sankeyRows={sankeyRows} />
             </AnalyticsCard>
