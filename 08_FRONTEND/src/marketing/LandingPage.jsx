@@ -82,7 +82,7 @@ export default function LandingPage({ onNavigate }) {
             <div className="mockup-grid">
               <article><span>Budget optimise</span><strong>1.9 Md</strong></article>
               <article><span>Rentabilite</span><strong>+14.6%</strong></article>
-              <article><span>Scenarios</span><strong>12</strong></article>
+              <article><span>Strategies</span><strong>12</strong></article>
               <article><span>Risque global</span><strong>MEDIUM</strong></article>
             </div>
             <div className="route-line">

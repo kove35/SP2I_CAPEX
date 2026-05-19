@@ -4,7 +4,7 @@ import { useDashboardStore } from "../../store/dashboardStore";
 
 const filterConfig = [
   ["projet", "Projet"],
-  ["scenario", "Scenario"],
+  ["scenario", "Strategie"],
   ["batiment", "Batiment"],
   ["niveau", "Niveau"],
   ["lot", "Lot"],
@@ -18,7 +18,7 @@ export default function GlobalFilterBar() {
   const resetFilters = useDashboardStore((state) => state.resetFilters);
 
   return (
-    <section className="global-filter-bar" aria-label="Filtres globaux dashboard">
+    <section className="global-filter-bar" aria-label="Filtres de pilotage">
       {filterConfig.map(([key, label]) => (
         <label key={key}>
           <span>{label}</span>
@@ -31,7 +31,7 @@ export default function GlobalFilterBar() {
       ))}
       <button type="button" className="icon-text-button" onClick={resetFilters}>
         <RotateCcw size={15} />
-        Reset
+        Reinitialiser
       </button>
     </section>
   );

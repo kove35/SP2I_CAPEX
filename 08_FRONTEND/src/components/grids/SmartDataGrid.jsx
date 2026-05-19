@@ -2,6 +2,7 @@ import React from "react";
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
+import { agGridLocaleFr } from "../../utils/agGridLocaleFr";
 
 export default function SmartDataGrid({
   rows = [],
@@ -19,6 +20,11 @@ export default function SmartDataGrid({
       resizable: true,
       floatingFilter: true,
       minWidth: 130,
+      filterParams: {
+        buttons: ["reset", "apply"],
+        closeOnApply: true,
+        debounceMs: 250,
+      },
     }),
     []
   );
@@ -32,6 +38,9 @@ export default function SmartDataGrid({
         pagination
         paginationPageSize={25}
         paginationPageSizeSelector={[25, 50, 100]}
+        localeText={agGridLocaleFr}
+        overlayNoRowsTemplate='<span class="sp2i-grid-empty">Aucune ligne budgetaire a afficher</span>'
+        overlayLoadingTemplate='<span class="sp2i-grid-empty">Chargement des donnees projet...</span>'
         animateRows
         suppressCellFocus
         rowSelection={{ mode: "singleRow" }}

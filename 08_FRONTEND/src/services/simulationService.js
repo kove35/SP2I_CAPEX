@@ -1,4 +1,5 @@
 import { request } from "./apiClient";
+import { SCENARIO_OPTIONS } from "../utils/businessContext";
 
 export const defaultSimulationPayload = {
   items: [
@@ -46,8 +47,8 @@ export const defaultSimulationPayload = {
   persist: true,
   summary_only: false,
   return_lines: true,
-  scenario_name: "FRONT_COCKPIT_TEST",
-  scenario_type: "IMPORT_AGRESSIF",
+  scenario_name: SCENARIO_OPTIONS[0].code,
+  scenario_type: "IMPORT_OPTIMIZATION",
   created_by: "frontend",
 };
 

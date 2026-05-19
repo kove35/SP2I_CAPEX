@@ -9,6 +9,7 @@ import ScenarioComparison from "../../components/procurement/ScenarioComparison"
 import { useAppStore } from "../../store/appStore.jsx";
 import { defaultSimulationPayload, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
+import { getProjectContext, getScenarioContext } from "../../utils/businessContext";
 
 export default function SimulationPage({ defaultTab = "simulation" }) {
   const [tab, setTab] = React.useState(defaultTab);
@@ -59,6 +60,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const lines = simulation?.lignes || [];
   const criticalLines = lines.filter((line) => String(line.risk_level || "").toUpperCase().includes("HIGH")).length;
   const importedLines = kpi.lignes ? Math.round((Number(kpi.lignes_import || 0) / Number(kpi.lignes || 1)) * 100) : 0;
+  const activeScenario = getScenarioContext(scenarioName);
+  const activeProject = getProjectContext();
 
   return (
     <main className="cockpit-page cockpit-page-fit">
@@ -69,7 +72,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
 
       <div className="tab-row">
         <button className={tab === "simulation" ? "active" : ""} onClick={() => setTab("simulation")} type="button">Simulation</button>
-        <button className={tab === "scenarios" ? "active" : ""} onClick={() => setTab("scenarios")} type="button">Scenarios</button>
+        <button className={tab === "scenarios" ? "active" : ""} onClick={() => setTab("scenarios")} type="button">Strategies</button>
         <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")} type="button">Historique</button>
         <button className={tab === "compare" ? "active" : ""} onClick={() => setTab("compare")} type="button">Comparaison</button>
       </div>
@@ -85,7 +88,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
             <KpiCard label="Imports recommandes" value={`${importedLines}%`} />
           </section>
           <section className="cockpit-split">
-            <AnalyticsCard title="Lignes du scenario teste" eyebrow={simulation?.metadata?.simulation_id || "scenario actif"}>
+            <AnalyticsCard title="Lignes de la strategie testee" eyebrow={activeScenario.label}>
               <div className="panel-scroll">
                 {loading ? <Skeleton /> : <SimulationTable rows={lines} />}
               </div>
@@ -94,7 +97,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
               <SimulationToolbar running={loading} onRun={runSimulation} scenarioName={scenarioName} onScenarioNameChange={setScenarioName} />
               <AnalyticsCard title="Synthese de decision" eyebrow="Arbitrage projet">
                 <ul className="signal-list">
-                  <li>{lines.length} lignes analysees dans le scenario actif.</li>
+                  <li>{lines.length} lignes analysees dans la strategie active.</li>
                   <li>{importedLines}% d'imports recommandes par le moteur.</li>
                   <li>{criticalLines} lignes a risque eleve a verifier.</li>
                   <li>Les details financiers restent consolides dans la base projet et le cockpit direction.</li>
@@ -105,8 +108,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         </>
       ) : (
         <AnalyticsCard
-          title={tab === "history" ? "Historique scenarios" : tab === "compare" ? "Comparaison scenarios" : "Scenarios disponibles"}
-          eyebrow={`${scenarios.length} scenarios PostgreSQL`}
+          title={tab === "history" ? "Historique des strategies" : tab === "compare" ? "Comparer les strategies" : "Strategies disponibles"}
+          eyebrow={`${scenarios.length} strategies sauvegardees`}
           action={tab === "compare" ? <button className="primary-action" type="button" onClick={runCompare}>Comparer les 2 derniers</button> : null}
         >
           {tab === "compare" ? (
@@ -114,17 +117,17 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
           ) : (
             <div className="data-table-wrap panel-scroll">
               <table className="data-table">
-                <thead><tr><th>Scenario</th><th>Type</th><th>Projet</th><th>Date</th></tr></thead>
+                <thead><tr><th>Strategie</th><th>Orientation</th><th>Projet</th><th>Date</th></tr></thead>
                 <tbody>
                   {scenarios.map((scenario) => (
                     <tr key={scenario.scenario_id}>
-                      <td>{scenario.scenario_nom || scenario.name || `Scenario ${scenario.scenario_id}`}</td>
-                      <td>{scenario.scenario_type || "CAPEX"}</td>
-                      <td>{scenario.projet_id || "Pointe-Noire"}</td>
+                      <td>{getScenarioContext(scenario.scenario_nom || scenario.name).label}</td>
+                      <td>{getScenarioContext(scenario.scenario_type || scenario.scenario_nom).description}</td>
+                      <td>{activeProject.label}</td>
                       <td>{scenario.created_at || "-"}</td>
                     </tr>
                   ))}
-                  {!scenarios.length ? <tr><td colSpan="4">Lance une simulation pour charger les scenarios.</td></tr> : null}
+                  {!scenarios.length ? <tr><td colSpan="4">Lance une simulation pour charger les strategies.</td></tr> : null}
                 </tbody>
               </table>
             </div>
