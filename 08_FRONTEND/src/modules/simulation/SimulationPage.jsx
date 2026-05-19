@@ -7,9 +7,64 @@ import SimulationToolbar from "../../components/simulation/SimulationToolbar";
 import SimulationTable from "../../components/simulation/SimulationTable";
 import ScenarioComparison from "../../components/procurement/ScenarioComparison";
 import { useAppStore } from "../../store/appStore.jsx";
-import { defaultSimulationPayload, simulateCapex } from "../../services/simulationService";
+import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext } from "../../utils/businessContext";
+
+const SIMULATION_TIMEOUT_MS = 18000;
+
+function withTimeout(promise, timeoutMs, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`${label} ne repond pas assez vite. Donnees analytics synchronisees affichees.`)), timeoutMs);
+    }),
+  ]);
+}
+
+function riskLabel(value) {
+  const score = Number(value || 0);
+  if (score >= 70) return "Eleve";
+  if (score >= 50) return "Moyen";
+  return "Maitrise";
+}
+
+function mapPreviewLine(row) {
+  return {
+    ...row,
+    id_ligne: row.id_ligne || `${row.lot || "ligne"}-${row.designation}`,
+    decision_finale: row.decision_ia || row.decision_import || "A etudier",
+    economie_nette: Number(row.gain_net || row.economie_nette || 0),
+    risk_level: riskLabel(row.risque),
+    container_strategy: row.containers ? `${row.containers} container(s)` : "A consolider",
+    lead_time_total: row.delai || row.lead_time_total || row.lead_time_days || 0,
+  };
+}
+
+function buildSimulationFromPreview(preview, scenarioName) {
+  const kpis = preview?.kpis || {};
+  const rows = (preview?.table || []).map(mapPreviewLine);
+  const capexLocal = Number(kpis.capex_local || rows.reduce((sum, row) => sum + Number(row.prix_local || 0), 0));
+  const capexOptimise = Number(kpis.capex_chine_rendu_chantier || rows.reduce((sum, row) => sum + Number(row.landed_cost_chine || 0), 0));
+  const economie = Number(kpis.gain_net_total || rows.reduce((sum, row) => sum + Number(row.economie_nette || 0), 0));
+
+  return {
+    status: "SUCCESS",
+    scenario_name: scenarioName,
+    kpi: {
+      capex_local: capexLocal,
+      capex_optimise: capexOptimise,
+      economie_nette: economie,
+      lignes: Number(kpis.nb_lignes || rows.length),
+      lignes_import: Number(kpis.nb_import || rows.filter((row) => row.decision_finale === "IMPORT").length),
+    },
+    lignes: rows,
+    metadata: {
+      source: "analytics-procurement-lines",
+      engine: preview?.metadata?.engine || "SP2I Analytics Engine",
+    },
+  };
+}
 
 export default function SimulationPage({ defaultTab = "simulation" }) {
   const [tab, setTab] = React.useState(defaultTab);
@@ -19,6 +74,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const [comparison, setComparison] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [notice, setNotice] = React.useState("");
   const { setState } = useAppStore();
 
   React.useEffect(() => {
@@ -28,21 +84,45 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const runSimulation = async () => {
     setLoading(true);
     setError("");
+    setNotice("");
     try {
-      const result = await simulateCapex({ ...defaultSimulationPayload, scenario_name: scenarioName });
+      const result = await withTimeout(
+        simulateCapex({ ...defaultSimulationPayload, scenario_name: scenarioName, persist: false }),
+        SIMULATION_TIMEOUT_MS,
+        "La simulation temps reel"
+      );
+      const hasUsableResult = Number(result?.kpi?.capex_local || 0) > 0 && Array.isArray(result?.lignes) && result.lignes.length > 0;
+
+      if (!hasUsableResult) {
+        throw new Error("La simulation a retourne un resultat vide.");
+      }
+
       setSimulation(result);
       setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: result }));
-      try {
-        const scenarioData = await listScenarios();
-        setScenarios(scenarioData.scenarios || []);
-      } catch (scenarioError) {
-        console.warn("SCENARIOS HISTORY UNAVAILABLE", scenarioError);
-        setScenarios([]);
-      }
     } catch (apiError) {
-      setError(apiError.message);
+      try {
+        const preview = await withTimeout(
+          getSimulationAnalyticsPreview({}, { devise: "FCFA" }),
+          SIMULATION_TIMEOUT_MS,
+          "Le relais analytics"
+        );
+        const fallback = buildSimulationFromPreview(preview, scenarioName);
+        setSimulation(fallback);
+        setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: fallback }));
+        setNotice(apiError.message || "Simulation temps reel indisponible. Donnees analytics synchronisees affichees.");
+      } catch (previewError) {
+        setError(previewError.message || apiError.message);
+      }
     } finally {
       setLoading(false);
+      withTimeout(listScenarios(), 8000, "L'historique des strategies")
+        .then((scenarioData) => {
+          setScenarios(scenarioData.scenarios || []);
+        })
+        .catch((scenarioError) => {
+          console.warn("SCENARIOS HISTORY UNAVAILABLE", scenarioError);
+          setScenarios([]);
+        });
     }
   };
 
@@ -78,6 +158,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
       </div>
 
       {error ? <div className="app-error">{error}</div> : null}
+      {notice ? <div className="app-warning">{notice}</div> : null}
 
       {tab === "simulation" ? (
         <>
