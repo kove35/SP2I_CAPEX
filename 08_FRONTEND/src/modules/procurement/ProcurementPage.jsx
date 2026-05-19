@@ -595,14 +595,14 @@ export default function ProcurementPage() {
           <AnalyticsCard title="Portefeuille fournisseurs" eyebrow="Mini ERP sourcing">
             <div className="data-table-wrap panel-scroll">
               <table className="data-table">
-                <thead><tr><th>Fournisseur / famille</th><th>Pays</th><th>Score</th><th>Qualite</th><th>Delai</th><th>ROI</th><th>Budget</th></tr></thead>
+                <thead><tr><th>Fournisseur / famille</th><th>Pays / port</th><th>Score</th><th>Confiance</th><th>Delai</th><th>FOB / ROI</th><th>Budget</th></tr></thead>
                 <tbody>
                   {supplierRows.map((supplier) => (
                     <tr key={supplier.supplier} onClick={() => applyFilters({ famille: supplier.supplier })}>
                       <td>{supplier.supplier}</td>
                       <td>{supplier.country || "CN"} | {supplier.port || "Shanghai"}</td>
                       <td><span className="procurement-badge">{supplier.score}/100</span></td>
-                      <td>{supplier.quality}/100</td>
+                      <td>{supplier.supplier_confidence_score || supplier.quality}/100</td>
                       <td>{supplier.lead_time_days || supplier.lead} j</td>
                       <td>{supplier.fob_usd ? `${supplier.fob_usd} USD FOB` : formatPercent(supplier.roi)}</td>
                       <td>{formatMoney(supplier.capex_scope || supplier.capex)}</td>
