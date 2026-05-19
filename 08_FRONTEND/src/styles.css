@@ -1263,6 +1263,14 @@ a {
   color: #fecaca;
 }
 
+.app-warning {
+  border: 1px solid rgba(94, 234, 212, .28);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: rgba(20, 184, 166, .10);
+  color: #c7fff4;
+}
+
 .workflow-rail {
   display: grid;
   grid-template-columns: repeat(7, minmax(90px, 1fr));
