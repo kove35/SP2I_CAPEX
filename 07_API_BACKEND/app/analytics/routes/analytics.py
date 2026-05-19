@@ -90,6 +90,11 @@ def suppliers(query=Depends(analytics_query), db: Session = Depends(get_db)) -> 
     return AnalyticsService(db).suppliers(query)
 
 
+@router.get("/procurement-lines", response_model=AnalyticsResponse)
+def procurement_lines(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).procurement_lines(query)
+
+
 @router.get("/currency", response_model=AnalyticsResponse)
 def currency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
     return AnalyticsService(db).currency(query)

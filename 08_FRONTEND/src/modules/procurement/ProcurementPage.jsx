@@ -4,6 +4,7 @@ import KpiCard from "../../ui/KpiCard";
 import BIChart from "../../components/charts/BIChart";
 import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
 import RiskMatrix from "../../components/charts/RiskMatrix";
+import SmartDataGrid from "../../components/grids/SmartDataGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { exportAnalyticsGainAnalysis, exportAnalyticsProcurementFile } from "../../services/analyticsService";
@@ -415,6 +416,109 @@ function GainDetailDrawer({ analysis, filters, currency, onClose }) {
   );
 }
 
+function ProcurementLineArbitrage({ data, currency, onSelect }) {
+  const [quickSearch, setQuickSearch] = React.useState("");
+  const [selectedRow, setSelectedRow] = React.useState(null);
+  const rows = data?.table || [];
+  const kpis = data?.kpis || {};
+  const columns = React.useMemo(() => [
+    { field: "designation", headerName: "Designation", minWidth: 280, pinned: "left", tooltipField: "designation", filter: "agTextColumnFilter" },
+    { field: "quantite", headerName: "Quantite", width: 110, type: "numericColumn" },
+    { field: "unite", headerName: "Unite", width: 90 },
+    { field: "fournisseur_local", headerName: "Fournisseur local", minWidth: 190, filter: "agSetColumnFilter" },
+    { field: "pays_local", headerName: "Pays local", minWidth: 150 },
+    { field: "prix_local", headerName: "Prix local", minWidth: 140, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
+    { field: "fournisseur_chine", headerName: "Fournisseur Chine", minWidth: 210, filter: "agSetColumnFilter" },
+    { field: "port_chine", headerName: "Port Chine", minWidth: 130, filter: "agSetColumnFilter" },
+    { field: "fob_chine", headerName: "FOB Chine", minWidth: 130, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
+    { field: "landed_cost_chine", headerName: "Cout rendu chantier", minWidth: 170, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
+    { field: "gain_net", headerName: "Gain net", minWidth: 130, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
+    { field: "roi_import", headerName: "ROI import", minWidth: 120, valueFormatter: ({ value }) => formatPercent(value), type: "numericColumn" },
+    { field: "risque", headerName: "Risque", minWidth: 105, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
+    { field: "delai", headerName: "Delai", minWidth: 95, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))} j`, type: "numericColumn" },
+    {
+      field: "decision_ia",
+      headerName: "Decision IA",
+      minWidth: 130,
+      pinned: "right",
+      cellRenderer: ({ value }) => <span className={`decision-badge ${String(value || "").toLowerCase().replaceAll(" ", "-")}`}>{value}</span>,
+      filter: "agSetColumnFilter",
+    },
+    { field: "score_confiance_ia", headerName: "Confiance IA", minWidth: 130, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
+  ], [currency]);
+
+  const handleSelect = (row) => {
+    setSelectedRow(row);
+    onSelect?.(row);
+  };
+
+  return (
+    <section className="line-arbitrage-shell">
+      <header className="line-arbitrage-header">
+        <div>
+          <span>Vue strategique par famille</span>
+          <strong>Arbitrage fournisseur ligne par ligne</strong>
+          <small>{Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} lignes | Gain net {formatCurrency(kpis.gain_net_total, currency)} | ROI moyen {formatPercent(kpis.roi_moyen)}</small>
+        </div>
+        <div className="line-arbitrage-kpis">
+          <i>IMPORT {kpis.nb_import || 0}</i>
+          <i>HYBRIDE {kpis.nb_hybride || 0}</i>
+          <i>Risque {Math.round(Number(kpis.risque_moyen || 0))}/100</i>
+        </div>
+        <input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Rechercher une ligne, un fournisseur, un port..." />
+      </header>
+
+      <SmartDataGrid
+        rows={rows}
+        columns={columns}
+        height={430}
+        quickFilterText={quickSearch}
+        onRowSelected={handleSelect}
+        getRowClass={({ data: row }) => (selectedRow?.id_ligne && row?.id_ligne === selectedRow.id_ligne ? "sp2i-row-selected" : "")}
+        rowClassRules={{
+          "sp2i-row-import": ({ data: row }) => row?.decision_ia === "IMPORT",
+          "sp2i-row-risk": ({ data: row }) => Number(row?.risque || 0) >= 70,
+        }}
+      />
+
+      <aside className="line-arbitrage-detail">
+        {selectedRow ? (
+          <>
+            <div>
+              <span>Detail ligne</span>
+              <strong>{selectedRow.designation}</strong>
+            </div>
+            <div className="supplier-comparison-grid">
+              <article>
+                <span>LOCAL</span>
+                <strong>{selectedRow.fournisseur_local}</strong>
+                <p>{selectedRow.pays_local} | {selectedRow.delai_local} j | Qualite {selectedRow.qualite_locale}/100</p>
+                <b>{formatCurrency(selectedRow.prix_local, currency)}</b>
+              </article>
+              <article>
+                <span>CHINE</span>
+                <strong>{selectedRow.fournisseur_chine}</strong>
+                <p>Port {selectedRow.port_chine} | MOQ {selectedRow.moq_chine} | {selectedRow.certifications_chine}</p>
+                <b>{formatCurrency(selectedRow.landed_cost_chine, currency)}</b>
+              </article>
+            </div>
+            <p>{selectedRow.storytelling}</p>
+            <dl>
+              <div><dt>Maritime</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.maritime, currency)}</dd></div>
+              <div><dt>Douane</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.douane, currency)}</dd></div>
+              <div><dt>Assurance</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.assurance, currency)}</dd></div>
+              <div><dt>Logistique locale</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.logistique_locale, currency)}</dd></div>
+              <div><dt>Marge securite</dt><dd>{formatCurrency(selectedRow.landed_cost_detail?.marge_securite, currency)}</dd></div>
+            </dl>
+          </>
+        ) : (
+          <p>Selectionner une ligne pour ouvrir le detail fournisseur local vs Chine, le landed cost, la timeline et la recommandation IA.</p>
+        )}
+      </aside>
+    </section>
+  );
+}
+
 function ActiveProcurementAnalysis({ analysis, activeChips, drilldownTarget, onReset, onClose, onTab }) {
   const path = drilldownTarget?.path?.length
     ? drilldownTarget.path
@@ -478,6 +582,7 @@ export default function ProcurementPage() {
   const procurementData = analytics.procurement.data;
   const gainAnalysisData = analytics.gainAnalysis.data;
   const supplierIntelligence = analytics.suppliers.data;
+  const procurementLines = analytics.procurementLines.data;
   const scenarioData = analytics.procurementScenarios.data;
   const currencyData = analytics.currency.data;
   const importRiskData = analytics.importRisks.data;
@@ -586,9 +691,25 @@ export default function ProcurementPage() {
 
       <section className="cockpit-split">
         {tab === "import" ? (
-          <AnalyticsCard title="Repartition des achats" eyebrow="Lots vers fournisseurs et arbitrage">
-            <ImportDecisionSankey rows={rows} sankeyRows={sankeyRows} />
-          </AnalyticsCard>
+          <>
+            <AnalyticsCard title="Repartition des achats" eyebrow="Lots vers fournisseurs et arbitrage">
+              <ImportDecisionSankey rows={rows} sankeyRows={sankeyRows} />
+            </AnalyticsCard>
+            <AnalyticsCard title="Arbitrage fournisseur par ligne" eyebrow="Local vs Chine">
+              <ProcurementLineArbitrage
+                data={procurementLines}
+                currency={activeCurrency}
+                onSelect={(row) => {
+                  applyFilters({ famille: row.famille, lot: row.lot });
+                  applyDrilldown({ famille: row.famille, lot: row.lot }, {
+                    source: "procurement-lines",
+                    title: `${row.decision_ia} - ${row.designation}`,
+                    metric: formatCurrency(row.gain_net, activeCurrency),
+                  });
+                }}
+              />
+            </AnalyticsCard>
+          </>
         ) : null}
 
         {tab === "suppliers" ? (

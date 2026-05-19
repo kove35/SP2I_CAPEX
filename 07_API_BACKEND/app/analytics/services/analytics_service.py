@@ -146,6 +146,17 @@ CHINA_SCENARIOS = [
     {"code": "premium_china", "label": "Premium China", "discount": 0.105, "quality": 93, "risk": 28, "lead_time": 48, "security": 0.018},
 ]
 
+LOCAL_SUPPLIERS = {
+    "electricite": {"supplier": "Societe Electrique Congo", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 12, "quality": 82, "history": "Fourniture locale recurrente"},
+    "menuiserie": {"supplier": "Ateliers Aluminium Pointe-Noire", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 18, "quality": 80, "history": "Fabrication et pose locale"},
+    "cvc": {"supplier": "Congo Clim Services", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 21, "quality": 78, "history": "Maintenance CVC locale"},
+    "climatisation": {"supplier": "Congo Clim Services", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 21, "quality": 78, "history": "Maintenance CVC locale"},
+    "plomberie": {"supplier": "Sanibat Congo", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 14, "quality": 79, "history": "Reseaux sanitaires et plomberie"},
+    "ascenseur": {"supplier": "Congo Lift Maintenance", "city": "Brazzaville", "country": "Congo", "lead_time_days": 45, "quality": 76, "history": "Maintenance et coordination installation"},
+    "alucobond": {"supplier": "Facade Congo SARL", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 24, "quality": 77, "history": "Pose facade et habillage"},
+    "default": {"supplier": "Fournisseur local a qualifier", "city": "Pointe-Noire", "country": "Congo", "lead_time_days": 15, "quality": 74, "history": "A confirmer par consultation locale"},
+}
+
 IMPORT_RISKS = [
     {"label": "Maritime", "probability": 0.44, "impact_rate": 0.018, "action": "Reserver capacite et consolider containers."},
     {"label": "Douane", "probability": 0.35, "impact_rate": 0.013, "action": "Preparer nomenclatures HS et documents origine."},
@@ -183,6 +194,9 @@ class AnalyticsService:
 
     def suppliers(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("suppliers", query, lambda: self._build_suppliers(query))
+
+    def procurement_lines(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._cached("procurement-lines", query, lambda: self._build_procurement_lines(query))
 
     def procurement_scenarios(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("procurement-scenarios", query, lambda: self._build_procurement_scenarios(query))
@@ -733,6 +747,94 @@ class AnalyticsService:
             metadata={"engine": "SP2I China Supplier Database V1", "country": "CN", "currency": "USD"},
         )
 
+    def _build_procurement_lines(self, query: AnalyticsQuery) -> dict[str, Any]:
+        analysis_query = query.model_copy(update={"page": 1, "page_size": 5000})
+        table, total = self.repository.table(analysis_query)
+        active_currency = self._active_currency(query)
+        rows: list[dict[str, Any]] = []
+
+        for row in table:
+            lot = normalize_payload_labels({"value": row.get("lot") or ""})["value"]
+            famille = normalize_payload_labels({"value": row.get("famille") or ""})["value"]
+            designation = normalize_payload_labels({"value": row.get("designation") or ""})["value"]
+            capex_local_fcfa = float(row.get("capex_local") or 0)
+            capex_import_fcfa = float(row.get("capex_import") or max(capex_local_fcfa - float(row.get("economie") or 0), 0))
+            local_supplier = self._match_local_supplier(famille, lot, designation)
+            china_supplier = self._match_china_supplier(famille, lot, designation)
+            landed = self._line_landed_cost(capex_import_fcfa, china_supplier)
+            landed_cost_fcfa = landed["landed_cost"]
+            gain_net_fcfa = capex_local_fcfa - landed_cost_fcfa
+            roi = gain_net_fcfa / landed_cost_fcfa if landed_cost_fcfa > 0 else 0
+            risk_score = min(95, max(10, china_supplier["risk"] + (12 if landed["lead_time_days"] > 60 else 0) - max(roi, 0) * 40))
+            confidence = min(96, max(45, china_supplier.get("source_confidence", 0.55) * 100 * 0.46 + china_supplier["quality"] * 0.26 + local_supplier["quality"] * 0.14 + max(0, min(roi * 180, 14))))
+
+            if roi >= 0.12 and risk_score < 58:
+                decision = "IMPORT"
+            elif roi >= 0.06 and risk_score < 72:
+                decision = "HYBRIDE"
+            elif roi > 0 and risk_score >= 72:
+                decision = "A ETUDIER"
+            else:
+                decision = "LOCAL"
+
+            rows.append({
+                "id_ligne": row.get("id_ligne"),
+                "designation": designation,
+                "quantite": float(row.get("quantite") or 0),
+                "unite": row.get("unite") or "u",
+                "lot": lot,
+                "famille": famille,
+                "fournisseur_local": local_supplier["supplier"],
+                "pays_local": f"{local_supplier['city']}, {local_supplier['country']}",
+                "delai_local": local_supplier["lead_time_days"],
+                "qualite_locale": local_supplier["quality"],
+                "historique_local": local_supplier["history"],
+                "prix_local": round(self._from_fcfa(capex_local_fcfa, active_currency), 2),
+                "fournisseur_chine": china_supplier["supplier"],
+                "province_chine": china_supplier["port"],
+                "port_chine": china_supplier["port"],
+                "moq_chine": china_supplier["moq"],
+                "certifications_chine": ", ".join(china_supplier["certifications"]),
+                "score_fournisseur_chine": china_supplier["quality"],
+                "fob_chine": round(self._from_fcfa(landed["fob"], active_currency), 2),
+                "landed_cost_chine": round(self._from_fcfa(landed_cost_fcfa, active_currency), 2),
+                "gain_net": round(self._from_fcfa(gain_net_fcfa, active_currency), 2),
+                "roi_import": round(roi, 5),
+                "risque": round(risk_score, 1),
+                "delai": landed["lead_time_days"],
+                "decision_ia": decision,
+                "score_confiance_ia": round(confidence, 1),
+                "storytelling": self._line_storytelling(decision, china_supplier, gain_net_fcfa, roi, risk_score),
+                "landed_cost_detail": landed,
+                "containers": max(1, round(landed_cost_fcfa / 42_000_000, 2)),
+                "currency": active_currency,
+            })
+
+        import_rows = [row for row in rows if row["decision_ia"] == "IMPORT"]
+        hybrid_rows = [row for row in rows if row["decision_ia"] == "HYBRIDE"]
+        return self._response(
+            query,
+            kpis={
+                "nb_lignes": len(rows),
+                "nb_import": len(import_rows),
+                "nb_hybride": len(hybrid_rows),
+                "gain_net_total": round(sum(row["gain_net"] for row in rows), 2),
+                "roi_moyen": round(sum(row["roi_import"] for row in rows) / max(len(rows), 1), 5),
+                "risque_moyen": round(sum(row["risque"] for row in rows) / max(len(rows), 1), 1),
+                "devise": active_currency,
+            },
+            charts={
+                "decisions": [
+                    {"label": decision, "value": len([row for row in rows if row["decision_ia"] == decision])}
+                    for decision in ["IMPORT", "HYBRIDE", "A ETUDIER", "LOCAL"]
+                ],
+                "top_gain": sorted(rows, key=lambda item: item["gain_net"], reverse=True)[:12],
+            },
+            table=rows,
+            total=total,
+            metadata={"engine": "SP2I Line Procurement Arbitration V1", "currency": active_currency, "country": "CN"},
+        )
+
     def _build_procurement_scenarios(self, query: AnalyticsQuery) -> dict[str, Any]:
         gain = self._build_gain_analysis(query)
         capex_local = float(gain["kpis"].get("capex_local") or 0)
@@ -1033,3 +1135,83 @@ class AnalyticsService:
     def _from_fcfa(value: float, currency: str) -> float:
         rate = SUPPORTED_CURRENCIES.get(currency, SUPPORTED_CURRENCIES["FCFA"])["to_fcfa"]
         return value / rate if rate else value
+
+    @staticmethod
+    def _text_match_score(text: str, candidates: list[str]) -> int:
+        lowered = text.lower()
+        return sum(1 for candidate in candidates if candidate and candidate.lower() in lowered)
+
+    def _match_china_supplier(self, famille: str, lot: str, designation: str) -> dict[str, Any]:
+        text = f"{famille} {lot} {designation}".lower()
+        category_keywords = {
+            "Alucobond": ["alucobond", "facade", "habillage"],
+            "Electricite": ["electric", "cable", "courant", "tableau", "luminaire"],
+            "CVC": ["cvc", "clim", "cta", "ventilation", "extraction"],
+            "Sanitaires": ["plomberie", "sanitaire", "evacuation", "eau"],
+            "Menuiserie aluminium": ["menuiserie", "aluminium", "vitrerie", "baie"],
+            "Ascenseurs": ["ascenseur", "lift"],
+            "Mobilier medical": ["medical", "mobilier", "lit", "paillasse"],
+        }
+        best = CHINA_SUPPLIERS[0]
+        best_score = -1
+        for supplier in CHINA_SUPPLIERS:
+            score = self._text_match_score(text, category_keywords.get(supplier["category"], []))
+            score += 2 if supplier["category"].lower() in text else 0
+            if score > best_score:
+                best = supplier
+                best_score = score
+        return best
+
+    def _match_local_supplier(self, famille: str, lot: str, designation: str) -> dict[str, Any]:
+        text = f"{famille} {lot} {designation}".lower()
+        for key, supplier in LOCAL_SUPPLIERS.items():
+            if key != "default" and key in text:
+                return supplier
+        if "electric" in text:
+            return LOCAL_SUPPLIERS["electricite"]
+        if "clim" in text or "cvc" in text:
+            return LOCAL_SUPPLIERS["cvc"]
+        if "sanitaire" in text or "plomberie" in text:
+            return LOCAL_SUPPLIERS["plomberie"]
+        if "aluminium" in text or "menuiserie" in text:
+            return LOCAL_SUPPLIERS["menuiserie"]
+        return LOCAL_SUPPLIERS["default"]
+
+    @staticmethod
+    def _line_landed_cost(import_cost_fcfa: float, supplier: dict[str, Any]) -> dict[str, Any]:
+        base = max(import_cost_fcfa, supplier["fob_usd"] * SUPPORTED_CURRENCIES["USD"]["to_fcfa"])
+        fob = base / 1.205
+        maritime = fob * 0.075
+        assurance = fob * 0.014
+        douane = fob * 0.052
+        logistique_locale = fob * 0.025
+        marge_securite = fob * 0.018
+        landed_cost = fob + maritime + assurance + douane + logistique_locale + marge_securite
+        return {
+            "fob": round(fob, 2),
+            "maritime": round(maritime, 2),
+            "assurance": round(assurance, 2),
+            "douane": round(douane, 2),
+            "logistique_locale": round(logistique_locale, 2),
+            "marge_securite": round(marge_securite, 2),
+            "landed_cost": round(landed_cost, 2),
+            "lead_time_days": int(supplier["lead_time_days"] + 28),
+        }
+
+    @staticmethod
+    def _line_storytelling(decision: str, supplier: dict[str, Any], gain_fcfa: float, roi: float, risk_score: float) -> str:
+        if decision == "IMPORT":
+            return (
+                f"Le fournisseur Chine {supplier['supplier']} permet un gain net estime a {round(roi * 100)} %. "
+                f"Le principal risque concerne le delai maritime et un score risque de {round(risk_score)}/100."
+            )
+        if decision == "HYBRIDE":
+            return (
+                f"Une strategie hybride est recommandee : importer la partie standardisable via {supplier['supplier']} "
+                "et conserver en local les besoins urgents ou sensibles au planning."
+            )
+        if decision == "A ETUDIER":
+            return (
+                f"Le gain existe mais reste sensible au risque fournisseur/logistique. Lancer une RFQ et verifier certifications {', '.join(supplier['certifications'][:2])}."
+            )
+        return "Le fournisseur local reste preferable pour proteger le delai chantier ou lorsque le gain net import n'est pas suffisant."
