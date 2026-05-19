@@ -1,7 +1,9 @@
 import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import KpiCard from "../../ui/KpiCard";
 import { analyzeExcel, syncExcel, validateAiMapping } from "../../services/excelUploadService";
+import { getAnalyticsDataQuality } from "../../services/analyticsService";
 
 const SUPPORTED_UPLOAD_EXTENSIONS = [".xlsx", ".xlsm", ".xls", ".csv"];
 
@@ -22,6 +24,12 @@ export default function DqePage() {
   const [validationResult, setValidationResult] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
+  const dataQuality = useQuery({
+    queryKey: ["analytics-data-quality", syncResult?.db_sync?.fact_metre_sql_count || 0],
+    queryFn: getAnalyticsDataQuality,
+    enabled: ["quality", "history", "sync"].includes(tab),
+    staleTime: 30_000,
+  });
 
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
@@ -42,6 +50,17 @@ export default function DqePage() {
   const lotsDetected = aiPreview.lots_detected ?? "-";
   const estimatedBudget = Number(aiPreview.estimated_capex_detected || 0);
   const warningCount = bestAnalysis.avertissements?.length || 0;
+  const qualityPayload = dataQuality.data || {};
+  const qualityKpis = qualityPayload.kpis || {};
+  const qualityMeta = qualityPayload.metadata || {};
+  const importHistory = qualityMeta.history || [];
+  const pipelineSteps = qualityPayload.charts?.pipeline || [];
+  const qualityWarnings = qualityPayload.warnings || [];
+  const qualityAnomalies = Array.isArray(qualityPayload.table) ? qualityPayload.table : [];
+  const qualityCenterScore = Math.round(Number(qualityKpis.score_qualite ?? qualityScore ?? 0));
+  const capexSource = Number(qualityKpis.capex_source || 0);
+  const capexAnalytics = Number(qualityKpis.capex_analytics || 0);
+  const capexGapPct = Number(qualityKpis.ecart_capex_pct || 0) * 100;
 
   const handleFileChange = (event) => {
     const selectedFile = event.target.files?.[0];
@@ -142,7 +161,9 @@ export default function DqePage() {
         <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Importer le DQE</button>
         <button className={tab === "analysis" ? "active" : ""} onClick={() => setTab("analysis")} type="button">Analyse DQE</button>
         <button className={tab === "mapping" ? "active" : ""} onClick={() => setTab("mapping")} type="button">Correspondance</button>
+        <button className={tab === "sync" ? "active" : ""} onClick={() => setTab("sync")} type="button">Envoyer en base</button>
         <button className={tab === "quality" ? "active" : ""} onClick={() => setTab("quality")} type="button">Qualite donnees</button>
+        <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")} type="button">Historique imports</button>
       </div>
       {error ? <div className="app-error">{error}</div> : null}
       <section className="metric-grid">
@@ -152,7 +173,7 @@ export default function DqePage() {
         <KpiCard label="Lots detectes" value={lotsDetected} />
       </section>
       <section className="cockpit-split">
-        <AnalyticsCard title={tab === "mapping" ? "Correspondance des colonnes" : tab === "quality" ? "Controle qualite" : "Apercu du DQE importe"} eyebrow="Import assiste">
+        <AnalyticsCard title={tab === "mapping" ? "Correspondance des colonnes" : tab === "quality" ? "Centre de controle qualite" : tab === "sync" ? "Envoi controle en base projet" : tab === "history" ? "Historique des imports DQE" : "Apercu du DQE importe"} eyebrow="Import assiste">
           {tab === "import" ? (
             <div className="excel-upload-zone">
               <label>
@@ -221,15 +242,102 @@ export default function DqePage() {
             </div>
           ) : null}
 
+          {tab === "sync" ? (
+            <div className="excel-upload-zone">
+              <p>Cette action remplace les donnees analytiques courantes uniquement si le fichier produit un FACT_METRE exploitable.</p>
+              <label>
+                Fichier DQE/BPU a envoyer
+                <input type="file" accept=".xlsx,.xlsm,.xls,.csv" onChange={handleFileChange} />
+              </label>
+              <div className="excel-actions">
+                <button className="primary-action secondary-action" type="button" onClick={runAnalysis} disabled={!file || loading}>
+                  Controler avant envoi
+                </button>
+                <button className="primary-action" type="button" onClick={runSync} disabled={!file || loading}>
+                  {loading ? "Envoi..." : "Envoyer en base projet"}
+                </button>
+              </div>
+              <ul className="signal-list">
+                <li>Protection active : sync vide ou sans CAPEX positif bloquee.</li>
+                <li>Audit cree automatiquement apres synchronisation.</li>
+                <li>Dernier statut : {syncResult?.db_sync?.status || syncResult?.status || "non lance"}.</li>
+              </ul>
+            </div>
+          ) : null}
+
           {tab === "quality" ? (
-            <ul className="signal-list">
-              <li>Score DQE : {qualityScore}%.</li>
-              <li>Confiance globale IA : {Math.round(Number(aiConfidence.global_confidence || 0) * 100)}%.</li>
-              <li>{warningCount} avertissement(s) mapping et {aiAnomalies.length} anomalie(s) detectees.</li>
-              <li>Feuille recommandee : {recommendedSheet}.</li>
-              <li>{validationResult ? "Correspondance validee humainement." : "Validation humaine recommandee avant synchronisation."}</li>
-              <li>{syncResult ? "Synchronisation pipeline effectuee." : "Synchronise seulement apres controle de la preview."}</li>
-            </ul>
+            <div className="quality-center">
+              <div className="ai-preview-grid">
+                <span>Qualite donnees <strong>{qualityCenterScore}%</strong></span>
+                <span>CAPEX fichier <strong>{capexSource.toLocaleString("fr-FR")}</strong></span>
+                <span>CAPEX cockpit <strong>{capexAnalytics.toLocaleString("fr-FR")}</strong></span>
+                <span>Ecart financier <strong>{capexGapPct.toFixed(3)}%</strong></span>
+              </div>
+              <ul className="signal-list">
+                <li>Controle financier : tolerance maximale 0,5 % entre le fichier source et FACT_METRE.</li>
+                <li>Lignes fichier : {qualityKpis.lignes_excel ?? lineCount} | lignes en base : {qualityKpis.lignes_fact_metre ?? "-"}.</li>
+                <li>Classification metier a completer : {qualityKpis.lignes_famille_a_classer ?? "-"} ligne(s).</li>
+                <li>Source retenue : {(qualityMeta.source?.source_fact_metre || [recommendedSheet]).join(", ") || "-"}.</li>
+                <li>Statut QA : {qualityMeta.qa_status || (qualityWarnings.length ? "WARN" : "PASS")}.</li>
+              </ul>
+              <div className="data-table-wrap panel-scroll">
+                <table className="data-table">
+                  <thead><tr><th>Etape</th><th>Lignes</th></tr></thead>
+                  <tbody>
+                    {pipelineSteps.map((step) => (
+                      <tr key={step.label}>
+                        <td>{step.label}</td>
+                        <td>{Number(step.value || 0).toLocaleString("fr-FR")}</td>
+                      </tr>
+                    ))}
+                    {!pipelineSteps.length ? <tr><td colSpan="2">Aucun controle pipeline disponible pour le moment.</td></tr> : null}
+                  </tbody>
+                </table>
+              </div>
+              {qualityWarnings.length ? (
+                <div className="app-error">
+                  {qualityWarnings.map((warning) => <div key={warning}>{warning}</div>)}
+                </div>
+              ) : null}
+              <div className="data-table-wrap panel-scroll">
+                <table className="data-table">
+                  <thead><tr><th>Point a controler</th><th>Severite</th><th>Action recommandee</th></tr></thead>
+                  <tbody>
+                    {qualityAnomalies.slice(0, 12).map((item, index) => (
+                      <tr key={`${item.code || item.type || "anomaly"}-${index}`}>
+                        <td>{item.message || item.reason || item.code || item.type || "Anomalie detectee"}</td>
+                        <td>{item.severity || item.niveau || "A controler"}</td>
+                        <td>{item.action || "Verifier la ligne source avant synchronisation."}</td>
+                      </tr>
+                    ))}
+                    {!qualityAnomalies.length ? <tr><td colSpan="3">Aucune anomalie detaillee remontee par le dernier controle.</td></tr> : null}
+                  </tbody>
+                </table>
+              </div>
+              {dataQuality.isLoading ? <p>Controle qualite en cours...</p> : null}
+              {dataQuality.error ? <p className="app-error">Controle qualite indisponible : {dataQuality.error.message}</p> : null}
+            </div>
+          ) : null}
+
+          {tab === "history" ? (
+            <div className="data-table-wrap panel-scroll">
+              <table className="data-table">
+                <thead><tr><th>Date</th><th>Fichier</th><th>Score</th><th>Lignes</th><th>CAPEX</th><th>Ecart</th></tr></thead>
+                <tbody>
+                  {importHistory.map((item) => (
+                    <tr key={item.import_id || `${item.fichier}-${item.created_at}`}>
+                      <td>{item.created_at ? new Date(item.created_at).toLocaleString("fr-FR") : "-"}</td>
+                      <td>{item.fichier || "-"}</td>
+                      <td>{Math.round(Number(item.score_qualite || 0))}%</td>
+                      <td>{Number(item.lignes_fact_metre || 0).toLocaleString("fr-FR")}</td>
+                      <td>{Number(item.capex_fact_metre || 0).toLocaleString("fr-FR")}</td>
+                      <td>{(Number(item.ecart_capex_pct || 0) * 100).toFixed(3)}%</td>
+                    </tr>
+                  ))}
+                  {!importHistory.length ? <tr><td colSpan="6">Aucun historique persistant disponible avant le prochain envoi en base.</td></tr> : null}
+                </tbody>
+              </table>
+            </div>
           ) : null}
         </AnalyticsCard>
         <aside className="context-panel">

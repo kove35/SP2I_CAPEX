@@ -267,6 +267,28 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     CREATE INDEX IF NOT EXISTS ix_dim_scenario_created_at ON dim_scenario(created_at);
     CREATE INDEX IF NOT EXISTS ix_fact_simulation_scenario_id ON fact_simulation(scenario_id);
     CREATE INDEX IF NOT EXISTS ix_simulation_run_scenario_id ON simulation_run(scenario_id);
+
+    CREATE TABLE IF NOT EXISTS dqe_import_audit (
+        import_id BIGSERIAL PRIMARY KEY,
+        fichier VARCHAR(500) NOT NULL DEFAULT '',
+        statut VARCHAR(50) NOT NULL DEFAULT 'SUCCESS',
+        score_qualite DOUBLE PRECISION NOT NULL DEFAULT 0,
+        lignes_excel INTEGER NOT NULL DEFAULT 0,
+        lignes_parsees INTEGER NOT NULL DEFAULT 0,
+        lignes_fact_metre INTEGER NOT NULL DEFAULT 0,
+        capex_source DOUBLE PRECISION NOT NULL DEFAULT 0,
+        capex_fact_metre DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ecart_capex DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ecart_capex_pct DOUBLE PRECISION NOT NULL DEFAULT 0,
+        lots_detectes INTEGER NOT NULL DEFAULT 0,
+        colonnes_reconnues INTEGER NOT NULL DEFAULT 0,
+        anomalies_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+        metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_by VARCHAR(150) NOT NULL DEFAULT 'system',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS ix_dqe_import_audit_created_at ON dqe_import_audit(created_at);
     """
 
     with engine.begin() as connection:

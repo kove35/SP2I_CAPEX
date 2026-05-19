@@ -139,3 +139,8 @@ def debug_pipeline(db: Session = Depends(get_db)) -> dict:
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return AnalyticsService(db).qa_summary()
+
+
+@router.get("/data-quality", response_model=AnalyticsResponse)
+def data_quality(db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).data_quality()
