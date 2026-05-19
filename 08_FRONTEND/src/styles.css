@@ -3623,6 +3623,139 @@ a {
   line-height: 1.45;
 }
 
+.line-arbitrage-shell {
+  display: grid;
+  gap: 12px;
+}
+
+.line-arbitrage-header {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto minmax(220px, 320px);
+  gap: 12px;
+  align-items: end;
+}
+
+.line-arbitrage-header > div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.line-arbitrage-header span,
+.line-arbitrage-detail span,
+.supplier-comparison-grid span {
+  color: #67e8c9;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.line-arbitrage-header strong,
+.line-arbitrage-detail strong {
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.line-arbitrage-header small {
+  color: #9fb4d1;
+}
+
+.line-arbitrage-header input {
+  min-height: 38px;
+  border: 1px solid rgba(148,163,184,.20);
+  border-radius: 8px;
+  padding: 0 11px;
+  color: #e5edf5;
+  background: rgba(2,6,23,.55);
+}
+
+.line-arbitrage-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.line-arbitrage-kpis i {
+  border: 1px solid rgba(103,232,201,.18);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #dffcf5;
+  background: rgba(103,232,201,.08);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.line-arbitrage-detail {
+  border: 1px solid rgba(103,232,201,.16);
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background:
+    linear-gradient(135deg, rgba(45,212,191,.10), rgba(15,23,42,.60)),
+    rgba(2,6,23,.34);
+}
+
+.supplier-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.supplier-comparison-grid article {
+  border: 1px solid rgba(148,163,184,.14);
+  border-radius: 9px;
+  padding: 12px;
+  background: rgba(2,6,23,.32);
+}
+
+.supplier-comparison-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: #f8fafc;
+}
+
+.supplier-comparison-grid p,
+.line-arbitrage-detail p {
+  margin: 8px 0 0;
+  color: #b9cadc;
+  line-height: 1.5;
+}
+
+.supplier-comparison-grid b {
+  display: block;
+  margin-top: 8px;
+  color: #99f6e4;
+}
+
+.line-arbitrage-detail dl {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.line-arbitrage-detail dl div {
+  border: 1px solid rgba(148,163,184,.12);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(2,6,23,.25);
+}
+
+.line-arbitrage-detail dt {
+  color: #8ea5c4;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.line-arbitrage-detail dd {
+  margin: 5px 0 0;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .link-button {
   border: 0;
   padding: 0;
