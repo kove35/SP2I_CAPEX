@@ -3628,6 +3628,180 @@ a {
   gap: 12px;
 }
 
+.family-cockpit-page {
+  display: grid;
+  gap: 14px;
+}
+
+.family-cockpit-hero {
+  position: sticky;
+  top: 84px;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid rgba(103,232,201,.22);
+  border-radius: 12px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(103,232,201,.18), transparent 34%),
+    linear-gradient(135deg, rgba(13,26,45,.96), rgba(7,17,31,.94));
+  box-shadow: 0 22px 70px rgba(0,0,0,.22);
+}
+
+.family-cockpit-hero span,
+.family-story-card span,
+.family-comparison-grid span,
+.family-logistics-grid span {
+  color: #67e8c9;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.family-cockpit-hero h2 {
+  margin: 7px 0;
+  color: #f8fafc;
+  font-size: clamp(24px, 2.6vw, 36px);
+}
+
+.family-cockpit-hero p {
+  margin: 0;
+  color: #b9cadc;
+  line-height: 1.5;
+}
+
+.family-cockpit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.family-cockpit-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(103,232,201,.28);
+  border-radius: 8px;
+  padding: 0 13px;
+  color: #04111f;
+  background: #67e8c9;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.family-cockpit-actions button:last-child {
+  color: #dffcf5;
+  background: rgba(255,255,255,.06);
+}
+
+.family-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.family-kpi-grid span {
+  min-height: 68px;
+  border: 1px solid rgba(148,163,184,.14);
+  border-radius: 9px;
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  padding: 9px 10px;
+  color: #8da2b8;
+  background: linear-gradient(145deg, rgba(15,23,42,.84), rgba(2,6,23,.28));
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.family-kpi-grid b {
+  color: #f8fafc;
+  font-size: 14px;
+  text-transform: none;
+}
+
+.family-story-card,
+.family-comparison-grid,
+.family-logistics-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.family-story-card {
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr);
+}
+
+.family-story-card > div,
+.family-comparison-grid article,
+.family-logistics-grid article {
+  border: 1px solid rgba(148,163,184,.15);
+  border-radius: 10px;
+  padding: 14px;
+  background: linear-gradient(145deg, rgba(15,23,42,.80), rgba(2,6,23,.32));
+}
+
+.family-story-card p,
+.family-comparison-grid p,
+.family-logistics-grid p {
+  color: #c6d4e2;
+  line-height: 1.55;
+}
+
+.hybrid-strategy-card strong,
+.family-comparison-grid strong,
+.family-logistics-grid strong {
+  display: block;
+  margin-top: 7px;
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.family-comparison-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.family-comparison-grid .wide {
+  grid-column: 1 / -1;
+}
+
+.family-comparison-grid small {
+  color: #9fb4d1;
+}
+
+.family-logistics-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.family-logistics-grid article:first-child {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.family-logistics-grid article:first-child > span {
+  grid-column: 1 / -1;
+}
+
+.family-logistics-grid article:first-child div {
+  border: 1px solid rgba(103,232,201,.12);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(2,6,23,.25);
+}
+
+.family-logistics-grid b {
+  color: #f8fafc;
+}
+
+.family-logistics-grid small {
+  display: block;
+  margin-top: 4px;
+  color: #9fb4d1;
+}
+
 .line-arbitrage-header {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) auto minmax(220px, 320px);
@@ -3754,6 +3928,34 @@ a {
   color: #f8fafc;
   font-size: 12px;
   font-weight: 850;
+}
+
+.decision-reason-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.decision-reason-list span {
+  border: 1px solid rgba(148,163,184,.14);
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #dbeafe;
+  background: rgba(255,255,255,.055);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.decision-reason-list .positive {
+  border-color: rgba(52,211,153,.28);
+  color: #99f6e4;
+  background: rgba(20,184,166,.10);
+}
+
+.decision-reason-list .warning {
+  border-color: rgba(251,191,36,.30);
+  color: #fde68a;
+  background: rgba(251,191,36,.10);
 }
 
 .link-button {

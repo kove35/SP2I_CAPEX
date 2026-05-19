@@ -750,6 +750,7 @@ class AnalyticsService:
     def _build_procurement_lines(self, query: AnalyticsQuery) -> dict[str, Any]:
         analysis_query = query.model_copy(update={"page": 1, "page_size": 5000})
         table, total = self.repository.table(analysis_query)
+        project_kpis = self.repository.kpis(AnalyticsQuery())
         active_currency = self._active_currency(query)
         rows: list[dict[str, Any]] = []
 
@@ -776,6 +777,7 @@ class AnalyticsService:
                 decision = "A ETUDIER"
             else:
                 decision = "LOCAL"
+            reasons = self._line_decision_reasons(decision, roi, risk_score, china_supplier, local_supplier, landed)
 
             rows.append({
                 "id_ligne": row.get("id_ligne"),
@@ -804,6 +806,7 @@ class AnalyticsService:
                 "delai": landed["lead_time_days"],
                 "decision_ia": decision,
                 "score_confiance_ia": round(confidence, 1),
+                "decision_reasons": reasons,
                 "storytelling": self._line_storytelling(decision, china_supplier, gain_net_fcfa, roi, risk_score),
                 "landed_cost_detail": landed,
                 "containers": max(1, round(landed_cost_fcfa / 42_000_000, 2)),
@@ -812,6 +815,52 @@ class AnalyticsService:
 
         import_rows = [row for row in rows if row["decision_ia"] == "IMPORT"]
         hybrid_rows = [row for row in rows if row["decision_ia"] == "HYBRIDE"]
+        capex_local_total = sum(float(row.get("prix_local") or 0) for row in rows)
+        landed_total = sum(float(row.get("landed_cost_chine") or 0) for row in rows)
+        project_capex_total = self._from_fcfa(float(project_kpis.get("capex_brut") or 0), active_currency)
+        logistics_cost_total = sum(self._from_fcfa(float(row.get("landed_cost_detail", {}).get("maritime") or 0), active_currency) for row in rows)
+        customs_cost_total = sum(self._from_fcfa(float(row.get("landed_cost_detail", {}).get("douane") or 0), active_currency) for row in rows)
+        containers_needed = round(sum(float(row.get("containers") or 0) for row in rows), 1)
+        main_family = query.filters.famille or query.filters.lot or (rows[0]["famille"] if rows else "Famille selectionnee")
+        positive_roi_rows = [row for row in rows if float(row.get("roi_import") or 0) > 0]
+        top_gain = sorted(rows, key=lambda item: item["gain_net"], reverse=True)[:3]
+        decision_breakdown = {
+            decision: len([row for row in rows if row["decision_ia"] == decision])
+            for decision in ["IMPORT", "HYBRIDE", "A ETUDIER", "LOCAL"]
+        }
+        comparison = {
+            "local": {
+                "cost": round(capex_local_total, 2),
+                "lead_time": round(sum(float(row.get("delai_local") or 0) for row in rows) / max(len(rows), 1), 1),
+                "quality": round(sum(float(row.get("qualite_locale") or 0) for row in rows) / max(len(rows), 1), 1),
+                "risk": 32,
+                "availability": "Forte proximite chantier",
+            },
+            "china": {
+                "cost": round(landed_total, 2),
+                "lead_time": round(sum(float(row.get("delai") or 0) for row in rows) / max(len(rows), 1), 1),
+                "quality": round(sum(float(row.get("score_fournisseur_chine") or 0) for row in rows) / max(len(rows), 1), 1),
+                "risk": round(sum(float(row.get("risque") or 0) for row in rows) / max(len(rows), 1), 1),
+                "availability": "MOQ et consolidation container",
+            },
+        }
+        timeline = [
+            {"step": "Commande", "days": 3, "risk": "Faible"},
+            {"step": "Fabrication", "days": 32, "risk": "Moyen"},
+            {"step": "Container", "days": 7, "risk": "Moyen"},
+            {"step": "Maritime", "days": 28, "risk": "Moyen"},
+            {"step": "Douane", "days": 8, "risk": "Eleve"},
+            {"step": "Chantier", "days": 3, "risk": "Faible"},
+        ]
+        storytelling = self._family_storytelling(
+            main_family,
+            capex_local_total,
+            project_capex_total,
+            positive_roi_rows,
+            rows,
+            top_gain,
+            decision_breakdown,
+        )
         return self._response(
             query,
             kpis={
@@ -821,6 +870,13 @@ class AnalyticsService:
                 "gain_net_total": round(sum(row["gain_net"] for row in rows), 2),
                 "roi_moyen": round(sum(row["roi_import"] for row in rows) / max(len(rows), 1), 5),
                 "risque_moyen": round(sum(row["risque"] for row in rows) / max(len(rows), 1), 1),
+                "capex_local": round(capex_local_total, 2),
+                "capex_chine_rendu_chantier": round(landed_total, 2),
+                "cout_logistique": round(logistics_cost_total, 2),
+                "cout_douane": round(customs_cost_total, 2),
+                "containers": containers_needed,
+                "part_capex_projet": round(capex_local_total / project_capex_total, 6) if project_capex_total else 0,
+                "nb_fournisseurs": len({row["fournisseur_local"] for row in rows} | {row["fournisseur_chine"] for row in rows}),
                 "devise": active_currency,
             },
             charts={
@@ -829,10 +885,27 @@ class AnalyticsService:
                     for decision in ["IMPORT", "HYBRIDE", "A ETUDIER", "LOCAL"]
                 ],
                 "top_gain": sorted(rows, key=lambda item: item["gain_net"], reverse=True)[:12],
+                "comparison": comparison,
+                "timeline": timeline,
+                "containers": {
+                    "count": containers_needed,
+                    "cbm": round(containers_needed * 58, 1),
+                    "mutualisation": "Regrouper les lignes IMPORT et HYBRIDE sur containers partages.",
+                    "logistics_cost": round(logistics_cost_total, 2),
+                },
+                "waterfall": self._family_waterfall(rows),
             },
             table=rows,
             total=total,
-            metadata={"engine": "SP2I Line Procurement Arbitration V1", "currency": active_currency, "country": "CN"},
+            metadata={
+                "engine": "SP2I Family Procurement Cockpit V1",
+                "currency": active_currency,
+                "country": "CN",
+                "family_scope": main_family,
+                "project_capex_total": round(project_capex_total, 2),
+                "storytelling": storytelling,
+                "decision_breakdown": decision_breakdown,
+            },
         )
 
     def _build_procurement_scenarios(self, query: AnalyticsQuery) -> dict[str, Any]:
@@ -1215,3 +1288,80 @@ class AnalyticsService:
                 f"Le gain existe mais reste sensible au risque fournisseur/logistique. Lancer une RFQ et verifier certifications {', '.join(supplier['certifications'][:2])}."
             )
         return "Le fournisseur local reste preferable pour proteger le delai chantier ou lorsque le gain net import n'est pas suffisant."
+
+    @staticmethod
+    def _line_decision_reasons(
+        decision: str,
+        roi: float,
+        risk_score: float,
+        china_supplier: dict[str, Any],
+        local_supplier: dict[str, Any],
+        landed: dict[str, Any],
+    ) -> list[dict[str, str]]:
+        reasons: list[dict[str, str]] = []
+        if roi > 0.15:
+            reasons.append({"type": "positive", "label": "ROI superieur a 15%"})
+        elif roi > 0.06:
+            reasons.append({"type": "positive", "label": "ROI positif mais a securiser"})
+        else:
+            reasons.append({"type": "warning", "label": "Gain import insuffisant"})
+
+        if china_supplier.get("source_confidence", 0) >= 0.75:
+            reasons.append({"type": "positive", "label": "Fournisseur Chine reference V1"})
+        else:
+            reasons.append({"type": "warning", "label": "Fournisseur Chine a qualifier par RFQ"})
+
+        if risk_score >= 70:
+            reasons.append({"type": "warning", "label": "Risque import eleve"})
+        elif risk_score <= 55:
+            reasons.append({"type": "positive", "label": "Risque import maitrisable"})
+
+        if landed["lead_time_days"] > 60:
+            reasons.append({"type": "warning", "label": f"Delai maritime estime {landed['lead_time_days']} jours"})
+        if decision == "LOCAL":
+            reasons.append({"type": "positive", "label": f"Delai local court : {local_supplier['lead_time_days']} jours"})
+        if decision == "HYBRIDE":
+            reasons.append({"type": "neutral", "label": "Standardiser les volumes import et garder le critique en local"})
+        return reasons
+
+    @staticmethod
+    def _family_waterfall(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        capex_local = sum(float(row.get("prix_local") or 0) for row in rows)
+        fob = sum(float(row.get("fob_chine") or 0) for row in rows)
+        maritime = sum(float(row.get("landed_cost_detail", {}).get("maritime") or 0) for row in rows)
+        douane = sum(float(row.get("landed_cost_detail", {}).get("douane") or 0) for row in rows)
+        assurance = sum(float(row.get("landed_cost_detail", {}).get("assurance") or 0) for row in rows)
+        logistique = sum(float(row.get("landed_cost_detail", {}).get("logistique_locale") or 0) for row in rows)
+        marge = sum(float(row.get("landed_cost_detail", {}).get("marge_securite") or 0) for row in rows)
+        landed = sum(float(row.get("landed_cost_chine") or 0) for row in rows)
+        return [
+            {"label": "CAPEX local", "value": round(capex_local, 2), "type": "total"},
+            {"label": "FOB Chine", "value": round(-(capex_local - fob), 2), "type": "gain"},
+            {"label": "Maritime", "value": round(maritime, 2), "type": "cost"},
+            {"label": "Douane", "value": round(douane, 2), "type": "cost"},
+            {"label": "Assurance", "value": round(assurance, 2), "type": "cost"},
+            {"label": "Logistique", "value": round(logistique, 2), "type": "cost"},
+            {"label": "Risques", "value": round(marge, 2), "type": "risk"},
+            {"label": "Gain final", "value": round(max(capex_local - landed, 0), 2), "type": "final"},
+        ]
+
+    @staticmethod
+    def _family_storytelling(
+        family: str,
+        family_capex: float,
+        project_capex: float,
+        positive_roi_rows: list[dict[str, Any]],
+        rows: list[dict[str, Any]],
+        top_gain: list[dict[str, Any]],
+        decision_breakdown: dict[str, int],
+    ) -> list[str]:
+        share = family_capex / project_capex if project_capex else 0
+        positive_rate = len(positive_roi_rows) / len(rows) if rows else 0
+        top_labels = ", ".join(row.get("designation", "ligne")[:42] for row in top_gain if row.get("gain_net", 0) > 0) or "les lignes importables les plus standardisees"
+        return [
+            f"La famille {family} represente {round(share * 100, 1)}% du CAPEX projet, calcule sur le budget projet complet et non sur la vue filtree.",
+            f"{round(positive_rate * 100)}% des lignes presentent un ROI import positif apres cout rendu chantier.",
+            f"Les principaux gains proviennent de : {top_labels}.",
+            f"Repartition IA : {decision_breakdown.get('IMPORT', 0)} IMPORT, {decision_breakdown.get('HYBRIDE', 0)} HYBRIDE, {decision_breakdown.get('LOCAL', 0)} LOCAL, {decision_breakdown.get('A ETUDIER', 0)} a etudier.",
+            "Les composants critiques chantier restent recommandes en LOCAL ou HYBRIDE lorsque le delai maritime fragilise le planning.",
+        ]
