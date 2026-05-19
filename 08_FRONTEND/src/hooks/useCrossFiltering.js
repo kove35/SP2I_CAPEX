@@ -13,6 +13,8 @@ export function useCrossFiltering() {
   const setFilters = useAnalyticsFilterStore((state) => state.setFilters);
   const resetFilters = useAnalyticsFilterStore((state) => state.resetFilters);
   const openDrilldown = useAnalyticsFilterStore((state) => state.openDrilldown);
+  const clearDrilldownTarget = useAnalyticsFilterStore((state) => state.clearDrilldown);
+  const drilldownTarget = useAnalyticsFilterStore((state) => state.drilldownTarget);
   const syncLegacyFilters = useDashboardStore((state) => state.setFilters);
   const resetLegacyFilters = useDashboardStore((state) => state.resetFilters);
 
@@ -79,13 +81,20 @@ export function useCrossFiltering() {
     invalidateAnalytics();
   }, [invalidateAnalytics, resetFilters, resetLegacyFilters]);
 
+  const clearDrilldown = React.useCallback(() => {
+    clearDrilldownTarget();
+    invalidateAnalytics();
+  }, [clearDrilldownTarget, invalidateAnalytics]);
+
   return {
     filters: normalizedFilters,
     activeChips,
+    drilldownTarget,
     applyFilter,
     applyFilters,
     applyDrilldown,
     clearFilter,
+    clearDrilldown,
     reset,
     invalidateAnalytics,
   };

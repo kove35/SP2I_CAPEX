@@ -63,7 +63,7 @@ function buildFallbackLinks(rows = [], chartRows = []) {
 }
 
 export default function ImportDecisionSankey({ rows = [], chartRows = [], sankeyRows = [] }) {
-  const { applyFilters, applyDrilldown } = useCrossFiltering();
+  const { applyDrilldown } = useCrossFiltering();
   const rawLinks = sankeyRows.length ? sankeyRows : buildFallbackLinks(rows, chartRows);
   const links = React.useMemo(() => aggregateLinks(rawLinks).filter((link) => Number(link.value || 0) > 0), [rawLinks]);
   const nodes = React.useMemo(() => {
@@ -152,15 +152,23 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
             const name = params?.name;
             const link = params?.data || {};
             let filters = {};
-            if (name === "IMPORT" || name === "LOCAL") filters = { importLocal: name, decisionImport: name };
-            else if (link?.lot || String(name || "").startsWith("L")) filters = { lot: link.lot || name };
+            const selectedName = String(name || "");
+            if (selectedName === "IMPORT" || selectedName === "LOCAL") filters = { importLocal: selectedName, decisionImport: selectedName };
+            else if (link?.lot || selectedName.startsWith("L")) filters = { lot: link.lot || selectedName };
             else if (link?.fournisseur) filters = { famille: normalizeFamily(link.fournisseur) };
+            else if (selectedName && !["Budget", "CAPEX"].includes(selectedName)) filters = { famille: normalizeFamily(selectedName) };
             if (Object.keys(filters).length) {
-              applyFilters(filters);
               applyDrilldown(filters, {
                 source: "sankey",
-                  title: `Repartition des achats ${link.source || "Budget"} -> ${link.target || name}`,
+                title: `Arbitrage ${link.source || "Budget"} -> ${link.target || name}`,
                 metric: formatMoney(link.value || 0),
+                path: ["Budget", link.decision || link.source, link.fournisseur, link.lot || selectedName].filter(Boolean),
+                decision: link.decision || selectedName,
+                selectedLabel: link.lot || link.fournisseur || selectedName,
+                value: Number(link.value || 0),
+                gain: Number(link.gain || link.economie || 0),
+                roi: Number(link.roi || 0),
+                delai: Number(link.delai || 0),
               });
             }
           },
