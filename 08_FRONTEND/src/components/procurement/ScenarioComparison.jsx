@@ -1,4 +1,5 @@
 import React from "react";
+import { getScenarioContext } from "../../utils/businessContext";
 
 export default function ScenarioComparison({ rows = [] }) {
   return (
@@ -6,7 +7,7 @@ export default function ScenarioComparison({ rows = [] }) {
       <table className="analytics-table">
         <thead>
           <tr>
-            <th>Scenario</th>
+            <th>Strategie</th>
             <th>Budget optimise</th>
             <th>Economie</th>
             <th>Taux economie</th>
@@ -15,7 +16,7 @@ export default function ScenarioComparison({ rows = [] }) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.scenario_id || row.scenario_nom}>
-              <td>{row.scenario_nom}</td>
+              <td>{getScenarioContext(row.scenario_nom).label}</td>
               <td>{Number(row.capex_optimise_total || 0).toLocaleString("fr-FR")}</td>
               <td>{Number(row.economie_totale || 0).toLocaleString("fr-FR")}</td>
               <td>{Number(row.taux_economie_global || 0).toLocaleString("fr-FR")} %</td>
@@ -23,7 +24,7 @@ export default function ScenarioComparison({ rows = [] }) {
           ))}
           {!rows.length ? (
             <tr>
-              <td colSpan="4">Selectionne deux scenarios historises.</td>
+              <td colSpan="4">Selectionne deux strategies historisees.</td>
             </tr>
           ) : null}
         </tbody>

@@ -1,8 +1,9 @@
 import { create } from "zustand";
+import { PROJECT_CONTEXT, SCENARIO_OPTIONS } from "../utils/businessContext";
 
 export const defaultAnalyticsFilters = {
-  projet: "Pointe-Noire CAPEX",
-  scenario: "FRONT_COCKPIT_TEST",
+  projet: PROJECT_CONTEXT.code,
+  scenario: SCENARIO_OPTIONS[0].code,
   batiment: "",
   niveau: "",
   lot: "",
@@ -18,7 +19,7 @@ export const defaultAnalyticsFilters = {
 
 export const analyticsFilterLabels = {
   projet: "Projet",
-  scenario: "Scenario",
+  scenario: "Strategie",
   batiment: "Batiment",
   niveau: "Niveau",
   lot: "Lot",

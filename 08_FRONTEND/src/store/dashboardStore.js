@@ -1,8 +1,9 @@
 import { create } from "zustand";
+import { PROJECT_CONTEXT, SCENARIO_OPTIONS } from "../utils/businessContext";
 
 const defaultFilters = {
-  projet: "Pointe-Noire CAPEX",
-  scenario: "FRONT_COCKPIT_TEST",
+  projet: PROJECT_CONTEXT.code,
+  scenario: SCENARIO_OPTIONS[0].code,
   batiment: "",
   niveau: "",
   lot: "",

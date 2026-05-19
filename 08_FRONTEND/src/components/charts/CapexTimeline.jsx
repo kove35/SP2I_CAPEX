@@ -4,22 +4,27 @@ import { formatMoney, formatPercent } from "../../shared/formatters";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { analyticsColors } from "../../theme/colors";
 import { chartTheme } from "../../theme/chartTheme";
+import { getScenarioContext } from "../../utils/businessContext";
 
 function normalizeTimeline(data = []) {
   const rows = Array.isArray(data) ? data : [];
   if (!rows.length) {
     return [{ date: new Date().toISOString().slice(0, 10), capex: 0, economie: 0, roi: 0, risque: 0, scenario: "T0", jalon: "Initial" }];
   }
-  return rows.map((row, index) => ({
-    date: row.date || row.periode || `T${index}`,
-    capex: Number(row.capex || row.capex_optimise || 0),
-    economie: Number(row.economie || row.economie_nette || 0),
-    roi: Number(row.roi || row.roi_import || 0),
-    risque: Number(row.risque || row.risk || row.global_risk_score || 35),
-    scenario: row.scenario || row.scenario_nom || (index === rows.length - 1 ? "Scenario actif" : "Historique"),
-    jalon: row.jalon || row.event || "Point budget",
-    nbLignes: Number(row.nb_lignes || 0),
-  }));
+  return rows.map((row, index) => {
+    const scenarioCode = row.scenario || row.scenario_nom || (index === rows.length - 1 ? "IMPORT_OPTIMIZATION" : "LOCAL_IMPORT_BALANCE");
+    return {
+      date: row.date || row.periode || `T${index}`,
+      capex: Number(row.capex || row.capex_optimise || 0),
+      economie: Number(row.economie || row.economie_nette || 0),
+      roi: Number(row.roi || row.roi_import || 0),
+      risque: Number(row.risque || row.risk || row.global_risk_score || 35),
+      scenarioCode,
+      scenario: getScenarioContext(scenarioCode).label,
+      jalon: row.jalon || row.event || "Point budget",
+      nbLignes: Number(row.nb_lignes || 0),
+    };
+  });
 }
 
 function buildInsights(rows) {
@@ -155,7 +160,7 @@ export default function CapexTimeline({ data = [] }) {
             const row = rows[params?.dataIndex ?? 0];
             if (!row) return;
             applyDrilldown(
-              { dateDebut: row.date, dateFin: row.date, scenario: row.scenario },
+              { dateDebut: row.date, dateFin: row.date, scenario: row.scenarioCode },
               {
                 source: "timeline",
                 title: `Etat projet - ${row.date} / ${row.scenario}`,

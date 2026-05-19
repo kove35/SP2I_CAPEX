@@ -3,12 +3,14 @@ import { AlertTriangle, BarChart3, FileSpreadsheet, Gauge, Menu, Play } from "lu
 import Sidebar from "../components/layout/sidebar/Sidebar";
 import { useSidebarStore } from "../components/layout/sidebar/sidebarStore";
 import { useAppStore } from "../store/appStore.jsx";
+import { getScenarioContext } from "../utils/businessContext";
 import AlertCenter from "../ui/AlertCenter";
 import ProjectSelector from "../ui/ProjectSelector";
 
 export default function AppShell({ activePath, onNavigate, children }) {
   const { state } = useAppStore();
   const { isCollapsed, toggleMobile, setProjectContext } = useSidebarStore();
+  const scenario = getScenarioContext(state.activeScenario);
 
   React.useEffect(() => {
     setProjectContext({
@@ -27,7 +29,7 @@ export default function AppShell({ activePath, onNavigate, children }) {
           </button>
           <ProjectSelector />
           <div className="topbar-metrics">
-            <span><Gauge size={16} /> Scenario : {state.activeScenario}</span>
+            <span><Gauge size={16} /> Strategie : {scenario.label}</span>
             <span><AlertTriangle size={16} /> Risque global moyen</span>
             <button type="button" onClick={() => onNavigate("/app/dqe?tab=import")}><FileSpreadsheet size={16} /> Importer DQE</button>
             <button type="button" onClick={() => onNavigate("/app/simulation")}><Play size={16} /> Tester un scenario</button>

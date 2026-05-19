@@ -48,7 +48,7 @@ export default function ProcurementPage() {
   const run = async () => {
     setError("");
     try {
-      const simulation = await simulateCapex({ ...defaultSimulationPayload, scenario_name: "SAAS_PROCUREMENT" });
+      const simulation = await simulateCapex({ ...defaultSimulationPayload, scenario_name: "IMPORT_OPTIMIZATION" });
       setRows(rowsFromSimulation(simulation.lignes || []));
 
       const id = simulation.metadata.simulation_id;

@@ -1,11 +1,12 @@
 import React from "react";
+import { PROJECT_CONTEXT, SCENARIO_OPTIONS } from "../utils/businessContext";
 
 const AppStoreContext = React.createContext(null);
 
 export function AppStoreProvider({ children }) {
   const [state, setState] = React.useState({
-    activeProject: "Pointe-Noire CAPEX",
-    activeScenario: "FRONT_COCKPIT_TEST",
+    activeProject: PROJECT_CONTEXT.code,
+    activeScenario: SCENARIO_OPTIONS[0].code,
     lastSimulation: null,
   });
 
@@ -18,8 +19,8 @@ export function useAppStore() {
   if (!context) {
     return {
       state: {
-        activeProject: "Pointe-Noire CAPEX",
-        activeScenario: "FRONT_COCKPIT_TEST",
+        activeProject: PROJECT_CONTEXT.code,
+        activeScenario: SCENARIO_OPTIONS[0].code,
         lastSimulation: null,
       },
       setState: () => {},

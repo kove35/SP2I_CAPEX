@@ -19,7 +19,7 @@ export default function LogisticsPage() {
   const run = async () => {
     setError("");
     try {
-      const simulation = await simulateCapex({ ...defaultSimulationPayload, scenario_name: "SAAS_LOGISTICS" });
+      const simulation = await simulateCapex({ ...defaultSimulationPayload, scenario_name: "LOGISTICS_SECURITY" });
       const id = simulation.metadata.simulation_id;
       const [containers, shipments, freight, site] = await Promise.all([
         getContainerPlan(id),

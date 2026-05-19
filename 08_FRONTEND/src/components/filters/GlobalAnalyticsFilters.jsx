@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { RotateCcw, Search, X } from "lucide-react";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { getAnalyticsFilters } from "../../services/filterService";
+import { getProjectContext, getScenarioContext, SCENARIO_OPTIONS } from "../../utils/businessContext";
 import AnalyticsSelect from "./AnalyticsSelect";
 
 const selectFields = [
@@ -15,6 +16,8 @@ const selectFields = [
 
 export default function GlobalAnalyticsFilters() {
   const { filters, activeChips, applyFilter, clearFilter, reset } = useCrossFiltering();
+  const project = getProjectContext(filters.projet);
+  const scenario = getScenarioContext(filters.scenario);
   const filterOptions = useQuery({
     queryKey: ["analytics-filter-options"],
     queryFn: getAnalyticsFilters,
@@ -25,13 +28,19 @@ export default function GlobalAnalyticsFilters() {
   return (
     <section className="global-analytics-panel" aria-label="Filtres de pilotage">
       <div className="global-analytics-filters">
-        <label className="filter-project">
-          <span>Projet</span>
-          <input value={filters.projet || ""} onChange={(event) => applyFilter("projet", event.target.value)} />
-        </label>
-        <label className="filter-project">
-          <span>Scenario</span>
-          <input value={filters.scenario || ""} onChange={(event) => applyFilter("scenario", event.target.value)} />
+        <div className="decision-context-card project-context-card">
+          <span>Projet immobilier</span>
+          <strong>{project.label}</strong>
+          <small>{project.type} · {project.location}</small>
+        </div>
+        <label className={`scenario-select-field ${scenario.tone}`}>
+          <span>Strategie active</span>
+          <select value={scenario.code} onChange={(event) => applyFilter("scenario", event.target.value)}>
+            {SCENARIO_OPTIONS.map((option) => (
+              <option key={option.code} value={option.code}>{option.label}</option>
+            ))}
+          </select>
+          <small>{scenario.description}</small>
         </label>
         {selectFields.map(([key, label, placeholder, optionKey]) => (
           <AnalyticsSelect

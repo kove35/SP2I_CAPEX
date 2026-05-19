@@ -13,6 +13,14 @@ export default function AnalyticsSelect({
   const [search, setSearch] = React.useState("");
   const ref = React.useRef(null);
   const selected = options.find((option) => option.value === value);
+  const placeholderByLabel = {
+    batiment: "Choisir un batiment...",
+    niveau: "Choisir un niveau...",
+    lot: "Rechercher un lot...",
+    famille: "Choisir une famille metier...",
+    "import/local": "Choisir local ou import...",
+  };
+  const searchPlaceholder = placeholderByLabel[label.toLowerCase()] || `Rechercher ${label.toLowerCase()}...`;
   const filteredOptions = React.useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return options;
@@ -44,7 +52,7 @@ export default function AnalyticsSelect({
         <div className="analytics-select-menu">
           <label className="analytics-select-search">
             <Search size={14} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={`Rechercher ${label.toLowerCase()}`} autoFocus />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={searchPlaceholder} autoFocus />
           </label>
           <button type="button" className="analytics-select-option muted" onClick={() => selectOption(null)}>
             {placeholder}

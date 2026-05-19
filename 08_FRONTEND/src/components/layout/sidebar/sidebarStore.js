@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { PROJECT_CONTEXT, SCENARIO_OPTIONS } from "../../../utils/businessContext";
 
 const defaultOpenedSections = ["direction", "dqe"];
 
@@ -9,8 +10,8 @@ export const useSidebarStore = create(
       isCollapsed: false,
       isMobileOpen: false,
       openedSections: defaultOpenedSections,
-      activeProject: "Pointe-Noire CAPEX",
-      activeScenario: "FRONT_COCKPIT_TEST",
+      activeProject: PROJECT_CONTEXT.code,
+      activeScenario: SCENARIO_OPTIONS[0].code,
       apiStatus: "online",
       syncStatus: "pret",
       toggleCollapsed: () => set((state) => ({ isCollapsed: !state.isCollapsed })),

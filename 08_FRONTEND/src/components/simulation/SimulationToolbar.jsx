@@ -1,15 +1,19 @@
 import React from "react";
+import { getScenarioContext, SCENARIO_OPTIONS } from "../../utils/businessContext";
 
 export default function SimulationToolbar({ running, onRun, scenarioName, onScenarioNameChange }) {
+  const scenario = getScenarioContext(scenarioName);
+
   return (
     <section className="analytics-toolbar">
-      <label>
-        Scenario
-        <input
-          value={scenarioName}
-          onChange={(event) => onScenarioNameChange(event.target.value)}
-          placeholder="Nom du scenario"
-        />
+      <label className={`scenario-select-field ${scenario.tone}`}>
+        Strategie
+        <select value={scenario.code} onChange={(event) => onScenarioNameChange(event.target.value)}>
+          {SCENARIO_OPTIONS.map((option) => (
+            <option key={option.code} value={option.code}>{option.label}</option>
+          ))}
+        </select>
+        <small>{scenario.description}</small>
       </label>
       <label>
         Transport

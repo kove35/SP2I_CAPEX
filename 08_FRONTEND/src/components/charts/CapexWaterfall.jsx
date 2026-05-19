@@ -5,6 +5,7 @@ import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { useAnalyticsFilters } from "../../hooks/useAnalyticsFilters";
 import { analyticsColors } from "../../theme/colors";
 import { chartTheme } from "../../theme/chartTheme";
+import { getScenarioContext } from "../../utils/businessContext";
 
 const WATERFALL_COLORS = {
   start: analyticsColors.blue,
@@ -28,11 +29,11 @@ function buildWaterfallModel(summary = {}) {
   const budgetTarget = Math.max(capexBrut * (1 - Math.max(tauxEconomie * 1.12, 0.08)), 0);
 
   return [
-    { key: "local", label: "Budget initial", value: capexBrut, kind: "start", filter: { importLocal: "LOCAL", decisionImport: "LOCAL" }, insight: "Scenario local de reference" },
+    { key: "local", label: "Budget initial", value: capexBrut, kind: "start", filter: { importLocal: "LOCAL", decisionImport: "LOCAL" }, insight: "Reference locale" },
     { key: "optimisation", label: "Optimisations", value: -optimisation, kind: "optimisation", filter: {}, insight: "Rationalisation DQE / familles" },
     { key: "import", label: "Gains import", value: -gainsImport, kind: "import", filter: { importLocal: "IMPORT", decisionImport: "IMPORT" }, insight: "Arbitrage procurement international" },
     { key: "surcouts", label: "Surcouts", value: surcouts, kind: "cost", filter: { importLocal: "LOCAL", decisionImport: "LOCAL" }, insight: "Risques logistiques / contraintes locales" },
-    { key: "final", label: "Budget final", value: capexFinal, kind: "final", filter: {}, insight: "Scenario mixte optimise" },
+    { key: "final", label: "Budget final", value: capexFinal, kind: "final", filter: {}, insight: "Strategie mixte optimisee" },
     { key: "aggressive", label: "Import agressif", value: Math.max(capexFinal - gainsImport * 0.18, 0), kind: "scenario", filter: { importLocal: "IMPORT", decisionImport: "IMPORT" }, insight: "Projection multi-scenario" },
   ].map((step, index, steps) => ({
     ...step,
@@ -100,6 +101,7 @@ export default function CapexWaterfall({ summary = {} }) {
   const steps = React.useMemo(() => buildWaterfallModel(summary), [summary]);
   const { base, bars, cumulative } = React.useMemo(() => buildSeries(steps), [steps]);
   const insights = React.useMemo(() => buildInsights(steps, summary), [steps, summary]);
+  const activeScenario = getScenarioContext(filters.scenario);
   const maxValue = Math.max(...cumulative, ...bars.map((item) => Number(item.value || 0)), 1);
   const budgetTarget = steps[0]?.budgetTarget || 0;
 
@@ -139,7 +141,7 @@ export default function CapexWaterfall({ summary = {} }) {
                 `Delta budget: <b>${formatPercent(capexBrut ? delta / capexBrut : 0)}</b>`,
                 `Cumul: <b>${formatMoney(cumul)}</b>`,
                 `Budget cible: <b>${formatMoney(budgetTarget)}</b>`,
-                `Scenario actif: <b>${filters.scenario || "FRONT_COCKPIT_TEST"}</b>`,
+                `Strategie active: <b>${activeScenario.label}</b>`,
                 `Lots principaux: <b>Electricite, Alucobond, Gros oeuvre</b>`,
                 `Top fournisseurs: <b>SP2I Supply / Import Chine</b>`,
               ].join("<br/>");
