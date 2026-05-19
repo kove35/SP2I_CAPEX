@@ -1,11 +1,13 @@
 import React from "react";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import KpiCard from "../../ui/KpiCard";
+import BIChart from "../../components/charts/BIChart";
 import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
 import RiskMatrix from "../../components/charts/RiskMatrix";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
-import { formatMoney, formatPercent } from "../../shared/formatters";
+import { exportAnalyticsGainAnalysis, exportAnalyticsProcurementFile } from "../../services/analyticsService";
+import { formatCurrency, formatMoney, formatPercent } from "../../shared/formatters";
 import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
 
 const LANDED_COST_RATES = [
@@ -173,6 +175,246 @@ function buildActiveAnalysis(rows = [], filters = {}, drilldownTarget = null, gl
   };
 }
 
+function buildGainWaterfallOption(items = [], currency = "FCFA") {
+  const labels = items.map((item) => item.label);
+  let cumulative = 0;
+  const helpers = [];
+  const bars = [];
+  const colors = [];
+  const rawValues = [];
+
+  items.forEach((item) => {
+    const value = Number(item.value || 0);
+    rawValues.push(value);
+    if (item.type === "total" || item.type === "final") {
+      helpers.push(0);
+      bars.push(Math.abs(value));
+      cumulative = item.type === "total" ? value : cumulative;
+    } else if (value < 0) {
+      helpers.push(Math.max(cumulative + value, 0));
+      bars.push(Math.abs(value));
+      cumulative += value;
+    } else {
+      helpers.push(Math.max(cumulative, 0));
+      bars.push(value);
+      cumulative += value;
+    }
+    colors.push(
+      item.type === "gain" ? "#34d399" :
+      item.type === "risk" || item.type === "cost" ? "#fb7185" :
+      item.type === "final" ? "#f59e0b" :
+      "#67e8c9"
+    );
+  });
+
+  return {
+    backgroundColor: "transparent",
+    grid: { left: 24, right: 18, top: 20, bottom: 70, containLabel: true },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: (params = []) => {
+        const index = params[1]?.dataIndex ?? 0;
+        return `<b>${labels[index]}</b><br/>Montant : ${formatCurrency(Math.abs(rawValues[index] || 0), currency)}`;
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: labels,
+      axisLabel: { color: "#9fb4d1", rotate: 28, fontSize: 10 },
+      axisLine: { lineStyle: { color: "rgba(148,163,184,.2)" } },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { color: "#9fb4d1", formatter: (value) => `${Math.round(value / 1_000_000)}M` },
+      splitLine: { lineStyle: { color: "rgba(148,163,184,.12)" } },
+    },
+    series: [
+      {
+        name: "Base",
+        type: "bar",
+        stack: "waterfall",
+        itemStyle: { color: "transparent" },
+        emphasis: { disabled: true },
+        data: helpers,
+      },
+      {
+        name: "Montant",
+        type: "bar",
+        stack: "waterfall",
+        barWidth: 28,
+        data: bars.map((value, index) => ({
+          value,
+          itemStyle: {
+            color: colors[index],
+            borderRadius: [5, 5, 0, 0],
+            shadowBlur: 12,
+            shadowColor: `${colors[index]}55`,
+          },
+        })),
+        label: {
+          show: true,
+          position: "top",
+          color: "#e5edf5",
+          fontSize: 10,
+          formatter: (params) => formatCurrency(Math.abs(rawValues[params.dataIndex] || 0), currency),
+        },
+      },
+    ],
+  };
+}
+
+function GainPotentialCard({ gainAnalysis, fallbackGain, currency, onOpen }) {
+  const kpis = gainAnalysis?.kpis || {};
+  const gainNet = Number(kpis.gain_net || fallbackGain || 0);
+  const confidence = Number(kpis.confiance || 0);
+  return (
+    <article className="gain-potential-card">
+      <div>
+        <span>Gain potentiel net</span>
+        <strong>{formatCurrency(gainNet, currency)}</strong>
+        <small>Apres transport, douane, assurance, logistique et risques estimes.</small>
+      </div>
+      <div className="gain-confidence-ring">
+        <b>{formatPercent(confidence)}</b>
+        <small>Confiance</small>
+      </div>
+      <button type="button" onClick={onOpen}>Detail du gain potentiel</button>
+    </article>
+  );
+}
+
+function GainDetailDrawer({ analysis, filters, currency, onClose }) {
+  const [transportDelta, setTransportDelta] = React.useState(0);
+  const [currencyDelta, setCurrencyDelta] = React.useState(0);
+  const kpis = analysis?.kpis || {};
+  const charts = analysis?.charts || {};
+  const metadata = analysis?.metadata || {};
+  const adjustedGain = Math.max(
+    Number(kpis.gain_net || 0) - Number(kpis.cout_import_final || 0) * (transportDelta / 100) * 0.08 - Number(kpis.capex_import_fob || 0) * (currencyDelta / 100) * 0.05,
+    0
+  );
+
+  const handleExport = async () => {
+    const blob = await exportAnalyticsGainAnalysis(filters);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "SP2I_detail_gain_potentiel.xlsx";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="gain-detail-overlay" role="presentation" onClick={onClose}>
+      <aside className="gain-detail-drawer" role="dialog" aria-modal="true" aria-label="Detail du gain potentiel" onClick={(event) => event.stopPropagation()}>
+        <header>
+          <div>
+            <span>Audit financier SP2I</span>
+            <h2>Detail du gain potentiel</h2>
+            <p>{metadata.formula}</p>
+          </div>
+          <button type="button" onClick={onClose}>Fermer</button>
+        </header>
+
+        <section className="gain-detail-kpis">
+          <span><b>{formatCurrency(kpis.capex_local, currency)}</b> CAPEX local</span>
+          <span><b>{formatCurrency(kpis.capex_import_fob, currency)}</b> Import FOB</span>
+          <span><b>{formatCurrency(kpis.cout_import_final, currency)}</b> Cout import final</span>
+          <span><b>{formatCurrency(kpis.gain_net, currency)}</b> Economie nette</span>
+          <span><b>{formatPercent(kpis.roi_net)}</b> ROI net</span>
+          <span><b>{formatPercent(kpis.confiance)}</b> Confiance</span>
+        </section>
+
+        <section className="gain-detail-grid">
+          <article className="gain-detail-panel wide">
+            <div className="panel-heading">
+              <span>Cascade financiere</span>
+              <strong>Du CAPEX local au gain net</strong>
+            </div>
+            <BIChart option={buildGainWaterfallOption(charts.waterfall || [], currency)} height={300} chartKey={`gain-${kpis.gain_net || 0}-${currency}`} />
+          </article>
+
+          <article className="gain-detail-panel">
+            <div className="panel-heading">
+              <span>Scenarios</span>
+              <strong>Fourchette decisionnelle</strong>
+            </div>
+            <div className="gain-scenario-list">
+              {(charts.scenarios || []).map((scenario) => (
+                <div key={scenario.label}>
+                  <b>{scenario.label}</b>
+                  <strong>{formatCurrency(scenario.value, currency)}</strong>
+                  <small>{scenario.description}</small>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="gain-detail-panel">
+            <div className="panel-heading">
+              <span>Sensibilite</span>
+              <strong>{formatCurrency(adjustedGain, currency)}</strong>
+            </div>
+            <label>
+              Transport +{transportDelta}%
+              <input type="range" min="0" max="40" value={transportDelta} onChange={(event) => setTransportDelta(Number(event.target.value))} />
+            </label>
+            <label>
+              Devise +{currencyDelta}%
+              <input type="range" min="0" max="25" value={currencyDelta} onChange={(event) => setCurrencyDelta(Number(event.target.value))} />
+            </label>
+            <small>Variation possible : {formatCurrency(charts.sensitivity?.min || 0, currency)} a {formatCurrency(charts.sensitivity?.max || 0, currency)}</small>
+          </article>
+        </section>
+
+        <section className="gain-detail-table">
+          <div className="panel-heading">
+            <span>Calcul audit-proof</span>
+            <strong>Couts inclus dans le gain net</strong>
+          </div>
+          <table className="data-table">
+            <thead><tr><th>Poste</th><th>Montant</th><th>Explication</th></tr></thead>
+            <tbody>
+              {(analysis?.table || []).map((row) => (
+                <tr key={row.label}>
+                  <td>{row.label}</td>
+                  <td>{formatCurrency(row.value, currency)}</td>
+                  <td>{row.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="gain-risk-story">
+          <article>
+            <div className="panel-heading">
+              <span>Risques impactant le gain</span>
+              <strong>Impacts financiers potentiels</strong>
+            </div>
+            {(charts.risks || []).map((risk) => (
+              <div className="gain-risk-row" key={risk.label}>
+                <span>{risk.label}</span>
+                <b>{formatCurrency(risk.impact, currency)}</b>
+                <small>{risk.action}</small>
+              </div>
+            ))}
+          </article>
+          <article>
+            <div className="panel-heading">
+              <span>Resume decisionnel</span>
+              <strong>Lecture non specialiste</strong>
+            </div>
+            {(metadata.storytelling || []).map((line) => <p key={line}>{line}</p>)}
+            <button type="button" onClick={handleExport}>Exporter detail gain</button>
+          </article>
+        </section>
+      </aside>
+    </div>
+  );
+}
+
 function ActiveProcurementAnalysis({ analysis, activeChips, drilldownTarget, onReset, onClose, onTab }) {
   const path = drilldownTarget?.path?.length
     ? drilldownTarget.path
@@ -221,7 +463,8 @@ function ActiveProcurementAnalysis({ analysis, activeChips, drilldownTarget, onR
 export default function ProcurementPage() {
   const [tab, setTab] = React.useState(new URLSearchParams(window.location.search).get("tab") || "import");
   const [analysisPanelClosed, setAnalysisPanelClosed] = React.useState(false);
-  const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilters, applyDrilldown, reset } = useCrossFiltering();
+  const [gainDrawerOpen, setGainDrawerOpen] = React.useState(false);
+  const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilter, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
 
   React.useEffect(() => {
@@ -233,17 +476,23 @@ export default function ProcurementPage() {
   }, [drilldownTarget?.openedAt]);
 
   const procurementData = analytics.procurement.data;
+  const gainAnalysisData = analytics.gainAnalysis.data;
+  const supplierIntelligence = analytics.suppliers.data;
+  const scenarioData = analytics.procurementScenarios.data;
+  const currencyData = analytics.currency.data;
+  const importRiskData = analytics.importRisks.data;
   const dashboardData = analytics.dashboard.data;
   const riskRows = analytics.risk.data?.charts?.risk_matrix || [];
   const sankeyRows = procurementData?.charts?.sankey || dashboardData?.charts?.sankey || [];
   const rows = React.useMemo(() => getRows(procurementData, dashboardData), [procurementData, dashboardData]);
   const kpis = procurementData?.kpis || dashboardData?.kpis || {};
-  const supplierRows = React.useMemo(() => buildSupplierRows(rows), [rows]);
+  const supplierRows = React.useMemo(() => supplierIntelligence?.table?.length ? supplierIntelligence.table : buildSupplierRows(rows), [rows, supplierIntelligence]);
   const lotRows = React.useMemo(() => buildLotRows(rows), [rows]);
   const containerRows = React.useMemo(() => buildContainerRows(rows), [rows]);
   const costRows = React.useMemo(() => landedCostRows(kpis), [kpis]);
   const insights = React.useMemo(() => buildInsights(kpis, lotRows, supplierRows), [kpis, lotRows, supplierRows]);
   const importRate = Number(kpis.taux_importable || 0);
+  const activeCurrency = filters.devise || gainAnalysisData?.metadata?.currency || "FCFA";
   const roiImport = Number(kpis.roi_import || 0);
   const totalCost = costRows.reduce((sum, row) => sum + row.value, 0);
   const activeAnalysis = React.useMemo(
@@ -260,6 +509,16 @@ export default function ProcurementPage() {
     clearDrilldown();
   };
 
+  const handleProcurementExport = async () => {
+    const blob = await exportAnalyticsProcurementFile(filters);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "SP2I_dossier_achat_chine.xlsx";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleLotClick = (lot) => {
     applyFilters({ lot });
     applyDrilldown({ lot }, { source: "procurement", title: `Analyse achat - ${lot}`, metric: "Arbitrage local/import" });
@@ -271,6 +530,21 @@ export default function ProcurementPage() {
         <p className="eyebrow">Approvisionnement strategique</p>
         <h1>Arbitrer local, import, fournisseurs et logistique pour proteger le budget travaux</h1>
         <p>Centre decisionnel achat connecte aux donnees DQE, aux economies CAPEX et au risque chantier.</p>
+        <div className="procurement-command-row">
+          <label>
+            Devise active
+            <select value={activeCurrency} onChange={(event) => applyFilter("devise", event.target.value)}>
+              {(currencyData?.charts?.currencies || [
+                { code: "FCFA", label: "Franc CFA" },
+                { code: "USD", label: "Dollar americain" },
+                { code: "EUR", label: "Euro" },
+              ]).map((currency) => (
+                <option key={currency.code} value={currency.code}>{currency.code} - {currency.label}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" onClick={handleProcurementExport}>Exporter dossier achat</button>
+        </div>
       </section>
 
       <div className="tab-row">
@@ -297,13 +571,16 @@ export default function ProcurementPage() {
 
       <section className="metric-grid">
         <KpiCard label="ROI import" value={formatPercent(roiImport)} tone={roiImport > 0.1 ? "success" : "neutral"} />
-        <KpiCard label="Gain potentiel" value={formatMoney(kpis.economie_nette)} tone="success" />
+        <GainPotentialCard gainAnalysis={gainAnalysisData} fallbackGain={kpis.economie_nette} currency={activeCurrency} onOpen={() => setGainDrawerOpen(true)} />
         <KpiCard label="Taux importable" value={formatPercent(importRate)} />
         <KpiCard label="Budget optimise" value={formatMoney(kpis.capex_optimise)} />
         <KpiCard label="Lignes achat" value={Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} tone="warning" />
       </section>
 
+      {gainDrawerOpen ? <GainDetailDrawer analysis={gainAnalysisData} filters={filters} currency={activeCurrency} onClose={() => setGainDrawerOpen(false)} /> : null}
+
       <section className="procurement-insights">
+        <article>Sourcing Chine V1 : ports Ningbo, Shanghai, Shenzhen et Guangzhou, devise fournisseur USD.</article>
         {insights.map((insight) => <article key={insight}>{insight}</article>)}
       </section>
 
@@ -323,12 +600,12 @@ export default function ProcurementPage() {
                   {supplierRows.map((supplier) => (
                     <tr key={supplier.supplier} onClick={() => applyFilters({ famille: supplier.supplier })}>
                       <td>{supplier.supplier}</td>
-                      <td>{supplier.country}</td>
+                      <td>{supplier.country || "CN"} | {supplier.port || "Shanghai"}</td>
                       <td><span className="procurement-badge">{supplier.score}/100</span></td>
                       <td>{supplier.quality}/100</td>
-                      <td>{supplier.lead} j</td>
-                      <td>{formatPercent(supplier.roi)}</td>
-                      <td>{formatMoney(supplier.capex)}</td>
+                      <td>{supplier.lead_time_days || supplier.lead} j</td>
+                      <td>{supplier.fob_usd ? `${supplier.fob_usd} USD FOB` : formatPercent(supplier.roi)}</td>
+                      <td>{formatMoney(supplier.capex_scope || supplier.capex)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -379,22 +656,32 @@ export default function ProcurementPage() {
 
         {tab === "risks" ? (
           <AnalyticsCard title="Cartographie des risques import" eyebrow="Fournisseur, douane, maritime, qualite">
-            <RiskMatrix rows={riskRows} />
+            <div className="procurement-risk-list">
+              {(importRiskData?.table || []).map((risk) => (
+                <article key={risk.label}>
+                  <span>{risk.label}</span>
+                  <strong>{formatMoney(risk.impact)}</strong>
+                  <small>Probabilite {formatPercent(risk.probability)} | Criticite {risk.criticite}/100</small>
+                  <p>{risk.action}</p>
+                </article>
+              ))}
+            </div>
+            {importRiskData?.table?.length ? null : <RiskMatrix rows={riskRows} />}
           </AnalyticsCard>
         ) : null}
 
         {tab === "strategy" || tab === "moq" ? (
           <AnalyticsCard title="Simulation strategique achat" eyebrow="Comparer les politiques d'approvisionnement">
             <div className="procurement-card-grid">
-              {STRATEGIES.map((strategy) => {
-                const estimatedGain = Number(kpis.economie_nette || 0) * strategy.importShare;
+              {(scenarioData?.table?.length ? scenarioData.table : STRATEGIES).map((strategy) => {
+                const estimatedGain = strategy.gain_net ?? Number(kpis.economie_nette || 0) * strategy.importShare;
                 return (
-                  <article className="procurement-mini-card strategy" key={strategy.label}>
-                    <span>{strategy.risk}</span>
+                  <article className="procurement-mini-card strategy" key={strategy.label || strategy.code}>
+                    <span>{strategy.risk} | Qualite {strategy.quality || "-"}</span>
                     <strong>{strategy.label}</strong>
-                    <p>{strategy.description}</p>
-                    <b>{formatMoney(estimatedGain)} de gain cible</b>
-                    <small>Delai moyen {strategy.lead}</small>
+                    <p>{strategy.description || `Scenario Chine avec cout rendu chantier ${formatCurrency(strategy.budget, activeCurrency)}.`}</p>
+                    <b>{formatCurrency(estimatedGain, activeCurrency)} de gain cible</b>
+                    <small>Delai moyen {strategy.lead || strategy.lead_time} j | ROI {formatPercent(strategy.roi || 0)}</small>
                   </article>
                 );
               })}

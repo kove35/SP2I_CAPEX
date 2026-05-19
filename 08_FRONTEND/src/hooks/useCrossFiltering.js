@@ -4,7 +4,7 @@ import { analyticsFilterLabels, defaultAnalyticsFilters, useAnalyticsFilterStore
 import { normalizeAnalyticsFilters } from "../services/analyticsQueryBuilder";
 import { useDashboardStore } from "../store/dashboardStore";
 
-const chipKeys = ["projet", "scenario", "batiment", "niveau", "lot", "famille", "fournisseur", "importLocal", "dateDebut", "dateFin"];
+const chipKeys = ["projet", "scenario", "batiment", "niveau", "lot", "famille", "fournisseur", "devise", "importLocal", "dateDebut", "dateFin"];
 
 export function useCrossFiltering() {
   const queryClient = useQueryClient();

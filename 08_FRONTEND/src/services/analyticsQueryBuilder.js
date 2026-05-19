@@ -6,6 +6,7 @@ const apiFieldMap = {
   lot: "lot",
   famille: "famille",
   fournisseur: "fournisseur",
+  devise: "devise",
   importLocal: "decision_import",
   decisionImport: "decision_import",
   dateDebut: "periode_debut",
