@@ -3,10 +3,15 @@ import {
   getAnalyticsCapex,
   getAnalyticsDashboard,
   getAnalyticsDrilldown,
+  getAnalyticsGainAnalysis,
   getAnalyticsHeatmap,
+  getAnalyticsCurrency,
+  getAnalyticsImportRisks,
   getAnalyticsProcurement,
+  getAnalyticsProcurementScenarios,
   getAnalyticsQaSummary,
   getAnalyticsRisk,
+  getAnalyticsSuppliers,
   getAnalyticsTimeline,
 } from "../services/analyticsService";
 import { buildAnalyticsQueryKey } from "../services/analyticsQueryBuilder";
@@ -42,6 +47,39 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       return getAnalyticsProcurement(debouncedFilters);
     },
     staleTime: 20_000,
+  });
+
+  const gainAnalysis = useQuery({
+    queryKey: buildAnalyticsQueryKey("gain-analysis", debouncedFilters),
+    queryFn: () => {
+      console.log("Query refresh", "analytics-gain-analysis", debouncedFilters);
+      return getAnalyticsGainAnalysis(debouncedFilters);
+    },
+    staleTime: 20_000,
+  });
+
+  const suppliers = useQuery({
+    queryKey: buildAnalyticsQueryKey("suppliers", debouncedFilters),
+    queryFn: () => getAnalyticsSuppliers(debouncedFilters),
+    staleTime: 60_000,
+  });
+
+  const procurementScenarios = useQuery({
+    queryKey: buildAnalyticsQueryKey("procurement-scenarios", debouncedFilters),
+    queryFn: () => getAnalyticsProcurementScenarios(debouncedFilters),
+    staleTime: 30_000,
+  });
+
+  const currency = useQuery({
+    queryKey: buildAnalyticsQueryKey("currency", debouncedFilters),
+    queryFn: () => getAnalyticsCurrency(debouncedFilters),
+    staleTime: 120_000,
+  });
+
+  const importRisks = useQuery({
+    queryKey: buildAnalyticsQueryKey("import-risks", debouncedFilters),
+    queryFn: () => getAnalyticsImportRisks(debouncedFilters),
+    staleTime: 30_000,
   });
 
   const heatmap = useQuery({
@@ -91,13 +129,18 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     dashboard,
     capex,
     procurement,
+    gainAnalysis,
+    suppliers,
+    procurementScenarios,
+    currency,
+    importRisks,
     heatmap,
     risk,
     timeline,
     drilldown,
     qa,
     isLoading: dashboard.isLoading || capex.isLoading,
-    isFetching: dashboard.isFetching || capex.isFetching || drilldown.isFetching,
-    error: dashboard.error || capex.error || procurement.error || heatmap.error || risk.error || timeline.error || drilldown.error,
+    isFetching: dashboard.isFetching || capex.isFetching || drilldown.isFetching || gainAnalysis.isFetching,
+    error: dashboard.error || capex.error || procurement.error || gainAnalysis.error || suppliers.error || procurementScenarios.error || currency.error || importRisks.error || heatmap.error || risk.error || timeline.error || drilldown.error,
   };
 }

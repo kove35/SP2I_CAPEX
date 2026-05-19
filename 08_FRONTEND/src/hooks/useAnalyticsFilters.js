@@ -2,7 +2,7 @@ import React from "react";
 import { analyticsFilterLabels, defaultAnalyticsFilters, useAnalyticsFilterStore } from "../stores/analyticsFilterStore";
 import { buildAnalyticsParams, normalizeAnalyticsFilters } from "../services/analyticsQueryBuilder";
 
-const urlKeys = ["projet", "scenario", "batiment", "niveau", "lot", "famille", "fournisseur", "importLocal", "dateDebut", "dateFin"];
+const urlKeys = ["projet", "scenario", "batiment", "niveau", "lot", "famille", "fournisseur", "devise", "importLocal", "dateDebut", "dateFin"];
 const chipKeys = urlKeys;
 
 function readFiltersFromUrl() {

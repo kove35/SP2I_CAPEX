@@ -1,4 +1,4 @@
-import { request } from "./apiClient";
+import { apiClient, request } from "./apiClient";
 import { buildAnalyticsParams } from "./analyticsQueryBuilder";
 
 export const toAnalyticsParams = buildAnalyticsParams;
@@ -16,6 +16,44 @@ export function getAnalyticsCapex(filters, extras = {}) {
 
 export function getAnalyticsProcurement(filters, extras = {}) {
   return request({ url: "/analytics/procurement", params: toAnalyticsParams(filters, { page_size: 300, ...extras }) });
+}
+
+export function getAnalyticsSuppliers(filters, extras = {}) {
+  return request({ url: "/analytics/suppliers", params: toAnalyticsParams(filters, { page_size: 100, ...extras }) });
+}
+
+export function getAnalyticsProcurementScenarios(filters, extras = {}) {
+  return request({ url: "/analytics/procurement-scenarios", params: toAnalyticsParams(filters, { page_size: 50, ...extras }) });
+}
+
+export function getAnalyticsCurrency(filters, extras = {}) {
+  return request({ url: "/analytics/currency", params: toAnalyticsParams(filters, extras) });
+}
+
+export function getAnalyticsImportRisks(filters, extras = {}) {
+  return request({ url: "/analytics/import-risks", params: toAnalyticsParams(filters, { page_size: 50, ...extras }) });
+}
+
+export function getAnalyticsGainAnalysis(filters, extras = {}) {
+  return request({ url: "/analytics/gain-analysis", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
+}
+
+export async function exportAnalyticsProcurementFile(filters, extras = {}) {
+  const response = await apiClient({
+    url: "/analytics/procurement-export",
+    params: toAnalyticsParams(filters, { page_size: 500, ...extras }),
+    responseType: "blob",
+  });
+  return response.data;
+}
+
+export async function exportAnalyticsGainAnalysis(filters, extras = {}) {
+  const response = await apiClient({
+    url: "/analytics/gain-analysis/export",
+    params: toAnalyticsParams(filters, { page_size: 500, ...extras }),
+    responseType: "blob",
+  });
+  return response.data;
 }
 
 export function getAnalyticsHeatmap(filters, extras = {}) {
