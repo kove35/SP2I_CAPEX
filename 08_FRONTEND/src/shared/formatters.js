@@ -2,6 +2,12 @@ export function formatMoney(value) {
   return `${Number(value || 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA`;
 }
 
+export function formatCurrency(value, currency = "FCFA") {
+  const code = currency || "FCFA";
+  const suffix = code === "USD" ? "USD" : code === "EUR" ? "EUR" : "FCFA";
+  return `${Number(value || 0).toLocaleString("fr-FR", { maximumFractionDigits: code === "FCFA" ? 0 : 2 })} ${suffix}`;
+}
+
 export function formatPercent(value) {
   return `${Math.round(Number(value || 0) * 100)}%`;
 }

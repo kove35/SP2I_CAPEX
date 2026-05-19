@@ -82,6 +82,24 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         currency_risk DOUBLE PRECISION NOT NULL DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS dim_devise (
+        devise_code VARCHAR(10) PRIMARY KEY,
+        devise_nom VARCHAR(80) NOT NULL,
+        symbole VARCHAR(10) NOT NULL,
+        is_base BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS fact_change_rate (
+        rate_id BIGSERIAL PRIMARY KEY,
+        devise_source VARCHAR(10) NOT NULL REFERENCES dim_devise(devise_code),
+        devise_cible VARCHAR(10) NOT NULL REFERENCES dim_devise(devise_code),
+        taux DOUBLE PRECISION NOT NULL,
+        source VARCHAR(100) NOT NULL DEFAULT 'SP2I_REFERENCE',
+        date_taux DATE NOT NULL DEFAULT CURRENT_DATE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     CREATE SEQUENCE IF NOT EXISTS dim_famille_famille_id_seq;
 
     ALTER TABLE dim_famille
@@ -111,6 +129,20 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     VALUES ('NON_RENSEIGNE')
     ON CONFLICT (country_name) DO NOTHING;
 
+    INSERT INTO dim_devise (devise_code, devise_nom, symbole, is_base)
+    VALUES
+        ('FCFA', 'Franc CFA', 'FCFA', true),
+        ('USD', 'Dollar americain', '$', false),
+        ('EUR', 'Euro', 'EUR', false)
+    ON CONFLICT (devise_code) DO NOTHING;
+
+    INSERT INTO fact_change_rate (devise_source, devise_cible, taux, source)
+    VALUES
+        ('FCFA', 'FCFA', 1, 'SP2I_REFERENCE'),
+        ('USD', 'FCFA', 610, 'SP2I_REFERENCE'),
+        ('EUR', 'FCFA', 655.957, 'SP2I_REFERENCE')
+    ON CONFLICT DO NOTHING;
+
     ALTER TABLE fact_metre
         ADD COLUMN IF NOT EXISTS projet_id BIGINT,
         ADD COLUMN IF NOT EXISTS lot_id BIGINT,
@@ -124,7 +156,10 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS capex_import DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS economie DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS taux_economie DOUBLE PRECISION,
-        ADD COLUMN IF NOT EXISTS date_import TIMESTAMPTZ NOT NULL DEFAULT now();
+        ADD COLUMN IF NOT EXISTS date_import TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS devise_source VARCHAR(10) NOT NULL DEFAULT 'FCFA',
+        ADD COLUMN IF NOT EXISTS montant_source DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS montant_fcfa DOUBLE PRECISION;
 
     INSERT INTO dim_lot (lot, ordre_lot)
     SELECT DISTINCT
@@ -164,6 +199,8 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         pu_import = COALESCE(f.pu_import, 0),
         capex_local = COALESCE(f.capex_local, f.prix_total_ht, 0),
         capex_import = COALESCE(f.capex_import, CASE WHEN f.decision_import = 'IMPORT' THEN f.capex_optimise ELSE 0 END, 0),
+        montant_source = COALESCE(f.montant_source, f.capex_local, f.prix_total_ht, 0),
+        montant_fcfa = COALESCE(f.montant_fcfa, f.capex_local, f.prix_total_ht, 0),
         economie = COALESCE(f.economie, f.economie_nette, 0),
         taux_economie = COALESCE(
             f.taux_economie,

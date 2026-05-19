@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.analytics.schemas import AnalyticsResponse
@@ -20,6 +21,7 @@ def analytics_query(
     lot: str | None = None,
     famille: str | None = None,
     fournisseur: str | None = None,
+    devise: str | None = None,
     import_local: str | None = None,
     decision_import: str | None = None,
     date_debut: str | None = None,
@@ -43,6 +45,7 @@ def analytics_query(
         lot=lot,
         famille=famille,
         fournisseur=fournisseur,
+        devise=devise,
         decision_import=decision_import or import_local,
         periode_debut=periode_debut or date_debut,
         periode_fin=periode_fin or date_fin,
@@ -75,6 +78,51 @@ def risk(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
 @router.get("/procurement", response_model=AnalyticsResponse)
 def procurement(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
     return AnalyticsService(db).procurement(query)
+
+
+@router.get("/procurement-scenarios", response_model=AnalyticsResponse)
+def procurement_scenarios(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).procurement_scenarios(query)
+
+
+@router.get("/suppliers", response_model=AnalyticsResponse)
+def suppliers(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).suppliers(query)
+
+
+@router.get("/currency", response_model=AnalyticsResponse)
+def currency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).currency(query)
+
+
+@router.get("/import-risks", response_model=AnalyticsResponse)
+def import_risks(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).import_risks(query)
+
+
+@router.get("/procurement-export")
+def procurement_export(query=Depends(analytics_query), db: Session = Depends(get_db)):
+    buffer = AnalyticsService(db).export_procurement_file(query)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="SP2I_dossier_achat_chine.xlsx"'},
+    )
+
+
+@router.get("/gain-analysis", response_model=AnalyticsResponse)
+def gain_analysis(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).gain_analysis(query)
+
+
+@router.get("/gain-analysis/export")
+def gain_analysis_export(query=Depends(analytics_query), db: Session = Depends(get_db)):
+    buffer = AnalyticsService(db).export_gain_analysis(query)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="SP2I_detail_gain_potentiel.xlsx"'},
+    )
 
 
 @router.get("/logistics", response_model=AnalyticsResponse)

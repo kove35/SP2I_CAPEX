@@ -13,6 +13,7 @@ class AnalyticsFilters(BaseModel):
     lot: str | None = None
     famille: str | None = None
     fournisseur: str | None = None
+    devise: str | None = None
     decision_import: str | None = None
     periode_debut: str | None = None
     periode_fin: str | None = None
