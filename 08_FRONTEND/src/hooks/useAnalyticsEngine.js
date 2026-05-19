@@ -8,6 +8,7 @@ import {
   getAnalyticsCurrency,
   getAnalyticsImportRisks,
   getAnalyticsProcurement,
+  getAnalyticsProcurementLines,
   getAnalyticsProcurementScenarios,
   getAnalyticsQaSummary,
   getAnalyticsRisk,
@@ -68,6 +69,12 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     queryKey: buildAnalyticsQueryKey("procurement-scenarios", debouncedFilters),
     queryFn: () => getAnalyticsProcurementScenarios(debouncedFilters),
     staleTime: 30_000,
+  });
+
+  const procurementLines = useQuery({
+    queryKey: buildAnalyticsQueryKey("procurement-lines", debouncedFilters),
+    queryFn: () => getAnalyticsProcurementLines(debouncedFilters),
+    staleTime: 20_000,
   });
 
   const currency = useQuery({
@@ -131,6 +138,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     procurement,
     gainAnalysis,
     suppliers,
+    procurementLines,
     procurementScenarios,
     currency,
     importRisks,
@@ -141,6 +149,6 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     qa,
     isLoading: dashboard.isLoading || capex.isLoading,
     isFetching: dashboard.isFetching || capex.isFetching || drilldown.isFetching || gainAnalysis.isFetching,
-    error: dashboard.error || capex.error || procurement.error || gainAnalysis.error || suppliers.error || procurementScenarios.error || currency.error || importRisks.error || heatmap.error || risk.error || timeline.error || drilldown.error,
+    error: dashboard.error || capex.error || procurement.error || gainAnalysis.error || suppliers.error || procurementLines.error || procurementScenarios.error || currency.error || importRisks.error || heatmap.error || risk.error || timeline.error || drilldown.error,
   };
 }

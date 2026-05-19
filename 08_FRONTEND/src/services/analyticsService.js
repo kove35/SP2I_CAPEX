@@ -22,6 +22,10 @@ export function getAnalyticsSuppliers(filters, extras = {}) {
   return request({ url: "/analytics/suppliers", params: toAnalyticsParams(filters, { page_size: 100, ...extras }) });
 }
 
+export function getAnalyticsProcurementLines(filters, extras = {}) {
+  return request({ url: "/analytics/procurement-lines", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
+}
+
 export function getAnalyticsProcurementScenarios(filters, extras = {}) {
   return request({ url: "/analytics/procurement-scenarios", params: toAnalyticsParams(filters, { page_size: 50, ...extras }) });
 }
