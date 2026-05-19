@@ -134,14 +134,103 @@ function buildInsights(kpis, lots, suppliers) {
   ];
 }
 
+function buildActiveAnalysis(rows = [], filters = {}, drilldownTarget = null, globalKpis = {}) {
+  const activeLabel = filters.lot || filters.famille || filters.importLocal || drilldownTarget?.selectedLabel || "";
+  const scopedRows = rows.length ? rows : [];
+  const capexLocal = scopedRows.reduce((sum, row) => sum + Number(row.capex_local || row.capex_brut || rowValue(row) || 0), 0);
+  const capexImport = scopedRows.reduce((sum, row) => sum + Number(row.capex_import || 0), 0);
+  const capexOptimise = scopedRows.reduce((sum, row) => sum + Number(row.capex_optimise || rowValue(row) || 0), 0);
+  const gain = scopedRows.reduce((sum, row) => sum + Number(row.economie || row.economie_nette || 0), 0);
+  const importRows = scopedRows.filter((row) => normalizeDecision(row.decision_import) === "IMPORT").length;
+  const importRate = scopedRows.length ? importRows / scopedRows.length : Number(globalKpis.taux_importable || 0);
+  const roi = capexLocal ? gain / capexLocal : Number(globalKpis.roi_import || 0);
+  const familyCount = new Map();
+  scopedRows.forEach((row) => {
+    const family = normalizeFamily(row.famille || "Classification en attente");
+    familyCount.set(family, (familyCount.get(family) || 0) + rowValue(row));
+  });
+  const mainSupplier = [...familyCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || drilldownTarget?.selectedLabel || "A confirmer";
+  const delay = importRate > 0.6 ? 75 : importRate > 0.25 ? 45 : 14;
+  const risk = importRate > 0.65 ? "Eleve" : importRate > 0.3 ? "Maitrise" : "Faible";
+  const containers = Math.max(1, Math.ceil(capexOptimise / 42_000_000));
+  const share = Number(globalKpis.capex_brut || 0) ? capexLocal / Number(globalKpis.capex_brut || 1) : 0;
+
+  return {
+    activeLabel,
+    capexLocal,
+    capexImport,
+    capexOptimise,
+    gain,
+    importRate,
+    roi,
+    mainSupplier,
+    delay,
+    risk,
+    containers,
+    share,
+    dependency: delay >= 60 ? "Critique planning" : delay >= 30 ? "A suivre" : "Faible",
+    localExtraCost: Math.max(capexLocal - capexOptimise, 0),
+  };
+}
+
+function ActiveProcurementAnalysis({ analysis, activeChips, drilldownTarget, onReset, onClose, onTab }) {
+  const path = drilldownTarget?.path?.length
+    ? drilldownTarget.path
+    : ["Budget", analysis.importRate > 0.2 ? "Import" : "Local", analysis.activeLabel].filter(Boolean);
+
+  return (
+    <section className="active-analysis-bar">
+      <div className="analysis-breadcrumb">
+        <span>Analyse active</span>
+        <strong>{path.join(" -> ")}</strong>
+      </div>
+      <div className="analysis-chip-row">
+        {activeChips.map((chip) => <i key={`${chip.key}-${chip.value}`}>{chip.label}: {chip.value}</i>)}
+        {!activeChips.length ? <i>Vue globale</i> : null}
+      </div>
+      <div className="analysis-actions">
+        <button type="button" onClick={onReset}>Retour vue globale</button>
+        <button type="button" onClick={onClose}>Fermer drill-down</button>
+      </div>
+      <div className="analysis-kpi-strip">
+        <span><b>{formatMoney(analysis.capexLocal)}</b> CAPEX lot</span>
+        <span><b>{formatMoney(analysis.gain)}</b> Gain potentiel</span>
+        <span><b>{formatPercent(analysis.roi)}</b> ROI</span>
+        <span><b>{analysis.delay} j</b> Delai</span>
+        <span><b>{analysis.risk}</b> Risque</span>
+        <span><b>{analysis.containers}</b> container(s)</span>
+      </div>
+      <div className="analysis-story">
+        <p>
+          {analysis.activeLabel || "Le perimetre selectionne"} represente {formatPercent(analysis.share)} du budget.
+          Le potentiel import est {analysis.importRate > 0.5 ? "eleve" : "selectif"} avec un gain estime a {formatMoney(analysis.gain)}.
+          Fournisseur/famille prioritaire : {analysis.mainSupplier}. Impact chantier : {analysis.dependency}.
+        </p>
+        <div>
+          <button type="button" onClick={() => onTab("import")}>Importer ce lot</button>
+          <button type="button" onClick={() => onTab("import")}>Conserver local</button>
+          <button type="button" onClick={() => onTab("suppliers")}>Voir fournisseurs</button>
+          <button type="button" onClick={() => onTab("containers")}>Voir containers</button>
+          <button type="button" onClick={() => onTab("strategy")}>Mode hybride</button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ProcurementPage() {
   const [tab, setTab] = React.useState(new URLSearchParams(window.location.search).get("tab") || "import");
-  const { applyFilters, applyDrilldown } = useCrossFiltering();
+  const [analysisPanelClosed, setAnalysisPanelClosed] = React.useState(false);
+  const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
 
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
   }, [window.location.search]);
+
+  React.useEffect(() => {
+    if (drilldownTarget?.openedAt) setAnalysisPanelClosed(false);
+  }, [drilldownTarget?.openedAt]);
 
   const procurementData = analytics.procurement.data;
   const dashboardData = analytics.dashboard.data;
@@ -157,6 +246,19 @@ export default function ProcurementPage() {
   const importRate = Number(kpis.taux_importable || 0);
   const roiImport = Number(kpis.roi_import || 0);
   const totalCost = costRows.reduce((sum, row) => sum + row.value, 0);
+  const activeAnalysis = React.useMemo(
+    () => buildActiveAnalysis(rows, filters, drilldownTarget, kpis),
+    [rows, filters, drilldownTarget, kpis]
+  );
+  const hasActiveAnalysis = !analysisPanelClosed && Boolean(activeChips.length || drilldownTarget);
+  const resetAnalysis = () => {
+    setAnalysisPanelClosed(false);
+    reset();
+  };
+  const closeAnalysis = () => {
+    setAnalysisPanelClosed(true);
+    clearDrilldown();
+  };
 
   const handleLotClick = (lot) => {
     applyFilters({ lot });
@@ -181,6 +283,17 @@ export default function ProcurementPage() {
       </div>
 
       {analytics.error ? <div className="app-error">Approvisionnement indisponible : {analytics.error.message}</div> : null}
+
+      {hasActiveAnalysis ? (
+        <ActiveProcurementAnalysis
+          analysis={activeAnalysis}
+          activeChips={activeChips}
+          drilldownTarget={drilldownTarget}
+          onReset={resetAnalysis}
+          onClose={closeAnalysis}
+          onTab={setTab}
+        />
+      ) : null}
 
       <section className="metric-grid">
         <KpiCard label="ROI import" value={formatPercent(roiImport)} tone={roiImport > 0.1 ? "success" : "neutral"} />
