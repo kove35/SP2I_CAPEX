@@ -1,0 +1,8 @@
+{
+  "family": "MENUISERIE_ALU",
+  "entries": [
+    {"subcategory": "FENETRE", "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING", "equipment_class": "ENVELOPPE_BATIMENT", "keywords": ["fenetre", "aluminium", "vitrage"], "synonyms": ["fenetre alu", "chassis aluminium"]},
+    {"subcategory": "FACADE", "equipment_type": "CURTAIN_WALL_ALU", "equipment_class": "FACADE_TECHNIQUE", "keywords": ["mur", "rideau", "facade"], "synonyms": ["mur rideau", "facade vitree"]},
+    {"subcategory": "PORTE", "equipment_type": "ALU_DOOR_STANDARD", "equipment_class": "MENUISERIE_EXTERIEURE", "keywords": ["porte", "aluminium", "vitrage"], "synonyms": ["porte alu"]}
+  ]
+}

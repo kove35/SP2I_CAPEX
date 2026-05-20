@@ -1,0 +1,7 @@
+{
+  "family": "ETANCHEITE",
+  "entries": [
+    {"subcategory": "TOITURE", "equipment_type": "ROOF_WATERPROOFING_M2", "equipment_class": "ENVELOPPE_ETANCHE", "keywords": ["etancheite", "toiture", "membrane"], "synonyms": ["membrane bitume"]},
+    {"subcategory": "TERRASSE", "equipment_type": "TERRACE_WATERPROOFING_M2", "equipment_class": "ENVELOPPE_ETANCHE", "keywords": ["etancheite", "terrasse", "m2"], "synonyms": ["etancheite terrasse"]}
+  ]
+}

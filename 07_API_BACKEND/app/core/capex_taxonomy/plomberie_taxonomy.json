@@ -1,0 +1,10 @@
+{
+  "family": "PLOMBERIE",
+  "entries": [
+    {"subcategory": "TUBE", "equipment_type": "PVC_PIPE_STANDARD", "equipment_class": "RESEAU_EAU", "keywords": ["tube", "pvc", "evacuation"], "synonyms": ["tuyau pvc", "canalisation pvc"]},
+    {"subcategory": "TUBE", "equipment_type": "COPPER_PIPE_STANDARD", "equipment_class": "RESEAU_EAU", "keywords": ["tube", "cuivre", "eau"], "synonyms": ["tuyau cuivre"]},
+    {"subcategory": "SANITAIRE", "equipment_type": "SANITARY_PACK_MEDIUM", "equipment_class": "APPAREIL_SANITAIRE", "keywords": ["wc", "lavabo", "sanitaire"], "synonyms": ["pack sanitaire", "cuvette"]},
+    {"subcategory": "POMPE", "equipment_type": "BOOSTER_PUMP_SET", "equipment_class": "HYDRAULIQUE_BATIMENT", "keywords": ["pompe", "surpresseur", "pression"], "synonyms": ["groupe surpresseur", "booster pump"]},
+    {"subcategory": "EAU_CHAUDE", "equipment_type": "WATER_HEATER_200L", "equipment_class": "PRODUCTION_ECS", "keywords": ["chauffe", "eau", "litre"], "synonyms": ["chauffe eau", "ballon ecs"]}
+  ]
+}

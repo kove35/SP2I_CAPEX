@@ -1,0 +1,8 @@
+{
+  "family": "MOBILIER",
+  "entries": [
+    {"subcategory": "BUREAU", "equipment_type": "OFFICE_DESK_MEDIUM", "equipment_class": "MOBILIER_BUREAU", "keywords": ["bureau", "table", "poste"], "synonyms": ["table bureau"]},
+    {"subcategory": "SIEGE", "equipment_type": "OFFICE_CHAIR_MEDIUM", "equipment_class": "MOBILIER_BUREAU", "keywords": ["chaise", "fauteuil", "bureau"], "synonyms": ["siege bureau"]},
+    {"subcategory": "RANGEMENT", "equipment_type": "STORAGE_CABINET_MEDIUM", "equipment_class": "MOBILIER_BUREAU", "keywords": ["armoire", "rangement", "classement"], "synonyms": ["armoire bureau"]}
+  ]
+}

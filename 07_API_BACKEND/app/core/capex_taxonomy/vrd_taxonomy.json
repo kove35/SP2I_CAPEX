@@ -1,0 +1,9 @@
+{
+  "family": "VRD",
+  "entries": [
+    {"subcategory": "TERRASSEMENT", "equipment_type": "EARTHWORK_M3", "equipment_class": "INFRASTRUCTURE", "keywords": ["terrassement", "deblais", "remblais"], "synonyms": ["excavation"]},
+    {"subcategory": "RESEAUX", "equipment_type": "UTILITY_NETWORK_ML", "equipment_class": "INFRASTRUCTURE_RESEAU", "keywords": ["reseau", "fourreau", "regard"], "synonyms": ["reseaux divers"]},
+    {"subcategory": "VOIRIE", "equipment_type": "ASPHALT_ROAD_M2", "equipment_class": "INFRASTRUCTURE_ROUTE", "keywords": ["voirie", "enrobe", "route"], "synonyms": ["chaussee", "asphalte"]},
+    {"subcategory": "DRAINAGE", "equipment_type": "DRAINAGE_CHANNEL_ML", "equipment_class": "INFRASTRUCTURE_EAU", "keywords": ["drainage", "caniveau", "eau"], "synonyms": ["caniveau beton"]}
+  ]
+}

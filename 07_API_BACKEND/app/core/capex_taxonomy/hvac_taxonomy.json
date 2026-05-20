@@ -1,0 +1,10 @@
+{
+  "family": "HVAC",
+  "entries": [
+    {"subcategory": "CLIMATISATION", "equipment_type": "SPLIT_AC_24000_BTU", "equipment_class": "CONFORT_THERMIQUE", "keywords": ["split", "climatiseur", "btu"], "synonyms": ["clim split", "split mural"]},
+    {"subcategory": "CLIMATISATION", "equipment_type": "VRV_SYSTEM_MEDIUM", "equipment_class": "HVAC_CENTRALISE", "keywords": ["vrv", "vrf", "unite"], "synonyms": ["systeme vrv", "climatisation vrv"]},
+    {"subcategory": "TRAITEMENT_AIR", "equipment_type": "AIR_HANDLING_UNIT", "equipment_class": "HVAC_CENTRALISE", "keywords": ["cta", "air", "traitement"], "synonyms": ["centrale traitement air"]},
+    {"subcategory": "VENTILATION", "equipment_type": "VENTILATION_DUCT_GALVA", "equipment_class": "RESEAU_AERAULIQUE", "keywords": ["gaine", "conduit", "ventilation"], "synonyms": ["conduit ventilation", "gaine galva"]},
+    {"subcategory": "EXTRACTION", "equipment_type": "EXTRACTION_FAN", "equipment_class": "VENTILATION_MECANIQUE", "keywords": ["extraction", "extracteur", "ventilateur"], "synonyms": ["ventilateur extraction"]}
+  ]
+}
