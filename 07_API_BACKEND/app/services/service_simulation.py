@@ -8,10 +8,20 @@ from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
-from app.core import CalculateurCAPEX, DataCleaner, DecisionEngine, LogisticsEngine, ProcurementEngine
+from app.core.audit_trail_engine import AuditTrailEngine
+from app.core.calculator import CalculateurCAPEX
+from app.core.cleaner import DataCleaner
+from app.core.decision_engine_v2 import DecisionEngineV2
 from app.core.errors import SP2ICapexError, SimulationError
+from app.core.explainability_engine import ExplainabilityEngine
+from app.core.kpi_engine import KPIEngine
+from app.core.logistics_engine import LogisticsEngine
 from app.core.logging_config import configure_simulation_logging
-from app.repositories import RepositoryBPU, RepositoryMapping, RepositoryRun, RepositoryScenario, RepositorySimulation
+from app.core.parameter_registry_engine import ParameterRegistryEngine
+from app.core.procurement_enrichment_engine import ProcurementEnrichmentEngine
+from app.core.scenario_engine import ScenarioEngine
+from app.core.scenario_persistence_engine import ScenarioPersistenceEngine
+from app.repositories import RepositoryBPU, RepositoryMapping
 from app.schemas import ScenarioRequest, SimulationRequest
 
 
@@ -95,10 +105,10 @@ class ServiceSimulation:
         lignes_entree = [item.model_dump(exclude_none=True) for item in demande.items]
         parametres = demande.parameters.model_dump(exclude_none=True)
         lignes_normalisees = DataCleaner(mode=demande.mode).normaliser_lignes(lignes_entree)
-        calculateur = CalculateurCAPEX(parametres)
+        scenario_engine = ScenarioEngine(parametres)
         return {
             "status": "SUCCESS" if lignes_normalisees else "EMPTY",
-            "scenarios": calculateur.analyse_sensibilite(
+            "scenarios": scenario_engine.analyse_landed_cost_variations(
                 lignes_normalisees,
                 demande.variations_landed_cost,
             ),
@@ -127,13 +137,27 @@ class ServiceSimulation:
         lignes_normalisees = cleaner.normaliser_lignes(lignes_entree)
         calculateur = CalculateurCAPEX(parametres)
         lignes_calculees = calculateur.optimiser_lignes(lignes_normalisees)
-        procurement_engine = ProcurementEngine()
+        procurement_engine = ProcurementEnrichmentEngine()
         lignes_calculees = [procurement_engine.enrich_line(ligne) for ligne in lignes_calculees]
         logistics_engine = LogisticsEngine()
         lignes_calculees = [logistics_engine.enrich_line(ligne) for ligne in lignes_calculees]
-        decision_engine = DecisionEngine(parametres)
+        decision_engine = DecisionEngineV2({**parametres, "scenario_type": scenario_type})
         lignes_calculees = [decision_engine.enrich_line(ligne) for ligne in lignes_calculees]
+
+        parameter_registry = ParameterRegistryEngine(parametres)
+        audit_engine = AuditTrailEngine(parameter_registry)
+        explainability_engine = ExplainabilityEngine()
+        lignes_calculees = [
+            {
+                **ligne,
+                "AUDIT_TRAIL": audit_engine.build_line_audit(ligne),
+                "EXPLANATION": explainability_engine.explain_line(ligne),
+            }
+            for ligne in lignes_calculees
+        ]
+
         kpi = calculateur.calculer_kpi(lignes_calculees)
+        kpi["procurement"] = KPIEngine().compute_procurement_kpi(lignes_calculees)
 
         sensibilite = []
         if inclure_sensibilite:
@@ -243,41 +267,23 @@ class ServiceSimulation:
         scenario_uuid = metadata["scenario_id"].replace("scenario_", "")
         run_uuid = metadata["run_id"].replace("run_", "")
         simulation_uuid = metadata["simulation_id"].replace("sim_", "")
-        scenario_repo = RepositoryScenario(self.db)
-        run_repo = RepositoryRun(self.db)
-        simulation_repo = RepositorySimulation(self.db)
-
-        scenario_repo.create_scenario(
-            scenario_id=scenario_uuid,
-            scenario_nom=scenario_name or scenario_type,
+        persistence_engine = ScenarioPersistenceEngine(self.db)
+        persistence_engine.persist_scenario(
+            scenario_name=scenario_name or scenario_type,
             scenario_type=scenario_type,
-            description=scenario_description,
             parameters=parametres,
-            is_baseline=scenario_type == "BASELINE",
             created_by=created_by,
-        )
-        run_repo.create_run(
-            run_id=run_uuid,
             scenario_id=scenario_uuid,
-            rows_in=metadata["lignes_entree"],
-            source_type="API",
-        )
-        rows_out = simulation_repo.save_simulation_lines(
+            run_id=run_uuid,
             simulation_id=simulation_uuid,
-            scenario_id=scenario_uuid,
-            run_id=run_uuid,
             lignes=lignes_calculees,
-        )
-        run_repo.complete_run(
-            run_id=run_uuid,
-            rows_out=rows_out,
-            rows_rejected=max(metadata["lignes_entree"] - rows_out, 0),
+            description=scenario_description,
+            is_baseline=scenario_type == "BASELINE",
             warnings=response["warnings"],
             errors=response["errors"],
             duration_ms=int(metadata["temps_calcul_secondes"] * 1000),
             status=response["status"],
         )
-        self.db.commit()
 
     def _formater_ligne_api(self, ligne: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -315,4 +321,14 @@ class ServiceSimulation:
             "storage_cost": ligne.get("STORAGE_COST", 0),
             "delivery_risk": ligne.get("DELIVERY_RISK", ""),
             "logistics_analysis": ligne.get("LOGISTICS_ANALYSIS", {}),
+            "importability_score": ligne.get("IMPORTABILITY_SCORE", 0),
+            "sourcing_coverage": ligne.get("SOURCING_COVERAGE", 0),
+            "procurement_score": ligne.get("PROCUREMENT_SCORE", 0),
+            "supplier_maturity_score": ligne.get("SUPPLIER_MATURITY_SCORE", 0),
+            "procurement_maturity_score": ligne.get("PROCUREMENT_MATURITY_SCORE", 0),
+            "hidden_savings_potential": ligne.get("HIDDEN_SAVINGS_POTENTIAL", 0),
+            "import_confidence_score": ligne.get("IMPORT_CONFIDENCE_SCORE", 0),
+            "decision_scenario": ligne.get("DECISION_SCENARIO", "BASELINE"),
+            "audit_trail": ligne.get("AUDIT_TRAIL", {}),
+            "explanation": ligne.get("EXPLANATION", {}),
         }
