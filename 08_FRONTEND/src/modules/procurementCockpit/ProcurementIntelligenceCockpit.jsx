@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowRight, CheckCircle2, Download, FilterX, RefreshCcw, Trophy } from "lucide-react";
+import { ArrowRight, CheckCircle2, Download, FilterX, RefreshCcw, Sparkles, Trophy } from "lucide-react";
 import Skeleton from "../../ui/Skeleton";
 import { formatMoney, formatPercent } from "../../shared/formatters";
 import { useProcurementCockpit } from "../../hooks/useProcurementCockpit";
@@ -120,22 +120,22 @@ function ExecutiveDashboard({ data, onDimensionClick }) {
   const kpis = data?.kpis || {};
   return (
     <section className="procurement-dashboard-grid">
-      <ChartPanel title="Waterfall CAPEX" eyebrow="Direction" option={buildWaterfallOption(kpis)} height={330} />
+      <ChartPanel title="Waterfall CAPEX" eyebrow="Direction" option={buildWaterfallOption(kpis)} height={300} />
       <ChartPanel
         title="Heatmap anomalies"
         eyebrow="Financial sanity"
         option={buildHeatmapOption(data?.families || [])}
-        height={330}
+        height={300}
         onEvents={{ click: (params) => onDimensionClick?.("famille", data?.families?.[params?.data?.[1]]?.label) }}
       />
       <ChartPanel
         title="Benchmark famille"
         eyebrow="Procurement scoring"
         option={buildBenchmarkOption(data?.families || [])}
-        height={330}
+        height={300}
         onEvents={{ click: (params) => onDimensionClick?.("famille", params.name) }}
       />
-      <ChartPanel title="Scenario comparison" eyebrow="Decision board" option={buildScenarioOption(data?.scenarios || [], kpis)} height={330} />
+      <ChartPanel title="Scenario comparison" eyebrow="Decision board" option={buildScenarioOption(data?.scenarios || [], kpis)} height={380} />
     </section>
   );
 }
@@ -154,6 +154,7 @@ function ScenarioComparisonDeck({ kpis = {}, onScenario }) {
           <span>{scenario.code === best.code ? <Trophy size={14} /> : <CheckCircle2 size={14} />} {scenario.label}</span>
           <strong>{formatMoney(scenario.gain)}</strong>
           <small>ROI {formatPercent(scenario.roi)} | Risque {Math.round(scenario.risk)}/100 | Procurement {Math.round(scenario.procurement)}/100</small>
+          <em>{scenario.code === best.code ? "Best compromise" : scenario.risk > 60 ? "Optimisation agressive" : "Marge de securite"}</em>
         </button>
       ))}
     </section>
@@ -199,7 +200,7 @@ function FocusDashboard({ data, activeDashboard, onDimensionClick }) {
           </table>
         </div>
       </article>
-      <ChartPanel title={title} eyebrow={activeDashboard} option={activeDashboard === "scenario" ? buildScenarioOption(data?.scenarios, data?.kpis) : activeDashboard === "risk" || activeDashboard === "financial" ? buildHeatmapOption(rows) : buildBenchmarkOption(rows)} height={360} />
+      <ChartPanel title={title} eyebrow={activeDashboard} option={activeDashboard === "scenario" ? buildScenarioOption(data?.scenarios, data?.kpis) : activeDashboard === "risk" || activeDashboard === "financial" ? buildHeatmapOption(rows) : buildBenchmarkOption(rows)} height={activeDashboard === "scenario" ? 420 : 360} />
     </section>
   );
 }
@@ -212,6 +213,12 @@ export default function ProcurementIntelligenceCockpit() {
     [data, crossFiltering.filters, selectedLine]
   );
   const rows = scopedData?.lines || [];
+  const executiveNarrative = React.useMemo(() => {
+    const kpis = scopedData?.kpis || {};
+    const scenario = Number(kpis.riskScore || 0) > 60 ? "CONSERVATEUR" : Number(kpis.roi || 0) > 0.12 ? "AGRESSIF CONTROLE" : "EQUILIBRE";
+    const anomalyText = Number(kpis.anomalyCount || 0) > 0 ? `${kpis.anomalyCount} alerte(s) a qualifier` : "aucune alerte critique dominante";
+    return `Scenario ${scenario}: ${formatMoney(kpis.gain || 0)} d'economies potentielles, ROI ${formatPercent(kpis.roi || 0)}, ${anomalyText}.`;
+  }, [scopedData?.kpis]);
   const breadcrumbs = React.useMemo(
     () => [
       "Cockpit",
@@ -253,8 +260,8 @@ export default function ProcurementIntelligenceCockpit() {
       <section className="procurement-enterprise-hero">
         <div>
           <p className="eyebrow">Procurement Intelligence Cockpit</p>
-          <h1>Decision center CAPEX, achats, risques et sanity financiere</h1>
-          <p>Une couche Power BI-ready pour piloter les arbitrages local/import, les anomalies, le ROI et les scenarios procurement.</p>
+          <h1>Decision cockpit CAPEX</h1>
+          <p>Arbitrage executif achats, ROI, risques et anomalies.</p>
         </div>
         <div className="procurement-hero-actions">
           <button type="button" onClick={() => refetch()}><RefreshCcw size={16} /> Actualiser</button>
@@ -291,6 +298,12 @@ export default function ProcurementIntelligenceCockpit() {
           ))}
         </div>
         <strong>{rows.length.toLocaleString("fr-FR")} ligne(s) dans le contexte actif</strong>
+      </section>
+
+      <section className="procurement-executive-ribbon">
+        <Sparkles size={16} />
+        <strong>{executiveNarrative}</strong>
+        <span>Dashboard {activeDashboard} synchronise avec les filtres actifs.</span>
       </section>
 
       <ProcurementKpiStrip kpis={scopedData?.kpis} loading={isLoading} onKpiClick={handleKpiClick} />
