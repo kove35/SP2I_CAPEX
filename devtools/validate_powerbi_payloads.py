@@ -14,10 +14,13 @@ def check_powerbi_routes() -> tuple[bool, str, list[str]]:
 
 
 def check_powerbi_config_flags() -> tuple[bool, str, list[str]]:
-    config = import_module("app.main").debug_config()
-    dashboards = config.get("powerbi_dashboards_configured", {})
-    details = [f"{key}={'configured' if value else 'not configured'}" for key, value in dashboards.items()]
-    return True, "configuration Power BI lue sans exposer les secrets", details
+    try:
+        config = import_module("app.main").debug_config()
+        dashboards = config.get("powerbi_dashboards_configured", {})
+        details = [f"{key}={'configured' if value else 'not configured'}" for key, value in dashboards.items()]
+        return True, "configuration Power BI lue sans exposer les secrets", details
+    except Exception as exc:
+        return False, "impossible de lire la configuration Power BI via app.main.debug_config", [str(exc)]
 
 
 def check_analytics_schema_modules() -> tuple[bool, str, list[str]]:

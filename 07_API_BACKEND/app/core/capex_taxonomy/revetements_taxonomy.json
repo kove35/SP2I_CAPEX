@@ -1,0 +1,10 @@
+{
+  "family": "REVETEMENTS",
+  "entries": [
+    {"subcategory": "CARRELAGE", "equipment_type": "FLOOR_TILE_MEDIUM", "equipment_class": "FINITION_SOL", "keywords": ["carrelage", "gres", "m2"], "synonyms": ["carreau sol", "gres cerame"]},
+    {"subcategory": "FAIENCE", "equipment_type": "WALL_TILE_MEDIUM", "equipment_class": "FINITION_MUR", "keywords": ["faience", "mur", "m2"], "synonyms": ["carreau mural"]},
+    {"subcategory": "PEINTURE", "equipment_type": "PAINT_INTERIOR_MEDIUM", "equipment_class": "FINITION_MUR", "keywords": ["peinture", "enduit", "m2"], "synonyms": ["peinture interieure"]},
+    {"subcategory": "FAUX_PLAFOND", "equipment_type": "FALSE_CEILING_STANDARD", "equipment_class": "FINITION_PLAFOND", "keywords": ["faux", "plafond", "dalle"], "synonyms": ["plafond suspendu"]},
+    {"subcategory": "SOL_SOUPLE", "equipment_type": "VINYL_FLOOR_MEDIUM", "equipment_class": "FINITION_SOL", "keywords": ["vinyle", "sol", "souple"], "synonyms": ["sol pvc", "revetement vinyle"]}
+  ]
+}

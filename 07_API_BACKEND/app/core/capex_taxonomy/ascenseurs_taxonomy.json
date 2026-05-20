@@ -1,0 +1,7 @@
+{
+  "family": "ASCENSEURS",
+  "entries": [
+    {"subcategory": "ASCENSEUR_PASSAGER", "equipment_type": "PASSENGER_LIFT_8P", "equipment_class": "EQUIPEMENT_VERTICAL", "keywords": ["ascenseur", "passager", "personnes"], "synonyms": ["lift", "elevateur"]},
+    {"subcategory": "MONTE_CHARGE", "equipment_type": "GOODS_LIFT_MEDIUM", "equipment_class": "EQUIPEMENT_VERTICAL", "keywords": ["monte", "charge", "ascenseur"], "synonyms": ["monte charge"]}
+  ]
+}

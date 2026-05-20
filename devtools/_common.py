@@ -59,7 +59,7 @@ def status(level: str, message: str) -> None:
         "info": "[INFO]",
         "skip": "[SKIP]",
     }
-    print(f"{labels.get(level, '[INFO]')} {safe_text(message)}")
+    print(safe_text(f"{labels.get(level, '[INFO]')} {message}"))
 
 
 def format_exception(exc: BaseException) -> str:
