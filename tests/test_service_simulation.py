@@ -53,6 +53,47 @@ class ServiceSimulationTest(unittest.TestCase):
         self.assertEqual(response["lignes"], [])
         self.assertEqual(response["kpi"]["lignes"], 1)
 
+    def test_simulation_enrichit_la_couche_procurement(self) -> None:
+        request = SimulationRequest(
+            items=[SimulationItem(
+                designation="Cable electrique",
+                quantite=10,
+                prix_total_ht=1000,
+                prix_fob=600,
+                famille="electricite",
+            )],
+            mode="strict",
+        )
+
+        response = ServiceSimulation().simuler(request)
+
+        self.assertEqual(response["status"], "SUCCESS")
+        self.assertIn("procurement", response["kpi"])
+        self.assertGreaterEqual(response["kpi"]["procurement"]["SCORE_PROCUREMENT"], 0)
+        self.assertEqual(len(response["lignes"]), 1)
+        self.assertIn("importability_score", response["lignes"][0])
+        self.assertIn("procurement_score", response["lignes"][0])
+
+    def test_simulation_produces_audit_and_explanation(self) -> None:
+        request = SimulationRequest(
+            items=[SimulationItem(
+                designation="Cable electrique",
+                quantite=10,
+                prix_total_ht=1000,
+                prix_fob=600,
+                famille="electricite",
+            )],
+            mode="strict",
+        )
+
+        response = ServiceSimulation().simuler(request)
+
+        self.assertEqual(response["status"], "SUCCESS")
+        self.assertEqual(len(response["lignes"]), 1)
+        self.assertIn("audit_trail", response["lignes"][0])
+        self.assertIn("explanation", response["lignes"][0])
+        self.assertEqual(response["lignes"][0]["audit_trail"]["decision"], response["lignes"][0]["decision_finale"])
+
     def test_mode_strict_retourne_erreur_structuree(self) -> None:
         request = SimulationRequest(
             items=[SimulationItem(designation="Prix manquant", quantite=1, prix_total_ht=0)],
