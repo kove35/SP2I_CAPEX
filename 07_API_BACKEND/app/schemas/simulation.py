@@ -131,6 +131,16 @@ class SimulationLineResult(BaseModel):
     moq_risk_score: float | None = None
     complexity_score: float | None = None
     procurement_analysis: dict[str, Any] = Field(default_factory=dict)
+    importability_score: float | None = None
+    sourcing_coverage: float | None = None
+    procurement_score: float | None = None
+    supplier_maturity_score: float | None = None
+    procurement_maturity_score: float | None = None
+    hidden_savings_potential: float | None = None
+    import_confidence_score: float | None = None
+    decision_scenario: str | None = None
+    audit_trail: dict[str, Any] | None = None
+    explanation: dict[str, Any] | None = None
     container_strategy: str | None = None
     shipment_strategy: str | None = None
     fill_rate: float | None = None
@@ -150,6 +160,7 @@ class SimulationKPI(BaseModel):
     taux_economie: float
     lignes_import: int
     lignes_local: int
+    procurement: dict[str, Any] | None = None
 
 
 class SimulationResponse(BaseModel):

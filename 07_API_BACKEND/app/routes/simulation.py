@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_service_simulation
+from app.dependencies import get_service_simulation, get_service_scenario_intelligence
 from app.repositories import RepositoryScenario, RepositorySimulation
 from app.schemas import ScenarioRequest, SimulationRequest, SimulationResponse
 from app.services.service_simulation import ServiceSimulation
+from app.services.service_scenario_intelligence import ServiceScenarioIntelligence
 
 
 router = APIRouter()
@@ -81,8 +82,18 @@ def get_scenario(
     }
 
 
-@router.get("/compare")
+@router.get("/scenarios/compare")
 def compare_scenarios(
+    scenario_a: str,
+    scenario_b: str,
+    service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
+) -> dict:
+    """Compare deux scenarios historises via les moteurs d'intelligence Scenario."""
+    return service.compare_scenarios(scenario_a, scenario_b)
+
+
+@router.get("/compare")
+def compare_scenarios_legacy(
     scenario_a: str,
     scenario_b: str,
     db: Session = Depends(get_db),
@@ -95,3 +106,33 @@ def compare_scenarios(
         "scenario_b": scenario_b,
         "comparison": rows,
     }
+
+
+@router.get("/scenarios/history")
+def scenario_history(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
+) -> dict:
+    """Retourne l'historique des scenarios avec scoring et performances."""
+    return service.list_history(limit=limit, offset=offset)
+
+
+@router.get("/scenarios/best")
+def best_scenarios(
+    scenario_ids: str | None = Query(default=None),
+    limit: int = Query(default=5, ge=1, le=50),
+    service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
+) -> dict:
+    """Retourne les meilleurs scenarios en fonction du scoring global."""
+    ids = scenario_ids.split(",") if scenario_ids else None
+    return service.best_scenarios(scenario_ids=ids, limit=limit)
+
+
+@router.get("/scenarios/analytics")
+def scenario_analytics(
+    scenario_id: str,
+    service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
+) -> dict:
+    """Retourne les analytics métiers et la timeline d'un scenario."""
+    return service.analytics(scenario_id)

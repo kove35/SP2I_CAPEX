@@ -9,6 +9,7 @@ from app.database import get_db
 from app.repositories import RepositoryBPU, RepositoryExcel, RepositoryMapping, RepositorySimulation
 from app.services.service_ai_mapping import ServiceAIMapping
 from app.services.service_simulation import ServiceSimulation
+from app.services.service_scenario_intelligence import ServiceScenarioIntelligence
 
 
 RACINE = Path(__file__).resolve().parents[2]
@@ -61,3 +62,10 @@ def get_service_ai_mapping(
         repository_excel=repository_excel,
         service_simulation=service_simulation,
     )
+
+
+def get_service_scenario_intelligence(
+    db: Session = Depends(get_db),
+) -> ServiceScenarioIntelligence:
+    """Expose l'intelligence des scenarios pour les routes de comparaison et d'analytics."""
+    return ServiceScenarioIntelligence(db)
