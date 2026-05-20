@@ -1,0 +1,12 @@
+{
+  "family": "ELECTRICITE",
+  "entries": [
+    {"subcategory": "GENERATEUR", "equipment_type": "GENERATOR_60_KVA", "equipment_class": "INDUSTRIEL_LOURD", "keywords": ["groupe", "electrogene", "generateur", "kva"], "synonyms": ["groupe electrogene insonorise", "generator", "genset"]},
+    {"subcategory": "CABLE", "equipment_type": "CABLE_CUIVRE_BT", "equipment_class": "COURANT_FORT", "keywords": ["cable", "cuivre", "mm2"], "synonyms": ["cable electrique", "u1000", "r2v"]},
+    {"subcategory": "TABLEAU", "equipment_type": "TABLEAU_TGBT", "equipment_class": "DISTRIBUTION_BT", "keywords": ["tableau", "tgbt", "disjoncteur"], "synonyms": ["tableau general basse tension", "armoire electrique"]},
+    {"subcategory": "SOLAIRE", "equipment_type": "SOLAR_KIT_BT", "equipment_class": "ENERGIE_RENOUVELABLE", "keywords": ["solaire", "panneau", "onduleur"], "synonyms": ["kit solaire", "pv", "photovoltaique"]},
+    {"subcategory": "ECLAIRAGE", "equipment_type": "LED_LIGHTING", "equipment_class": "SECOND_OEUVRE_TECHNIQUE", "keywords": ["eclairage", "luminaire", "led"], "synonyms": ["projecteur led", "reglette led"]},
+    {"subcategory": "SECURITE_ELECTRIQUE", "equipment_type": "BAES_STANDARD", "equipment_class": "SECURITE_BATIMENT", "keywords": ["baes", "bloc", "secours"], "synonyms": ["bloc autonome eclairage securite"]},
+    {"subcategory": "CHEMINEMENT", "equipment_type": "CABLE_TRAY_GALVA", "equipment_class": "SUPPORTAGE_TECHNIQUE", "keywords": ["chemin", "cable", "galva"], "synonyms": ["chemin de cable", "goulotte metallique"]}
+  ]
+}

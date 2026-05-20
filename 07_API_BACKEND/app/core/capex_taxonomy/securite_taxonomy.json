@@ -1,0 +1,9 @@
+{
+  "family": "SECURITE",
+  "entries": [
+    {"subcategory": "INCENDIE", "equipment_type": "FIRE_ALARM_PANEL", "equipment_class": "SECURITE_INCENDIE", "keywords": ["incendie", "alarme", "ssi"], "synonyms": ["centrale incendie"]},
+    {"subcategory": "VIDEOSURVEILLANCE", "equipment_type": "CCTV_CAMERA_IP", "equipment_class": "SURETE", "keywords": ["camera", "video", "surveillance"], "synonyms": ["camera ip", "cctv"]},
+    {"subcategory": "CONTROLE_ACCES", "equipment_type": "ACCESS_CONTROL_DOOR", "equipment_class": "SURETE", "keywords": ["controle", "acces", "badge"], "synonyms": ["lecteur badge"]},
+    {"subcategory": "INTRUSION", "equipment_type": "INTRUSION_DETECTOR", "equipment_class": "SURETE", "keywords": ["intrusion", "detecteur", "alarme"], "synonyms": ["detecteur mouvement"]}
+  ]
+}

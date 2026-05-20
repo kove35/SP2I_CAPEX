@@ -1,0 +1,7 @@
+{
+  "family": "CHARPENTE",
+  "entries": [
+    {"subcategory": "METALLIQUE", "equipment_type": "STEEL_FRAME_TON", "equipment_class": "STRUCTURE_METALLIQUE", "keywords": ["charpente", "metallique", "acier"], "synonyms": ["structure metallique"]},
+    {"subcategory": "BOIS", "equipment_type": "TIMBER_FRAME_M3", "equipment_class": "STRUCTURE_BOIS", "keywords": ["charpente", "bois", "poutre"], "synonyms": ["structure bois"]}
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "family": "FACADE",
+  "entries": [
+    {"subcategory": "BARDAGE", "equipment_type": "CLADDING_M2_MEDIUM", "equipment_class": "ENVELOPPE_BATIMENT", "keywords": ["bardage", "facade", "m2"], "synonyms": ["revetement facade"]},
+    {"subcategory": "ENDUIT", "equipment_type": "FACADE_RENDER_M2", "equipment_class": "ENVELOPPE_BATIMENT", "keywords": ["enduit", "facade", "exterieur"], "synonyms": ["crepi facade"]}
+  ]
+}

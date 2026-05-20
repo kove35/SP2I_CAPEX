@@ -1,0 +1,8 @@
+{
+  "family": "RESEAUX_IT",
+  "entries": [
+    {"subcategory": "RESEAU", "equipment_type": "NETWORK_SWITCH_24P", "equipment_class": "COURANT_FAIBLE_IT", "keywords": ["switch", "reseau", "ports"], "synonyms": ["commutateur reseau"]},
+    {"subcategory": "WIFI", "equipment_type": "WIFI_ACCESS_POINT", "equipment_class": "COURANT_FAIBLE_IT", "keywords": ["wifi", "borne", "access"], "synonyms": ["point acces wifi"]},
+    {"subcategory": "BAIE", "equipment_type": "IT_RACK_42U", "equipment_class": "INFRA_IT", "keywords": ["baie", "rack", "u"], "synonyms": ["baie informatique"]}
+  ]
+}

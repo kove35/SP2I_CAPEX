@@ -1,0 +1,8 @@
+{
+  "family": "AMENAGEMENTS_EXTERIEURS",
+  "entries": [
+    {"subcategory": "CLOTURE", "equipment_type": "PERIMETER_FENCE_ML", "equipment_class": "EXTERIEUR_SECURITE", "keywords": ["cloture", "grillage", "mur"], "synonyms": ["cloture perimeter"]},
+    {"subcategory": "PAYSAGE", "equipment_type": "LANDSCAPING_M2", "equipment_class": "EXTERIEUR_PAYSAGE", "keywords": ["amenagement", "paysager", "jardin"], "synonyms": ["espace vert"]},
+    {"subcategory": "ECLAIRAGE_EXTERIEUR", "equipment_type": "EXTERIOR_LIGHT_POLE", "equipment_class": "EXTERIEUR_TECHNIQUE", "keywords": ["candela bre", "eclairage", "exterieur"], "synonyms": ["mat eclairage", "lampadaire"]}
+  ]
+}

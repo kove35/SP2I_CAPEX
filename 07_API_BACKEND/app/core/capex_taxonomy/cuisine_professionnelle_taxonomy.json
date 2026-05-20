@@ -1,0 +1,8 @@
+{
+  "family": "CUISINE_PROFESSIONNELLE",
+  "entries": [
+    {"subcategory": "CUISSON", "equipment_type": "PRO_COOKING_RANGE", "equipment_class": "CUISINE_PRO", "keywords": ["fourneau", "cuisson", "gaz"], "synonyms": ["piano cuisson"]},
+    {"subcategory": "FROID", "equipment_type": "COLD_ROOM_MEDIUM", "equipment_class": "FROID_PRO", "keywords": ["chambre", "froide", "froid"], "synonyms": ["cold room"]},
+    {"subcategory": "LAVERIE", "equipment_type": "DISHWASHER_PRO", "equipment_class": "CUISINE_PRO", "keywords": ["lave", "vaisselle", "pro"], "synonyms": ["lave vaisselle professionnel"]}
+  ]
+}

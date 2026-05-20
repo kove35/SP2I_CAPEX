@@ -1,0 +1,8 @@
+{
+  "family": "HYDRAULIQUE",
+  "entries": [
+    {"subcategory": "POMPAGE", "equipment_type": "SUBMERSIBLE_PUMP_MEDIUM", "equipment_class": "POMPAGE", "keywords": ["pompe", "immergee", "forage"], "synonyms": ["pompe submersible"]},
+    {"subcategory": "RESERVOIR", "equipment_type": "WATER_TANK_10000L", "equipment_class": "STOCKAGE_EAU", "keywords": ["reservoir", "eau", "litres"], "synonyms": ["cuve eau"]},
+    {"subcategory": "TRAITEMENT", "equipment_type": "WATER_TREATMENT_SKID", "equipment_class": "TRAITEMENT_EAU", "keywords": ["traitement", "eau", "filtration"], "synonyms": ["station traitement eau"]}
+  ]
+}

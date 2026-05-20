@@ -1,0 +1,9 @@
+{
+  "family": "GROS_OEUVRE",
+  "entries": [
+    {"subcategory": "BETON", "equipment_type": "CONCRETE_M3_C25", "equipment_class": "STRUCTURE", "keywords": ["beton", "c25", "m3"], "synonyms": ["beton arme", "beton pret emploi"]},
+    {"subcategory": "ACIER", "equipment_type": "REBAR_STEEL_TON", "equipment_class": "STRUCTURE", "keywords": ["acier", "fer", "beton"], "synonyms": ["armature", "fer a beton"]},
+    {"subcategory": "COFFRAGE", "equipment_type": "FORMWORK_M2", "equipment_class": "STRUCTURE_PROVISOIRE", "keywords": ["coffrage", "banche", "m2"], "synonyms": ["coffrage bois"]},
+    {"subcategory": "MACONNERIE", "equipment_type": "BLOCK_MASONRY_M2", "equipment_class": "STRUCTURE_SECONDARY", "keywords": ["parpaing", "maconnerie", "bloc"], "synonyms": ["agglo ciment", "bloc beton"]}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "family": "MENUISERIE_BOIS",
+  "entries": [
+    {"subcategory": "PORTE", "equipment_type": "WOOD_DOOR_MEDIUM", "equipment_class": "MENUISERIE_INTERIEURE", "keywords": ["porte", "bois", "huisserie"], "synonyms": ["porte bois", "bloc porte"]},
+    {"subcategory": "PLACARD", "equipment_type": "WOOD_CLOSET_MEDIUM", "equipment_class": "AGENCEMENT_INTERIEUR", "keywords": ["placard", "bois", "rangement"], "synonyms": ["placard menuiserie"]},
+    {"subcategory": "CUISINE", "equipment_type": "WOOD_KITCHEN_CABINET", "equipment_class": "AGENCEMENT_INTERIEUR", "keywords": ["cuisine", "meuble", "bois"], "synonyms": ["meuble cuisine"]}
+  ]
+}

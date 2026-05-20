@@ -1,0 +1,8 @@
+{
+  "family": "ENERGIE_SOLAIRE",
+  "entries": [
+    {"subcategory": "PANNEAU", "equipment_type": "PV_PANEL_550W", "equipment_class": "SOLAIRE_PV", "keywords": ["panneau", "solaire", "w"], "synonyms": ["module pv"]},
+    {"subcategory": "ONDULEUR", "equipment_type": "SOLAR_INVERTER_10KW", "equipment_class": "SOLAIRE_PV", "keywords": ["onduleur", "solaire", "kw"], "synonyms": ["inverter solaire"]},
+    {"subcategory": "BATTERIE", "equipment_type": "LITHIUM_BATTERY_5KWH", "equipment_class": "STOCKAGE_ENERGIE", "keywords": ["batterie", "lithium", "kwh"], "synonyms": ["batterie solaire"]}
+  ]
+}

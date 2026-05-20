@@ -1,0 +1,11 @@
+{
+  "family": "EQUIPEMENTS_MEDICAUX",
+  "entries": [
+    {"subcategory": "LABORATOIRE", "equipment_type": "LAB_ANALYZER_MEDIUM", "equipment_class": "MEDICAL_TECHNIQUE", "keywords": ["laboratoire", "analyseur", "biochimie"], "synonyms": ["analyseur medical"]},
+    {"subcategory": "RADIOLOGIE", "equipment_type": "X_RAY_DIGITAL_ROOM", "equipment_class": "MEDICAL_LOURD", "keywords": ["radiologie", "rayon", "x"], "synonyms": ["radio numerique", "x ray"]},
+    {"subcategory": "DENTAIRE", "equipment_type": "DENTAL_CHAIR_MEDIUM", "equipment_class": "MEDICAL_SPECIALISE", "keywords": ["dentaire", "fauteuil", "unit"], "synonyms": ["fauteuil dentaire"]},
+    {"subcategory": "STERILISATION", "equipment_type": "AUTOCLAVE_MEDIUM", "equipment_class": "MEDICAL_SUPPORT", "keywords": ["autoclave", "sterilisation", "vapeur"], "synonyms": ["sterilisateur"]},
+    {"subcategory": "MONITORING", "equipment_type": "PATIENT_MONITOR_MEDIUM", "equipment_class": "MEDICAL_MONITORING", "keywords": ["monitor", "patient", "multiparametres"], "synonyms": ["moniteur patient"]},
+    {"subcategory": "MOBILIER_MEDICAL", "equipment_type": "HOSPITAL_BED_MEDIUM", "equipment_class": "MOBILIER_MEDICAL", "keywords": ["lit", "medical", "hospitalier"], "synonyms": ["lit hopital"]}
+  ]
+}
