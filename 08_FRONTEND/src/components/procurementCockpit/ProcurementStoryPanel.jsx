@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, BrainCircuit, CheckCircle2, Download, Route, ShieldAlert } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, Lightbulb, Route, ShieldAlert, Sparkles } from "lucide-react";
 import { formatMoney, formatPercent } from "../../shared/formatters";
 
 export default function ProcurementStoryPanel({ data, selectedLine, onExport }) {
@@ -10,21 +10,37 @@ export default function ProcurementStoryPanel({ data, selectedLine, onExport }) 
   const alerts = [...criticalAlerts, ...warningAlerts, ...infoAlerts].slice(0, 5);
   const topLot = data?.lots?.[0];
   const topFamily = data?.families?.[0];
+  const bestScenario = Number(kpis.riskScore || 0) > 60 ? "CONSERVATEUR" : Number(kpis.roi || 0) > 0.12 ? "AGRESSIF CONTROLE" : "EQUILIBRE";
+  const riskText = criticalAlerts.length ? "prioriser la revue des lignes critical avant arbitrage fournisseur" : "maintenir la trajectoire et documenter les arbitrages";
+  const recommendations = [
+    { title: `Scenario recommande: ${bestScenario}`, text: "Compromis actuel entre ROI, risque logistique et confidence score.", severity: "stable" },
+    { title: "Action procurement", text: topLot ? `Concentrer la negociation sur ${topLot.label}, premier gisement CAPEX.` : "Identifier le lot dominant avant revue fournisseur.", severity: "info" },
+    { title: "Action risque", text: riskText, severity: criticalAlerts.length ? "critical" : "stable" },
+  ];
 
   return (
     <aside className="procurement-story-stack">
       <article className="procurement-panel story-panel">
         <header>
-          <span><BrainCircuit size={14} /> Storytelling IA</span>
-          <strong>Lecture executive</strong>
+          <span><Sparkles size={14} /> Executive summary</span>
+          <strong>{bestScenario}</strong>
         </header>
-        <p>
-          Le cockpit detecte {criticalAlerts.length} anomalie(s) critique(s) et {warningAlerts.length} warning(s). {topLot?.label || "Le portefeuille"} concentre
-          {` ${formatMoney(topLot?.amount || 0)} `} et la famille {topFamily?.label || "non classee"} porte le principal enjeu de benchmark.
-        </p>
-        <p>
-          Le ROI achat est de {formatPercent(kpis.roi)} avec une confiance financiere moyenne de {Math.round(kpis.financialConfidence || 0)}/100.
-        </p>
+        <div className="executive-signal">
+          <strong>{formatPercent(kpis.roi)}</strong>
+          <span>ROI global avec {Math.round(kpis.financialConfidence || 0)}/100 de confiance financiere</span>
+        </div>
+        <p>{topLot?.label || "Le portefeuille actif"} concentre {formatMoney(topLot?.amount || 0)}. La famille {topFamily?.label || "non classee"} porte le principal enjeu de benchmark.</p>
+        <div className="insight-card-grid">
+          {recommendations.map((item) => (
+            <div className={`insight-card ${item.severity}`} key={item.title}>
+              <Lightbulb size={15} />
+              <div>
+                <b>{item.title}</b>
+                <small>{item.text}</small>
+              </div>
+            </div>
+          ))}
+        </div>
       </article>
 
       <article className="procurement-panel alert-panel">
@@ -42,7 +58,7 @@ export default function ProcurementStoryPanel({ data, selectedLine, onExport }) 
             <AlertTriangle size={15} />
             <div>
               <b>{row.designation || row.famille}</b>
-              <small>{row.alert} | {formatMoney(row.amount)} | benchmark {formatMoney(row.benchmark_min)} - {formatMoney(row.benchmark_max)}</small>
+              <small>{row.alert || "Signal financier"} | impact {formatMoney(row.amount)} | benchmark {formatMoney(row.benchmark_min)} - {formatMoney(row.benchmark_max)}</small>
             </div>
           </div>
         )) : (
