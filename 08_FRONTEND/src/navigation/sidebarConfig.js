@@ -3,6 +3,7 @@ import {
   BarChart3,
   Bell,
   Boxes,
+  BrainCircuit,
   Building2,
   CircleDollarSign,
   Clock3,
@@ -63,6 +64,7 @@ export const sidebarSections = [
     icon: PackageSearch,
     items: [
       { label: "Arbitrage local / import", path: "/app/procurement?tab=import", icon: Ship },
+      { label: "Cockpit procurement", path: "/app/procurement-intelligence", icon: BrainCircuit, badge: "BI" },
       { label: "Fournisseurs", path: "/app/procurement?tab=suppliers", icon: Users },
       { label: "Containers", path: "/app/procurement?tab=containers", icon: Boxes },
       { label: "Cout rendu chantier", path: "/app/procurement?tab=costs", icon: Truck },
