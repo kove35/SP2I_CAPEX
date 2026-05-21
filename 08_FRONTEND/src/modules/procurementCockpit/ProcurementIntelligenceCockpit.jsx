@@ -17,12 +17,12 @@ import {
 
 const DASHBOARDS = [
   ["direction", "Direction"],
-  ["procurement", "Procurement Intelligence"],
-  ["financial", "Financial Sanity"],
-  ["scenario", "Scenario Intelligence"],
-  ["explainability", "Explainability"],
-  ["roi", "ROI Intelligence"],
-  ["risk", "Risk Intelligence"],
+  ["procurement", "Intelligence achats"],
+  ["financial", "Cohérence financière"],
+  ["scenario", "Analyse des scénarios"],
+  ["explainability", "Décisions expliquées"],
+  ["roi", "Analyse de rentabilité"],
+  ["risk", "Analyse des risques"],
 ];
 
 function number(value, fallback = 0) {
@@ -221,7 +221,7 @@ export default function ProcurementIntelligenceCockpit() {
   }, [scopedData?.kpis]);
   const breadcrumbs = React.useMemo(
     () => [
-      "Cockpit",
+      "Pilotage",
       crossFiltering.filters.lot,
       crossFiltering.filters.famille,
       crossFiltering.filters.fournisseur,
@@ -259,9 +259,9 @@ export default function ProcurementIntelligenceCockpit() {
     <main className="procurement-enterprise-page">
       <section className="procurement-enterprise-hero">
         <div>
-          <p className="eyebrow">Procurement Intelligence Cockpit</p>
-          <h1>Decision cockpit CAPEX</h1>
-          <p>Arbitrage executif achats, ROI, risques et anomalies.</p>
+          <p className="eyebrow">Cockpit intelligence achats</p>
+          <h1>Cockpit décisionnel CAPEX</h1>
+          <p>Arbitrage stratégique des achats, rentabilité, risques et anomalies.</p>
         </div>
         <div className="procurement-hero-actions">
           <button type="button" onClick={() => refetch()}><RefreshCcw size={16} /> Actualiser</button>
@@ -297,13 +297,13 @@ export default function ProcurementIntelligenceCockpit() {
             </React.Fragment>
           ))}
         </div>
-        <strong>{rows.length.toLocaleString("fr-FR")} ligne(s) dans le contexte actif</strong>
+        <strong>{rows.length.toLocaleString("fr-FR")} référence(s) analysée(s)</strong>
       </section>
 
       <section className="procurement-executive-ribbon">
         <Sparkles size={16} />
         <strong>{executiveNarrative}</strong>
-        <span>Dashboard {activeDashboard} synchronise avec les filtres actifs.</span>
+        <span>Tableau de bord synchronisé avec les filtres actifs.</span>
       </section>
 
       <ProcurementKpiStrip kpis={scopedData?.kpis} loading={isLoading} onKpiClick={handleKpiClick} />
