@@ -5,8 +5,8 @@ export default function GovernanceAuditTimeline({ events = [] }) {
   return (
     <article className="governance-panel audit-timeline">
       <header>
-        <span>Audit timeline</span>
-        <strong>Historique decisions et traces</strong>
+        <span>Trace des decisions</span>
+        <strong>Qui a fait quoi, quand et pourquoi</strong>
       </header>
       <div className="timeline-list">
         {events.slice(0, 10).map((event) => (
