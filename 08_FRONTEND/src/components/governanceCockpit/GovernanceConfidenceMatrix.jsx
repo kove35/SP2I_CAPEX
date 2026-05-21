@@ -1,6 +1,11 @@
 import React from "react";
 
 const LEVELS = ["HIGH", "MEDIUM", "LOW"];
+const LEVEL_LABELS = {
+  HIGH: "Fiables",
+  MEDIUM: "A verifier",
+  LOW: "Peu fiables",
+};
 
 export default function GovernanceConfidenceMatrix({ rows = [] }) {
   const families = React.useMemo(() => [...new Set(rows.map((row) => row.family))], [rows]);
@@ -8,14 +13,14 @@ export default function GovernanceConfidenceMatrix({ rows = [] }) {
   return (
     <article className="governance-panel confidence-matrix">
       <header>
-        <span>Confidence matrix</span>
-        <strong>Confiance par famille et benchmark</strong>
+        <span>Fiabilite des donnees</span>
+        <strong>Ce qui est fiable ou reste a verifier</strong>
       </header>
-      <div className="confidence-table" role="table" aria-label="Matrice de confiance governance">
+      <div className="confidence-table" role="table" aria-label="Fiabilite des donnees par famille">
         <div className="confidence-row header" role="row">
           <span>Famille</span>
-          {LEVELS.map((level) => <span key={level}>{level}</span>)}
-          <span>Benchmark</span>
+          {LEVELS.map((level) => <span key={level}>{LEVEL_LABELS[level]}</span>)}
+          <span>Prix a confirmer</span>
         </div>
         {families.map((family) => {
           const familyRows = rows.filter((row) => row.family === family);

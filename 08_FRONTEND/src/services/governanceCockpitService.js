@@ -91,10 +91,10 @@ function buildReferences() {
     const drift = driftFor(family, index);
     const technical = index % 11 === 0 ? "REJECTED" : "PARTIAL";
     const explanation = [
-      priority === "CRITICAL" ? "Priorite critique" : "Priorite de revue",
-      confidence === "LOW" ? "confiance faible" : "confiance moyenne",
-      drift === "CRITICAL" ? "drift critique" : drift === "HIGH" ? "drift eleve" : "drift a surveiller",
-      blocker === "BLOCK_IMPORT" ? "import bloque" : blocker === "HIGH_RISK" ? "double validation requise" : "revue procurement requise",
+      priority === "CRITICAL" ? "Reference critique" : "Reference a verifier",
+      confidence === "LOW" ? "donnees peu fiables" : "donnees partiellement verifiees",
+      drift === "CRITICAL" ? "prix tres eloignes du marche" : drift === "HIGH" ? "prix eloignes du marche" : "prix a comparer au marche local",
+      blocker === "BLOCK_IMPORT" ? "importation non autorisee" : blocker === "HIGH_RISK" ? "double verification obligatoire" : "verification achat necessaire",
     ].join(" : ");
     return {
       referenceId: `${family.slice(0, 3)}-GOV-${String(localIndex).padStart(4, "0")}`,
@@ -120,7 +120,7 @@ function buildReferences() {
       riskBadge: badgeFromRisk(blocker),
       reviewBadge: badgeFromRisk(priority),
       manualValidationRequired: true,
-      explanation: `${explanation}. Decision automatique interdite.`,
+      explanation: `${explanation}. Une personne doit verifier avant decision.`,
       reviewer: "UNASSIGNED",
       supplier: familyIndex % 2 ? "Fournisseur a verifier" : "Benchmark local a confirmer",
       benchmark: confidence === "LOW" ? "LOW" : "MEDIUM",

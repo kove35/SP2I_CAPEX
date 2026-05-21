@@ -5297,6 +5297,18 @@ button.procurement-kpi-card:hover {
   color: #9fb4d1;
 }
 
+.governance-simple-mode-note {
+  border: 1px solid rgba(96, 165, 250, .20);
+  border-radius: 8px;
+  margin-top: 10px;
+  max-width: 820px;
+  padding: 9px 10px;
+  color: #dbeafe;
+  background: rgba(30, 64, 175, .10);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .governance-hero .eyebrow,
 .governance-panel header span,
 .governance-panel-header span {
@@ -5373,13 +5385,13 @@ button.procurement-kpi-card:hover {
 }
 
 .governance-kpi-card.critical {
-  border-color: rgba(248, 113, 113, .32);
-  background: rgba(127, 29, 29, .18);
+  border-color: rgba(248, 113, 113, .24);
+  background: rgba(127, 29, 29, .12);
 }
 
 .governance-kpi-card.risk {
-  border-color: rgba(249, 115, 22, .26);
-  background: rgba(124, 45, 18, .16);
+  border-color: rgba(249, 115, 22, .24);
+  background: rgba(124, 45, 18, .12);
 }
 
 .governance-kpi-card.watch {
@@ -5423,14 +5435,22 @@ button.procurement-kpi-card:hover {
   font-size: 18px;
 }
 
+.family-status-card p {
+  margin: 0;
+  min-height: 40px;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .family-status-card.critical {
-  border-color: rgba(127, 29, 29, .75);
-  background: rgba(127, 29, 29, .18);
+  border-color: rgba(127, 29, 29, .52);
+  background: rgba(127, 29, 29, .12);
 }
 
 .family-status-card.risk {
-  border-color: rgba(248, 113, 113, .30);
-  background: rgba(127, 29, 29, .12);
+  border-color: rgba(249, 115, 22, .28);
+  background: rgba(124, 45, 18, .12);
 }
 
 .family-status-metrics {
@@ -5533,8 +5553,8 @@ button.procurement-kpi-card:hover {
 }
 
 .escalation-row.critical {
-  border-color: rgba(248, 113, 113, .30);
-  background: rgba(127, 29, 29, .18);
+  border-color: rgba(248, 113, 113, .26);
+  background: rgba(127, 29, 29, .12);
 }
 
 .escalation-row.high {
@@ -5590,12 +5610,12 @@ button.procurement-kpi-card:hover {
 }
 
 .explainability-summary {
-  border: 1px solid rgba(248, 113, 113, .20);
+  border: 1px solid rgba(249, 115, 22, .22);
   border-radius: 8px;
   margin: 0 0 10px;
   padding: 10px;
-  color: #fecaca;
-  background: rgba(127, 29, 29, .13);
+  color: #fed7aa;
+  background: rgba(124, 45, 18, .13);
   line-height: 1.45;
 }
 
@@ -5645,7 +5665,7 @@ button.procurement-kpi-card:hover {
 .governance-grid-badge.block-import,
 .governance-grid-badge.critical,
 .governance-grid-badge.senior-procurement-approval {
-  color: #fecaca !important;
+  color: #fca5a5 !important;
 }
 
 .governance-grid-badge.high,
@@ -5666,6 +5686,11 @@ button.procurement-kpi-card:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.governance-info-icon {
+  color: #93c5fd;
+  opacity: .9;
 }
 
 @media (max-width: 1180px) {

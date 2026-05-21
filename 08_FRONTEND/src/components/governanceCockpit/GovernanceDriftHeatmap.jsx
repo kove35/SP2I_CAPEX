@@ -5,7 +5,7 @@ const driftValue = { LOW: 18, MEDIUM: 48, HIGH: 76, CRITICAL: 96 };
 
 function buildOption(rows = []) {
   const families = [...new Set(rows.map((row) => row.family))];
-  const metrics = ["Drift marche", "Procurement", "Technique"];
+  const metrics = ["Ecart marche", "Achat", "Technique"];
   const points = families.flatMap((family, y) => {
     const familyRows = rows.filter((row) => row.family === family);
     const avg = (key) => Math.round(familyRows.reduce((sum, row) => sum + (driftValue[row[key]] || 50), 0) / Math.max(familyRows.length, 1));
@@ -40,8 +40,8 @@ export default function GovernanceDriftHeatmap({ rows = [] }) {
   return (
     <article className="governance-panel">
       <header>
-        <span>Drift heatmap</span>
-        <strong>Derive marche et risques benchmarks</strong>
+        <span>Carte des ecarts</span>
+        <strong>Prix, achat et controle technique</strong>
       </header>
       <BIChart option={option} height={320} chartKey={`governance-drift-${rows.length}`} />
     </article>

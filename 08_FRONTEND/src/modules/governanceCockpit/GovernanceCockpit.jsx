@@ -12,6 +12,13 @@ import GovernanceFamilyStatusBoard from "../../components/governanceCockpit/Gove
 import GovernanceKpiStrip from "../../components/governanceCockpit/GovernanceKpiStrip";
 import GovernanceReviewQueue from "../../components/governanceCockpit/GovernanceReviewQueue";
 
+const filterLabels = {
+  family: "Famille",
+  priority: "Priorite",
+  escalation: "Validation requise",
+  status: "Etat",
+};
+
 export default function GovernanceCockpit() {
   const { data, references, selectedReference, isLoading, isFetching, error, refetch } = useGovernanceCockpit();
   const setSelectedReferenceId = useGovernanceCockpitStore((state) => state.setSelectedReferenceId);
@@ -34,9 +41,12 @@ export default function GovernanceCockpit() {
     <main className="governance-cockpit-page">
       <section className="governance-hero">
         <div>
-          <p className="eyebrow"><ShieldAlert size={15} /> Gouvernance Enterprise</p>
-          <h1>Governance Cockpit</h1>
-          <p>Supervision humaine des risques procurement/CAPEX, escalations, blocages et validations explicables.</p>
+          <p className="eyebrow"><ShieldAlert size={15} /> Supervision des decisions achat</p>
+          <h1>Cockpit de verification CAPEX</h1>
+          <p>Une vue simple pour comprendre ce qui bloque, pourquoi c'est risque, qui doit verifier et si la decision peut etre prise.</p>
+          <div className="governance-simple-mode-note">
+            Vue simplifiee en preparation : direction, finance, chantier et investisseurs pourront lire les decisions sans vocabulaire technique.
+          </div>
         </div>
         <div className="governance-hero-actions">
           <button type="button" onClick={() => refetch()}><RefreshCcw size={15} /> Actualiser</button>
@@ -44,15 +54,15 @@ export default function GovernanceCockpit() {
         </div>
       </section>
 
-      {error ? <div className="governance-error">Dataset API indisponible, fallback governance V1 actif.</div> : null}
-      {isFetching ? <div className="live-refresh">Synchronisation governance...</div> : null}
+      {error ? <div className="governance-error">Donnees serveur indisponibles, la vue utilise le jeu de donnees prepare pour demonstration.</div> : null}
+      {isFetching ? <div className="live-refresh">Mise a jour des donnees de verification...</div> : null}
 
       <GovernanceKpiStrip kpis={data?.kpis} />
 
       {activeFilters.length ? (
         <section className="governance-filter-strip">
           {activeFilters.map(([key, value]) => (
-            <button type="button" key={key} onClick={() => setFilter(key, "")}>{key}: {value}</button>
+            <button type="button" key={key} onClick={() => setFilter(key, "")}>{filterLabels[key] || key}: {String(value).replaceAll("_", " ")}</button>
           ))}
         </section>
       ) : null}
