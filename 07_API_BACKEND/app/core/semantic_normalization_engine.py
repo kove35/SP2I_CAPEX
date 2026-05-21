@@ -10,18 +10,28 @@ class SemanticNormalizationEngine:
 
     REPLACEMENTS = {
         "grp": "groupe",
+        "gpe": "groupe",
         "ge": "groupe electrogene",
         "g.e": "groupe electrogene",
         "g/e": "groupe electrogene",
+        "elect": "electrogene",
+        "elect.": "electrogene",
+        "groupe elect": "groupe electrogene",
         "clim": "climatiseur",
         "split ac": "split climatiseur",
         "vrf": "vrv",
         "v.r.v": "vrv",
+        "photovalta": "photovoltaique",
+        "photovolta": "photovoltaique",
         "td": "tableau divisionnaire",
         "tgbt": "tableau general basse tension",
         "baes": "bloc autonome eclairage securite",
         "cfa": "courant faible",
         "cf": "courant fort",
+        "fp": "fourniture pose",
+        "f p": "fourniture pose",
+        "f&p": "fourniture pose",
+        "fourn pose": "fourniture pose",
         "vid surveillance": "videosurveillance",
         "ctrl acces": "controle acces",
         "alu": "aluminium",
@@ -42,7 +52,12 @@ class SemanticNormalizationEngine:
         raw = designation or ""
         normalized = self._strip_accents(raw).lower()
         normalized = normalized.replace("\u0153", "oe").replace("\u00e6", "ae")
-        normalized = re.sub(r"[/_()\-]+", " ", normalized)
+        normalized = re.sub(r"[\"'`´’]", " ", normalized)
+        normalized = re.sub(r"[/_()\-–—;:]+", " ", normalized)
+        normalized = re.sub(r"\b(\d+(?:[.,]\d+)?)\s*k\s*v\s*a\b", r"\1 kva", normalized)
+        normalized = re.sub(r"\b(\d+(?:[.,]\d+)?)\s*w\s*c\b", r"\1 wc", normalized)
+        normalized = re.sub(r"\b(\d+(?:[.,]\d+)?)\s*a\s*h\b", r"\1 ah", normalized)
+        normalized = re.sub(r"\b(\d+(?:[.,]\d+)?)\s*v\s*d\s*c\b", r"\1 vdc", normalized)
         normalized = re.sub(r"\s+", " ", normalized).strip()
         for source, target in self.REPLACEMENTS.items():
             normalized = re.sub(rf"\b{re.escape(source)}\b", target, normalized)

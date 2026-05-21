@@ -21,6 +21,9 @@ Thumbs.db
 *.log
 *.tmp
 *.temp
+*.bak
+~$*.xlsx
+.continue/
 tmp/
 temp/
 .pytest_cache/
