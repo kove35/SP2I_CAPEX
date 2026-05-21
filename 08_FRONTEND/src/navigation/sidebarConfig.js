@@ -65,7 +65,7 @@ export const sidebarSections = [
     icon: PackageSearch,
     items: [
       { label: "Arbitrage local / import", path: "/app/procurement?tab=import", icon: Ship },
-      { label: "Cockpit procurement", path: "/app/procurement-intelligence", icon: BrainCircuit, badge: "BI" },
+      { label: "Cockpit intelligence achats", path: "/app/procurement-intelligence", icon: BrainCircuit, badge: "BI" },
       { label: "Gouvernance Enterprise", path: "/app/governance-cockpit", icon: ShieldAlert, badge: "Gov" },
       { label: "Fournisseurs", path: "/app/procurement?tab=suppliers", icon: Users },
       { label: "Containers", path: "/app/procurement?tab=containers", icon: Boxes },
