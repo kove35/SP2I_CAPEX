@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-05-21T15:19:41",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\03_DONNEES_REFERENCE\\DQE_PROJECT_SP2I.xlsx",
+  "sheet": "DQE_CLEAN",
+  "phase_family": "ELECTRICITE",
+  "master_references": 65,
+  "quality_rows": 68,
+  "benchmark_rows": 260,
+  "low_confidence_references": 65,
+  "confidence_distribution": {
+    "HIGH": 0,
+    "MEDIUM": 28,
+    "LOW": 37
+  },
+  "risk_distribution": {
+    "LOW": 7,
+    "MEDIUM": 21,
+    "HIGH": 37
+  },
+  "duration_seconds": 0.78
+}

@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-05-21T15:29:27",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\MASTER_REFERENCE_ENTERPRISE.xlsx",
+  "phase_family": "ELECTRICITE",
+  "references": 65,
+  "benchmark_rows": 65,
+  "procurement_rows": 65,
+  "validation_status": {
+    "PARTIAL": 65
+  },
+  "confidence_distribution": {
+    "MEDIUM": 28,
+    "LOW": 37
+  },
+  "review_required": 65,
+  "average_market_drift_score": 86.52,
+  "critical_market_drift": 57,
+  "high_confidence_policy": "Strict: supplier, FOB, benchmark, finance, taxonomy and procurement must be verified.",
+  "duration_seconds": 0.14
+}

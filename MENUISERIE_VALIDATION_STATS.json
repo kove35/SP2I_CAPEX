@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-05-21T16:12:27",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\03_DONNEES_REFERENCE\\DQE_PROJECT_SP2I.xlsx",
+  "sheet": "DQE_CLEAN",
+  "family": "MENUISERIE_ALUMINIUM",
+  "menuiserie_rows": 41,
+  "master_references": 41,
+  "supplier_candidates": 3,
+  "confidence_distribution": {
+    "MEDIUM": 39,
+    "LOW": 2
+  },
+  "facade_risk": {
+    "MEDIUM": 18,
+    "HIGH": 21,
+    "CRITICAL": 2
+  },
+  "technical_validation": {
+    "PARTIAL": 41
+  },
+  "drift_alerts": {
+    "MEDIUM": 39,
+    "HIGH": 2
+  },
+  "decision_blockers": {
+    "BLOCK_IMPORT": 16,
+    "REVIEW_REQUIRED": 13,
+    "HIGH_RISK": 12
+  },
+  "high_policy": "No HIGH without verified supplier, verified benchmark, coherent glazing, acceptable drift and stable procurement.",
+  "duration_seconds": 0.25
+}

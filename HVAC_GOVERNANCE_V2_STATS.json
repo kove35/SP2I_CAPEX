@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-05-21T15:51:30",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\MASTER_REFERENCE_HVAC.xlsx",
+  "family": "HVAC",
+  "references": 8,
+  "supplier_candidates": 3,
+  "verified_suppliers": 0,
+  "confidence_distribution": {
+    "LOW": 4,
+    "MEDIUM": 4
+  },
+  "energy_risk": {
+    "HIGH": 5,
+    "LOW": 3
+  },
+  "technical_validation": {
+    "PARTIAL": 7,
+    "VERIFIED": 1
+  },
+  "fob_validation": {
+    "REJECTED": 3,
+    "PARTIAL": 5
+  },
+  "drift_alerts": {
+    "CRITICAL": 4,
+    "MEDIUM": 3,
+    "HIGH": 1
+  },
+  "low_confidence_references": 8,
+  "high_policy": "No HIGH without verified supplier, verified FOB, verified benchmark, coherent power/COP and acceptable drift.",
+  "duration_seconds": 0.07
+}

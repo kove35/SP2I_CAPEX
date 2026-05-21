@@ -1,0 +1,38 @@
+{
+  "generated_at": "2026-05-21T16:21:04",
+  "families": [
+    "ELECTRICITE",
+    "HVAC",
+    "PLOMBERIE",
+    "MENUISERIE_ALU"
+  ],
+  "global_kpis": {
+    "GLOBAL_GOVERNANCE_SCORE": 55.27,
+    "GLOBAL_PROCUREMENT_SCORE": 37.88,
+    "GLOBAL_CONFIDENCE_SCORE": 51.34,
+    "GLOBAL_DRIFT_SCORE": 51.06,
+    "GLOBAL_TCO_SCORE": 81.25,
+    "GLOBAL_TECHNICAL_VALIDATION_SCORE": 62.27,
+    "FAMILY_COUNT": 4,
+    "REFERENCE_COUNT": 235,
+    "READY_FAMILIES": 0,
+    "REVIEW_FAMILIES": 0,
+    "BLOCKED_FAMILIES": 4
+  },
+  "family_status": {
+    "ELECTRICITE": "HIGH_RISK",
+    "HVAC": "HIGH_RISK",
+    "PLOMBERIE": "BLOCKED",
+    "MENUISERIE_ALU": "BLOCKED"
+  },
+  "integration_gates": {
+    "ELECTRICITE": "BLOCKED",
+    "HVAC": "BLOCKED",
+    "PLOMBERIE": "BLOCKED",
+    "MENUISERIE_ALU": "BLOCKED"
+  },
+  "candidate_references": 235,
+  "manual_review_required": 235,
+  "cross_family_findings": 71,
+  "duration_seconds": 0.43
+}

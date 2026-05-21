@@ -1,0 +1,4676 @@
+{
+  "metadata": {
+    "generated_at": "2026-05-21T15:09:08",
+    "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\03_DONNEES_REFERENCE\\DQE_PROJECT_SP2I.xlsx",
+    "sheet": "DQE_CLEAN",
+    "rows": 210,
+    "columns": [
+      "PROJET_ID",
+      "BATIMENT",
+      "NIVEAU",
+      "ZONE",
+      "LOT",
+      "SOUS_LOT",
+      "TYPE_LIGNE",
+      "CODE_BPU",
+      "ARTICLE_ID",
+      "DESIGNATION",
+      "UNITE",
+      "QTE",
+      "PU_ESTIME_LOCAL_FCFA"
+    ],
+    "duration_seconds": 1.33,
+    "mode": "READ_ONLY_AUDIT"
+  },
+  "scores": {
+    "TAXONOMY_SCORE": 100.0,
+    "PROCUREMENT_SCORE": 83.33,
+    "FINANCIAL_SCORE": 72.35,
+    "ROI_RELIABILITY_SCORE": 98.33,
+    "TYPE_LINE_QUALITY_SCORE": 96.19,
+    "CONTEXT_PROPAGATION_SCORE": 96.19,
+    "REFERENCE_ENGINE_SCORE": 81.85,
+    "DASHBOARD_CREDIBILITY_SCORE": 88.59,
+    "GLOBAL_REFERENCE_SCORE": 87.98
+  },
+  "taxonomy": {
+    "TAXONOMY_SCORE": 100.0,
+    "classified_rows": 210,
+    "general_rows": 0,
+    "mapping_error_count": 0,
+    "TOP_MAPPING_ERRORS": [],
+    "COVERAGE_BY_FAMILY": [
+      {
+        "family": "ELECTRICITE",
+        "rows": 68,
+        "classified": 68,
+        "coverage": 100.0
+      },
+      {
+        "family": "MENUISERIE",
+        "rows": 44,
+        "classified": 44,
+        "coverage": 100.0
+      },
+      {
+        "family": "GROS_OEUVRE",
+        "rows": 34,
+        "classified": 34,
+        "coverage": 100.0
+      },
+      {
+        "family": "PLOMBERIE",
+        "rows": 32,
+        "classified": 32,
+        "coverage": 100.0
+      },
+      {
+        "family": "FINITIONS",
+        "rows": 11,
+        "classified": 11,
+        "coverage": 100.0
+      },
+      {
+        "family": "HVAC",
+        "rows": 5,
+        "classified": 5,
+        "coverage": 100.0
+      },
+      {
+        "family": "INSTALLATION_CHANTIER",
+        "rows": 3,
+        "classified": 3,
+        "coverage": 100.0
+      },
+      {
+        "family": "DEMOLITION",
+        "rows": 3,
+        "classified": 3,
+        "coverage": 100.0
+      },
+      {
+        "family": "ETANCHEITE",
+        "rows": 3,
+        "classified": 3,
+        "coverage": 100.0
+      },
+      {
+        "family": "SECURITE_HSE",
+        "rows": 2,
+        "classified": 2,
+        "coverage": 100.0
+      },
+      {
+        "family": "BARDAGE",
+        "rows": 2,
+        "classified": 2,
+        "coverage": 100.0
+      },
+      {
+        "family": "LOGISTIQUE_CHANTIER",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "family": "ETUDES_CONTROLES",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "family": "VRD",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      }
+    ],
+    "COVERAGE_BY_SUBLOT": [
+      {
+        "sous_lot": "BETON_ARMATURE_COFFRAGE",
+        "rows": 42,
+        "classified": 42,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "PLOMBERIE_SANITAIRE",
+        "rows": 35,
+        "classified": 35,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "CABLAGE",
+        "rows": 25,
+        "classified": 25,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "REVETEMENTS",
+        "rows": 24,
+        "classified": 24,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "MENUISERIE_ALU",
+        "rows": 23,
+        "classified": 23,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "ECLAIRAGE",
+        "rows": 13,
+        "classified": 13,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "PRISES_ET_COMMANDES",
+        "rows": 12,
+        "classified": 12,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "TABLEAUX_ELECTRIQUES",
+        "rows": 8,
+        "classified": 8,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "ENERGIE_SECOURS",
+        "rows": 8,
+        "classified": 8,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "ISOLATION",
+        "rows": 5,
+        "classified": 5,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "CLIMATISATION_VENTILATION",
+        "rows": 4,
+        "classified": 4,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "BARDAGE_FACADE",
+        "rows": 2,
+        "classified": 2,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "INSTALLATION_GENERALE",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "CLOTURE_SIGNALISATION",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "CONSOMMABLES_CHANTIER",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "MOYENS_LEVAGE_ACCES",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "GARDIENNAGE_HSE",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "CONTROLE_QUALITE",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "DEMOLITION_STRUCTURE",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "EVACUATION_GRAVATS",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      },
+      {
+        "sous_lot": "CURAGE_DEPOSE",
+        "rows": 1,
+        "classified": 1,
+        "coverage": 100.0
+      }
+    ]
+  },
+  "type_ligne": {
+    "TYPE_LINE_QUALITY_SCORE": 96.19,
+    "INVALID_TYPE_LINES": [],
+    "CLASSIFICATION_ERRORS": [
+      {
+        "row": 49,
+        "designation": "Sol PVC homogène hospitalier ISO 10581, classe 43, 2 mm – Fournisseur : Taizhou Huali New Materials",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 50,
+        "designation": "Plinthes PVC soudées 10 cm – Fournisseur : Taizhou Huali New Materials",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 157,
+        "designation": "Tuyauterie PVC condensats / VMC",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 178,
+        "designation": "PVC Ø63",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 179,
+        "designation": "PVC Ø75",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 180,
+        "designation": "PVC Ø100",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 181,
+        "designation": "PVC Ø110",
+        "type_ligne": "TRAVAUX",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      },
+      {
+        "row": 187,
+        "designation": "PVC EP Ø110",
+        "type_ligne": "EQUIPEMENT",
+        "expected": "DOCUMENTAIRE",
+        "issue": "Ligne a exclure integree au calcul"
+      }
+    ],
+    "invalid_count": 0,
+    "classification_error_count": 8
+  },
+  "financial": {
+    "FINANCIAL_SANITY_SCORE": 72.35,
+    "PRICE_OUTLIERS": [
+      {
+        "row": 146,
+        "designation": "Prises terre complètes + barrette",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 989000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 63,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables; outlier statistique IQR famille"
+      },
+      {
+        "row": 148,
+        "designation": "Table distribution courant normal",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 2127500.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "OFFICE_DESK_MEDIUM",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 149,
+        "designation": "TGDO précâblé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 3542000.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 191,
+        "designation": "Vanne+compteur+clapet",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 862500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 206,
+        "designation": "Accessoires, raccordement, essai et mise en service",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4025000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 11,
+        "designation": "Dallage sol (Bâtiment principal) – Béton",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 15,
+        "designation": "Dallage sol (Bâtiment annexe) – Béton",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 23,
+        "designation": "Marches d’accès – Béton 350",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 25,
+        "designation": "Linteaux (annexe) – Béton 400",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 140000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 37,
+        "designation": "Marches d’accès – Béton 350",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 39,
+        "designation": "Linteaux (annexe) – Béton 400",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 140000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 144,
+        "designation": "UPS Triphasé 30 kVA",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 10350000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 188,
+        "designation": "Station surpression",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 1725000.0,
+        "benchmark_min": 1944000.0,
+        "benchmark_max": 12960000.0,
+        "equipment_type": "BOOSTER_PUMP_SET",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 205,
+        "designation": "Onduleur hybrid 12 KVA / 48 VDC",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 3450000.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 207,
+        "designation": "GROUPE ELECT. PAO 75 KVA INSON (achat cChine)",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 11000000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 76,
+        "designation": "Baie vitrée alu étage 1 - 298×300 (≈3.00×3.00)",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 810000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 82,
+        "designation": "Porte-fenêtre alu étage 1 - 220×250",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 759000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 145,
+        "designation": "Accessoires pose & raccordement",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 1725000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 150,
+        "designation": "Table distribution ondulé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 977500.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "OFFICE_DESK_MEDIUM",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 14,
+        "designation": "Maçonnerie de soubassement agglos pleins 20×20×50",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 60000.0,
+        "benchmark_min": 23760.0,
+        "benchmark_max": 75600.0,
+        "equipment_type": "BLOCK_MASONRY_M2",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 53,
+        "designation": "Grande baie fixe façade entrée (nouvelle) – double vitrage de sécurité 44.2/16/6 avec store intégré",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 1043460.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 115,
+        "designation": "Inverseur auto source triphasé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4197500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 147,
+        "designation": "TGBT précâblé",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050000.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "TABLEAU_TGBT",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 151,
+        "designation": "Onduleur 30KVA Online",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 9028000.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 199,
+        "designation": "Serveur NVR",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 1092500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      }
+    ],
+    "SUSPICIOUS_PRICES": [
+      {
+        "row": 146,
+        "designation": "Prises terre complètes + barrette",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 989000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 63,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables; outlier statistique IQR famille"
+      },
+      {
+        "row": 148,
+        "designation": "Table distribution courant normal",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 2127500.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "OFFICE_DESK_MEDIUM",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 149,
+        "designation": "TGDO précâblé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 3542000.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 191,
+        "designation": "Vanne+compteur+clapet",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 862500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 206,
+        "designation": "Accessoires, raccordement, essai et mise en service",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4025000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 11,
+        "designation": "Dallage sol (Bâtiment principal) – Béton",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 15,
+        "designation": "Dallage sol (Bâtiment annexe) – Béton",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 23,
+        "designation": "Marches d’accès – Béton 350",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 25,
+        "designation": "Linteaux (annexe) – Béton 400",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 140000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 37,
+        "designation": "Marches d’accès – Béton 350",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 130000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 39,
+        "designation": "Linteaux (annexe) – Béton 400",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 140000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 144,
+        "designation": "UPS Triphasé 30 kVA",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 10350000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 188,
+        "designation": "Station surpression",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 1725000.0,
+        "benchmark_min": 1944000.0,
+        "benchmark_max": 12960000.0,
+        "equipment_type": "BOOSTER_PUMP_SET",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 205,
+        "designation": "Onduleur hybrid 12 KVA / 48 VDC",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 3450000.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 207,
+        "designation": "GROUPE ELECT. PAO 75 KVA INSON (achat cChine)",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 11000000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 46,
+        "issues": "prix inferieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 4,
+        "designation": "Consommation en eau et électricité du chantier",
+        "family": "INSTALLATION_CHANTIER",
+        "type_ligne": "PRESTATION",
+        "price": 0.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 15120000.0,
+        "equipment_type": "WATER_TANK_10000L",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 5,
+        "designation": "Achat Nacelle 400kg 22m neuve(remplaçant la location del’échafaudage",
+        "family": "LOGISTIQUE_CHANTIER",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8750.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 6,
+        "designation": "Gardiennage et HSE du chantier",
+        "family": "SECURITE_HSE",
+        "type_ligne": "PRESTATION",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 7,
+        "designation": "Études techniques et essais (tests de conformité)",
+        "family": "ETUDES_CONTROLES",
+        "type_ligne": "PRESTATION",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 10,
+        "designation": "Décapage carreaux sol existant (RDC)",
+        "family": "DEMOLITION",
+        "type_ligne": "TRAVAUX",
+        "price": 2100.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 15120000.0,
+        "equipment_type": "WATER_TANK_10000L",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 13,
+        "designation": "Dallage sol (Bâtiment principal) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 17,
+        "designation": "Dallage sol (Bâtiment annexe) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 20,
+        "designation": "Enduits sous plafond",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 21,
+        "designation": "Réservations et calfeutrements divers",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 22,
+        "designation": "Scellements et raccordements",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 27,
+        "designation": "Linteaux (annexe) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 30,
+        "designation": "Enduits sous plafond annexe",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 31,
+        "designation": "Finition des tableaux",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 180000.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "TABLEAU_TGBT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 34,
+        "designation": "Enduits sous plafond",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 35,
+        "designation": "Réservations et calfeutrements divers",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 36,
+        "designation": "Scellements et raccordements",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 41,
+        "designation": "Linteaux (annexe) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 44,
+        "designation": "Enduits sous plafond annexe",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 45,
+        "designation": "Finition des tableaux",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 180000.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "TABLEAU_TGBT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 46,
+        "designation": "Nettoyage des surfaces et réparation des fissures sur les surfaces",
+        "family": "ETANCHEITE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 50,
+        "designation": "Plinthes PVC soudées 10 cm – Fournisseur : Taizhou Huali New Materials",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 4024.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 66,
+        "designation": "Porte anti-panique acier + barre",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 67,
+        "designation": "Porte coupe-feu EI60 double vantaux",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 0.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 74,
+        "designation": "BAIES VITRÉES (fixe et coulissante)",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 85,
+        "designation": "BAIES VITRÉES (fixe et coulissante)",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 90,
+        "designation": "Garde-corps aluminium étage 2",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 0.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 99,
+        "designation": "Réglette encastrable 60x60 4x14W",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 67500.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 100,
+        "designation": "Réglette étanche 2x20w",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 40250.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 102,
+        "designation": "Applique sanitaire PC+Int",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 10350.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 103,
+        "designation": "Applique mural",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 13800.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 104,
+        "designation": "Applique mural étanche",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 20700.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 105,
+        "designation": "Spot encastrable hallogène G5,3",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 34500.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 111,
+        "designation": "Interrupteur simple allumage",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 112,
+        "designation": "Interrupteur va et vient",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 113,
+        "designation": "Bouton poussoir avec témoin",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 10350.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 116,
+        "designation": "Prise courant mosaïque blanc",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 117,
+        "designation": "Prise courant mosaïque rouge",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 118,
+        "designation": "Prise réseau",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 270000.0,
+        "benchmark_max": 3024000.0,
+        "equipment_type": "NETWORK_SWITCH_24P",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 119,
+        "designation": "Prise téléphone",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 120,
+        "designation": "Prise TV",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 121,
+        "designation": "Prise courant étanche",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 134,
+        "designation": "Boîtier carré Batibox",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 575.0,
+        "benchmark_min": 48600000.0,
+        "benchmark_max": 270000000.0,
+        "equipment_type": "X_RAY_DIGITAL_ROOM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 135,
+        "designation": "Boîte dérivation 105x105",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 5750.0,
+        "benchmark_min": 48600000.0,
+        "benchmark_max": 270000000.0,
+        "equipment_type": "X_RAY_DIGITAL_ROOM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 136,
+        "designation": "Boîte dérivation 180x110",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 11500.0,
+        "benchmark_min": 48600000.0,
+        "benchmark_max": 270000000.0,
+        "equipment_type": "X_RAY_DIGITAL_ROOM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 156,
+        "designation": "Liaisons frigorifiques + isolation",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 157,
+        "designation": "Tuyauterie PVC condensats / VMC",
+        "family": "HVAC",
+        "type_ligne": "TRAVAUX",
+        "price": 0.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 45,
+        "issues": "prix nul ou negatif"
+      },
+      {
+        "row": 158,
+        "designation": "DETECTEUR AUTO DE FUMEE 9V LITHIUM",
+        "family": "SECURITE_HSE",
+        "type_ligne": "TRAVAUX",
+        "price": 1310.0,
+        "benchmark_min": 1944000.0,
+        "benchmark_max": 8100000.0,
+        "equipment_type": "LITHIUM_BATTERY_5KWH",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 159,
+        "designation": "CABLE SECURITE INCENDIE CR1-C1 2X 1.5mm²",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4.63,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 167,
+        "designation": "Porte-papier",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 168,
+        "designation": "Porte-savon",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 3450.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 169,
+        "designation": "Porte-balai",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 171,
+        "designation": "Bac à laver",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 103500.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "DISHWASHER_PRO",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 194,
+        "designation": "Ascenseur de 630 kg, 4 arrêts, vitesse de 1 m/s etc",
+        "family": "VRD",
+        "type_ligne": "TRAVAUX",
+        "price": 2530000.0,
+        "benchmark_min": 37800000.0,
+        "benchmark_max": 102600000.0,
+        "equipment_type": "PASSENGER_LIFT_8P",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 204,
+        "designation": "Batterie gel 200 AH / 12V",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 281750.0,
+        "benchmark_min": 1944000.0,
+        "benchmark_max": 8100000.0,
+        "equipment_type": "LITHIUM_BATTERY_5KWH",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 208,
+        "designation": "F & P Système \"ROCKWOOL\" d'isolation thermo-acoustique épaisseur 10cm en laine\nde roche depuis l'extérieur, avec densité 70 kg/m³ et conductivité thermique 0,042\nW/(mK)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 1500.0,
+        "benchmark_min": 486000.0,
+        "benchmark_max": 3780000.0,
+        "equipment_type": "EXTERIOR_LIGHT_POLE",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 76,
+        "designation": "Baie vitrée alu étage 1 - 298×300 (≈3.00×3.00)",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 810000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 82,
+        "designation": "Porte-fenêtre alu étage 1 - 220×250",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 759000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 145,
+        "designation": "Accessoires pose & raccordement",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 1725000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 150,
+        "designation": "Table distribution ondulé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 977500.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "OFFICE_DESK_MEDIUM",
+        "severity_score": 42,
+        "issues": "prix superieur au benchmark Afrique centrale; outlier statistique IQR famille"
+      },
+      {
+        "row": 3,
+        "designation": "Clôture provisoire du chantier en tôles",
+        "family": "INSTALLATION_CHANTIER",
+        "type_ligne": "PRESTATION",
+        "price": 960000.0,
+        "benchmark_min": 48600.0,
+        "benchmark_max": 270000.0,
+        "equipment_type": "PERIMETER_FENCE_ML",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 8,
+        "designation": "Démolition des murs et de l’escalier (RDC)",
+        "family": "DEMOLITION",
+        "type_ligne": "TRAVAUX",
+        "price": 1200000.0,
+        "benchmark_min": 48600.0,
+        "benchmark_max": 270000.0,
+        "equipment_type": "PERIMETER_FENCE_ML",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 9,
+        "designation": "Évacuation des gravats hors site",
+        "family": "DEMOLITION",
+        "type_ligne": "TRAVAUX",
+        "price": 650000.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 161,
+        "designation": "Receveur douche",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 517500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 165,
+        "designation": "Cabine douche",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 517500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 173,
+        "designation": "CE 50L",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 201250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 174,
+        "designation": "CE 75L",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 247250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 175,
+        "designation": "CE 100L",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 316250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 176,
+        "designation": "Petites fournitures",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 230000.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 177,
+        "designation": "Acc. raccordements",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 345000.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 189,
+        "designation": "Raccordement bâches",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 402500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 195,
+        "designation": "Peinture intérieur sur murs (option plafond acoustique)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 8850000.0,
+        "benchmark_min": 4860.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "PAINT_INTERIOR_MEDIUM",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 196,
+        "designation": "Peinture intérieur sur murs et plafonds (Placo-platre)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 12250000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 209,
+        "designation": "ACCESSOIRES DE MONTAGE (2000 m²)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 5000000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 12,
+        "designation": "Dallage sol (Bâtiment principal) – Coffrage",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 14000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 86400.0,
+        "equipment_type": "FORMWORK_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 16,
+        "designation": "Dallage sol (Bâtiment annexe) – Coffrage",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 14000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 86400.0,
+        "equipment_type": "FORMWORK_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 18,
+        "designation": "Cloisons intérieures bât. principal en placo",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 11000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 19,
+        "designation": "Enduits / faïence sur cloisons placo bât. principal",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 9500.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 24,
+        "designation": "Marches d’accès – Coffrage",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 17000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 86400.0,
+        "equipment_type": "FORMWORK_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 26,
+        "designation": "Linteaux (annexe) – Coffrage",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 14000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 86400.0,
+        "equipment_type": "FORMWORK_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 28,
+        "designation": "Cloisons intérieures annexe en placo",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 11000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 29,
+        "designation": "Enduits / faïence sur cloisons placo annexe",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 9500.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 32,
+        "designation": "Cloisons intérieures bât. principal en placo",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 11000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 33,
+        "designation": "Enduits / faïence sur cloisons placo bât. principal",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 9500.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 38,
+        "designation": "Marches d’accès – Coffrage",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 17000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 86400.0,
+        "equipment_type": "FORMWORK_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 40,
+        "designation": "Linteaux (annexe) – Coffrage",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 14000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 86400.0,
+        "equipment_type": "FORMWORK_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 42,
+        "designation": "Cloisons intérieures annexe en placo",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 11000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 43,
+        "designation": "Enduits / faïence sur cloisons placo annexe",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 9500.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 47,
+        "designation": "Fourniture et application d’étanchéité à 2 composants (type ADEPROOF) – Bâtiment Principal (500 m²) – Beijing Oriental Yuhong Waterproof Technology Co., Ltd.",
+        "family": "ETANCHEITE",
+        "type_ligne": "TRAVAUX",
+        "price": 10432.0,
+        "benchmark_min": 23760.0,
+        "benchmark_max": 102600.0,
+        "equipment_type": "TERRACE_WATERPROOFING_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 48,
+        "designation": "Fourniture et application d’étanchéité à 2 composants (type ADEPROOF) – Bâtiment Annexe (200 m²) – Beijing Oriental Yuhong Waterproof Technology Co., Ltd.",
+        "family": "ETANCHEITE",
+        "type_ligne": "TRAVAUX",
+        "price": 10432.0,
+        "benchmark_min": 23760.0,
+        "benchmark_max": 102600.0,
+        "equipment_type": "TERRACE_WATERPROOFING_M2",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 49,
+        "designation": "Sol PVC homogène hospitalier ISO 10581, classe 43, 2 mm – Fournisseur : Taizhou Huali New Materials",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 17286.0,
+        "benchmark_min": 23760.0,
+        "benchmark_max": 97200.0,
+        "equipment_type": "VINYL_FLOOR_MEDIUM",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 51,
+        "designation": "Carrelage grès cérame imitation marbre 60×60 – Fournisseur : Foshan Hanse Ceramic",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 18000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 91800.0,
+        "equipment_type": "FLOOR_TILE_MEDIUM",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 54,
+        "designation": "Baie fixe secondaire",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 479160.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 57,
+        "designation": "Fenêtre coulissante",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 151200.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 58,
+        "designation": "Fenêtre coulissante",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 172800.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 59,
+        "designation": "Fenêtre coulissante",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 108000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 60,
+        "designation": "Fenêtre coulissante",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 70000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 62,
+        "designation": "Porte double battant double vitrage",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 350000.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 63,
+        "designation": "Porte double battant simple vitrage",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 300000.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 64,
+        "designation": "Porte simple",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 168300.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 65,
+        "designation": "Porte simple",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 160000.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 68,
+        "designation": "Fenêtre coulissante annexe",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 129600.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 69,
+        "designation": "Fenêtre coulissante annexe",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 86400.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 70,
+        "designation": "Fenêtre coulissante annexe",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 70000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 71,
+        "designation": "Porte double battant annexe",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 350000.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 72,
+        "designation": "Porte simple annexe",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 168300.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 73,
+        "designation": "Porte simple annexe",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 149600.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 77,
+        "designation": "Baie vitrée alu étage 1 - 180×220",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 78,
+        "designation": "Baie vitrée alu étage 1 - 120×160",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 79,
+        "designation": "Baie vitrée alu étage 1 - 100×120",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 80,
+        "designation": "Baie vitrée alu étage 1 - 60×60",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 81,
+        "designation": "Garde-corps aluminium étage 1",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 89,
+        "designation": "Baie vitrée alu étage 2 - 60×60",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 49680.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 91,
+        "designation": "Porte-fenêtre alu étage 2 - 220×250",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 92,
+        "designation": "Porte-fenêtre alu étage 2 - 220×150",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 93,
+        "designation": "Porte-fenêtre alu étage 2 - 220×120",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 94,
+        "designation": "Porte-fenêtre alu étage 2 - 220×90",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 95,
+        "designation": "Porte-fenêtre alu étage 2 - 220×80",
+        "family": "MENUISERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 138000.0,
+        "benchmark_min": 194400.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 108,
+        "designation": "Spot led 14w",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 6900.0,
+        "benchmark_min": 16200.0,
+        "benchmark_max": 194400.0,
+        "equipment_type": "LED_LIGHTING",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 114,
+        "designation": "Détecteur de présence",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 46000.0,
+        "benchmark_min": 48600.0,
+        "benchmark_max": 302400.0,
+        "equipment_type": "INTRUSION_DETECTOR",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 122,
+        "designation": "Câble U1000R2V 3G1,5mm²",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 1150.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 123,
+        "designation": "Câble U1000R2V 3G2,5mm²",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 1495.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 127,
+        "designation": "Gaine TPC Ø110 rouleau 25m",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 26500.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 129600.0,
+        "equipment_type": "VENTILATION_DUCT_GALVA",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 141,
+        "designation": "Gaine ICTA 20mm rouleau 100m",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 26450.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 129600.0,
+        "equipment_type": "VENTILATION_DUCT_GALVA",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 155,
+        "designation": "Hotte aspirante Whirlpool AKR439",
+        "family": "HVAC",
+        "type_ligne": "TRAVAUX",
+        "price": 129500.0,
+        "benchmark_min": 486000.0,
+        "benchmark_max": 1728000.0,
+        "equipment_type": "SPLIT_AC_24000_BTU",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 162,
+        "designation": "Lavabo simple",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 126500.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 172,
+        "designation": "Miroir lavabo",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 28750.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 183,
+        "designation": "Coude PPR Ø25",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 2070.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 184,
+        "designation": "Manchon PPR Ø32",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 2070.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 197,
+        "designation": "Caméra extérieure (protégée)",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 272320.0,
+        "benchmark_min": 486000.0,
+        "benchmark_max": 3780000.0,
+        "equipment_type": "EXTERIOR_LIGHT_POLE",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 200,
+        "designation": "Moniteur LCD 24″",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 184000.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 28,
+        "issues": "prix inferieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 126,
+        "designation": "Câble U1000R2V 5G25mm²",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 27025.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 24,
+        "issues": "prix superieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 128,
+        "designation": "Câble U1000R2V 1x120mm²",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 46000.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 24,
+        "issues": "prix superieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 142,
+        "designation": "Gaine tête de lit",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 368000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 129600.0,
+        "equipment_type": "VENTILATION_DUCT_GALVA",
+        "severity_score": 24,
+        "issues": "prix superieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 143,
+        "designation": "Gaine TPC Ø110 rouleau 25m",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 207000.0,
+        "benchmark_min": 27000.0,
+        "benchmark_max": 129600.0,
+        "equipment_type": "VENTILATION_DUCT_GALVA",
+        "severity_score": 24,
+        "issues": "prix superieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 163,
+        "designation": "Evier simple",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 74750.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 24,
+        "issues": "prix superieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 164,
+        "designation": "Evier double",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 109250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 24,
+        "issues": "prix superieur au benchmark Afrique centrale"
+      },
+      {
+        "row": 14,
+        "designation": "Maçonnerie de soubassement agglos pleins 20×20×50",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 60000.0,
+        "benchmark_min": 23760.0,
+        "benchmark_max": 75600.0,
+        "equipment_type": "BLOCK_MASONRY_M2",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 53,
+        "designation": "Grande baie fixe façade entrée (nouvelle) – double vitrage de sécurité 44.2/16/6 avec store intégré",
+        "family": "MENUISERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 1043460.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 115,
+        "designation": "Inverseur auto source triphasé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4197500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 147,
+        "designation": "TGBT précâblé",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050000.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "TABLEAU_TGBT",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 151,
+        "designation": "Onduleur 30KVA Online",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 9028000.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      },
+      {
+        "row": 199,
+        "designation": "Serveur NVR",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 1092500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 18,
+        "issues": "outlier statistique IQR famille"
+      }
+    ],
+    "MAGNITUDE_ERRORS": [
+      {
+        "row": 146,
+        "designation": "Prises terre complètes + barrette",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 989000.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 63,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables; outlier statistique IQR famille"
+      },
+      {
+        "row": 148,
+        "designation": "Table distribution courant normal",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 2127500.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 702000.0,
+        "equipment_type": "OFFICE_DESK_MEDIUM",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 149,
+        "designation": "TGDO précâblé",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 3542000.0,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 191,
+        "designation": "Vanne+compteur+clapet",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 862500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 206,
+        "designation": "Accessoires, raccordement, essai et mise en service",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4025000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 58,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte; outlier statistique IQR famille"
+      },
+      {
+        "row": 5,
+        "designation": "Achat Nacelle 400kg 22m neuve(remplaçant la location del’échafaudage",
+        "family": "LOGISTIQUE_CHANTIER",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8750.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 10,
+        "designation": "Décapage carreaux sol existant (RDC)",
+        "family": "DEMOLITION",
+        "type_ligne": "TRAVAUX",
+        "price": 2100.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 15120000.0,
+        "equipment_type": "WATER_TANK_10000L",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 13,
+        "designation": "Dallage sol (Bâtiment principal) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 17,
+        "designation": "Dallage sol (Bâtiment annexe) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 20,
+        "designation": "Enduits sous plafond",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 27,
+        "designation": "Linteaux (annexe) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 30,
+        "designation": "Enduits sous plafond annexe",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 31,
+        "designation": "Finition des tableaux",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 180000.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "TABLEAU_TGBT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 34,
+        "designation": "Enduits sous plafond",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 41,
+        "designation": "Linteaux (annexe) – Acier",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 1300.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 44,
+        "designation": "Enduits sous plafond annexe",
+        "family": "GROS_OEUVRE",
+        "type_ligne": "TRAVAUX",
+        "price": 13500.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 1512000.0,
+        "equipment_type": "REBAR_STEEL_TON",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 45,
+        "designation": "Finition des tableaux",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 180000.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "TABLEAU_TGBT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 50,
+        "designation": "Plinthes PVC soudées 10 cm – Fournisseur : Taizhou Huali New Materials",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 4024.0,
+        "benchmark_min": 8640000.0,
+        "benchmark_max": 48600000.0,
+        "equipment_type": "SOLAR_KIT_BT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 99,
+        "designation": "Réglette encastrable 60x60 4x14W",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 67500.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 100,
+        "designation": "Réglette étanche 2x20w",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 40250.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 102,
+        "designation": "Applique sanitaire PC+Int",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 10350.0,
+        "benchmark_min": 129600.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 103,
+        "designation": "Applique mural",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 13800.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 104,
+        "designation": "Applique mural étanche",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 20700.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 105,
+        "designation": "Spot encastrable hallogène G5,3",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 34500.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 111,
+        "designation": "Interrupteur simple allumage",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 112,
+        "designation": "Interrupteur va et vient",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 113,
+        "designation": "Bouton poussoir avec témoin",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 10350.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 116,
+        "designation": "Prise courant mosaïque blanc",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 117,
+        "designation": "Prise courant mosaïque rouge",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 118,
+        "designation": "Prise réseau",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 270000.0,
+        "benchmark_max": 3024000.0,
+        "equipment_type": "NETWORK_SWITCH_24P",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 119,
+        "designation": "Prise téléphone",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 120,
+        "designation": "Prise TV",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 16200000.0,
+        "benchmark_max": 43200000.0,
+        "equipment_type": "GENERATOR_60_KVA",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 121,
+        "designation": "Prise courant étanche",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 8050.0,
+        "benchmark_min": 702000.0,
+        "benchmark_max": 4860000.0,
+        "equipment_type": "IT_RACK_42U",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 134,
+        "designation": "Boîtier carré Batibox",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 575.0,
+        "benchmark_min": 48600000.0,
+        "benchmark_max": 270000000.0,
+        "equipment_type": "X_RAY_DIGITAL_ROOM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 135,
+        "designation": "Boîte dérivation 105x105",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 5750.0,
+        "benchmark_min": 48600000.0,
+        "benchmark_max": 270000000.0,
+        "equipment_type": "X_RAY_DIGITAL_ROOM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 136,
+        "designation": "Boîte dérivation 180x110",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 11500.0,
+        "benchmark_min": 48600000.0,
+        "benchmark_max": 270000000.0,
+        "equipment_type": "X_RAY_DIGITAL_ROOM",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 158,
+        "designation": "DETECTEUR AUTO DE FUMEE 9V LITHIUM",
+        "family": "SECURITE_HSE",
+        "type_ligne": "TRAVAUX",
+        "price": 1310.0,
+        "benchmark_min": 1944000.0,
+        "benchmark_max": 8100000.0,
+        "equipment_type": "LITHIUM_BATTERY_5KWH",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 159,
+        "designation": "CABLE SECURITE INCENDIE CR1-C1 2X 1.5mm²",
+        "family": "ELECTRICITE",
+        "type_ligne": "TRAVAUX",
+        "price": 4.63,
+        "benchmark_min": 1620.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "CABLE_CUIVRE_BT",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 167,
+        "designation": "Porte-papier",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 168,
+        "designation": "Porte-savon",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 3450.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 169,
+        "designation": "Porte-balai",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 5750.0,
+        "benchmark_min": 378000.0,
+        "benchmark_max": 1620000.0,
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 171,
+        "designation": "Bac à laver",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 103500.0,
+        "benchmark_min": 2700000.0,
+        "benchmark_max": 19440000.0,
+        "equipment_type": "DISHWASHER_PRO",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 194,
+        "designation": "Ascenseur de 630 kg, 4 arrêts, vitesse de 1 m/s etc",
+        "family": "VRD",
+        "type_ligne": "TRAVAUX",
+        "price": 2530000.0,
+        "benchmark_min": 37800000.0,
+        "benchmark_max": 102600000.0,
+        "equipment_type": "PASSENGER_LIFT_8P",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 204,
+        "designation": "Batterie gel 200 AH / 12V",
+        "family": "ELECTRICITE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 281750.0,
+        "benchmark_min": 1944000.0,
+        "benchmark_max": 8100000.0,
+        "equipment_type": "LITHIUM_BATTERY_5KWH",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 208,
+        "designation": "F & P Système \"ROCKWOOL\" d'isolation thermo-acoustique épaisseur 10cm en laine\nde roche depuis l'extérieur, avec densité 70 kg/m³ et conductivité thermique 0,042\nW/(mK)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 1500.0,
+        "benchmark_min": 486000.0,
+        "benchmark_max": 3780000.0,
+        "equipment_type": "EXTERIOR_LIGHT_POLE",
+        "severity_score": 45,
+        "issues": "prix tres inferieur au benchmark, zeros perdus probables"
+      },
+      {
+        "row": 3,
+        "designation": "Clôture provisoire du chantier en tôles",
+        "family": "INSTALLATION_CHANTIER",
+        "type_ligne": "PRESTATION",
+        "price": 960000.0,
+        "benchmark_min": 48600.0,
+        "benchmark_max": 270000.0,
+        "equipment_type": "PERIMETER_FENCE_ML",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 8,
+        "designation": "Démolition des murs et de l’escalier (RDC)",
+        "family": "DEMOLITION",
+        "type_ligne": "TRAVAUX",
+        "price": 1200000.0,
+        "benchmark_min": 48600.0,
+        "benchmark_max": 270000.0,
+        "equipment_type": "PERIMETER_FENCE_ML",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 9,
+        "designation": "Évacuation des gravats hors site",
+        "family": "DEMOLITION",
+        "type_ligne": "TRAVAUX",
+        "price": 650000.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 161,
+        "designation": "Receveur douche",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 517500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 165,
+        "designation": "Cabine douche",
+        "family": "PLOMBERIE",
+        "type_ligne": "EQUIPEMENT",
+        "price": 517500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 173,
+        "designation": "CE 50L",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 201250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 174,
+        "designation": "CE 75L",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 247250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 175,
+        "designation": "CE 100L",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 316250.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 176,
+        "designation": "Petites fournitures",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 230000.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 177,
+        "designation": "Acc. raccordements",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 345000.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 189,
+        "designation": "Raccordement bâches",
+        "family": "PLOMBERIE",
+        "type_ligne": "TRAVAUX",
+        "price": 402500.0,
+        "benchmark_min": 2700.0,
+        "benchmark_max": 37800.0,
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 195,
+        "designation": "Peinture intérieur sur murs (option plafond acoustique)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 8850000.0,
+        "benchmark_min": 4860.0,
+        "benchmark_max": 19440.0,
+        "equipment_type": "PAINT_INTERIOR_MEDIUM",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 196,
+        "designation": "Peinture intérieur sur murs et plafonds (Placo-platre)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 12250000.0,
+        "benchmark_min": 19440.0,
+        "benchmark_max": 70200.0,
+        "equipment_type": "FALSE_CEILING_STANDARD",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      },
+      {
+        "row": 209,
+        "designation": "ACCESSOIRES DE MONTAGE (2000 m²)",
+        "family": "FINITIONS",
+        "type_ligne": "TRAVAUX",
+        "price": 5000000.0,
+        "benchmark_min": 91800.0,
+        "benchmark_max": 918000.0,
+        "equipment_type": "WIFI_ACCESS_POINT",
+        "severity_score": 40,
+        "issues": "prix tres superieur au benchmark, magnitude suspecte"
+      }
+    ],
+    "financial_anomaly_count": 157
+  },
+  "roi": {
+    "ROI_RELIABILITY_SCORE": 98.33,
+    "TOP_FAKE_SAVINGS": [
+      {
+        "row": 147,
+        "designation": "TGBT précâblé",
+        "price": 8050000.0,
+        "estimated_landed": 7566195.0,
+        "fake_gain": 483805.0,
+        "roi": 0.0639,
+        "issue": "Gain base sur prix local/benchmark non fiable"
+      }
+    ],
+    "ROI_OUTLIERS": [
+      {
+        "row": 31,
+        "designation": "Finition des tableaux",
+        "price": 180000.0,
+        "estimated_landed": 2342520.0,
+        "roi": -0.9232,
+        "issue": "ROI hors plage decisionnelle"
+      },
+      {
+        "row": 45,
+        "designation": "Finition des tableaux",
+        "price": 180000.0,
+        "estimated_landed": 2342520.0,
+        "roi": -0.9232,
+        "issue": "ROI hors plage decisionnelle"
+      }
+    ]
+  },
+  "procurement": {
+    "PROCUREMENT_REALISM_SCORE": 83.33,
+    "IMPORTABILITY_ERRORS": [],
+    "SOURCING_WEAKNESS": [
+      {
+        "row": 5,
+        "designation": "Achat Nacelle 400kg 22m neuve(remplaçant la location del’échafaudage",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 61,
+        "designation": "Porte double battant double vitrage",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 62,
+        "designation": "Porte double battant double vitrage",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 63,
+        "designation": "Porte double battant simple vitrage",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 64,
+        "designation": "Porte simple",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 65,
+        "designation": "Porte simple",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 67,
+        "designation": "Porte coupe-feu EI60 double vantaux",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 71,
+        "designation": "Porte double battant annexe",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 72,
+        "designation": "Porte simple annexe",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 73,
+        "designation": "Porte simple annexe",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 75,
+        "designation": "Baie vitrée alu étage 1 - 120×120",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 76,
+        "designation": "Baie vitrée alu étage 1 - 298×300 (≈3.00×3.00)",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 77,
+        "designation": "Baie vitrée alu étage 1 - 180×220",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 78,
+        "designation": "Baie vitrée alu étage 1 - 120×160",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 79,
+        "designation": "Baie vitrée alu étage 1 - 100×120",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 80,
+        "designation": "Baie vitrée alu étage 1 - 60×60",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 81,
+        "designation": "Garde-corps aluminium étage 1",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 82,
+        "designation": "Porte-fenêtre alu étage 1 - 220×250",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 83,
+        "designation": "Porte-fenêtre alu étage 1 - 220×90",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 84,
+        "designation": "Porte-fenêtre alu étage 1 - 220×80",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 86,
+        "designation": "Baie vitrée alu étage 2 - 150×120",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 87,
+        "designation": "Baie vitrée alu étage 2 - 120×160",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 88,
+        "designation": "Baie vitrée alu étage 2 - 100×120",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 89,
+        "designation": "Baie vitrée alu étage 2 - 60×60",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 90,
+        "designation": "Garde-corps aluminium étage 2",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 91,
+        "designation": "Porte-fenêtre alu étage 2 - 220×250",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 92,
+        "designation": "Porte-fenêtre alu étage 2 - 220×150",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 93,
+        "designation": "Porte-fenêtre alu étage 2 - 220×120",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 94,
+        "designation": "Porte-fenêtre alu étage 2 - 220×90",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 95,
+        "designation": "Porte-fenêtre alu étage 2 - 220×80",
+        "equipment_type": "ALU_WINDOW_DOUBLE_GLAZING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 98,
+        "designation": "Dalle led 60x60 40W",
+        "equipment_type": "LED_LIGHTING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 99,
+        "designation": "Réglette encastrable 60x60 4x14W",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 100,
+        "designation": "Réglette étanche 2x20w",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 102,
+        "designation": "Applique sanitaire PC+Int",
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 103,
+        "designation": "Applique mural",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 104,
+        "designation": "Applique mural étanche",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 105,
+        "designation": "Spot encastrable hallogène G5,3",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 106,
+        "designation": "Spot led 18w",
+        "equipment_type": "LED_LIGHTING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 107,
+        "designation": "Spot led 22w",
+        "equipment_type": "LED_LIGHTING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 108,
+        "designation": "Spot led 14w",
+        "equipment_type": "LED_LIGHTING",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 109,
+        "designation": "Bloc autonome éclairage sécurité Ambiance",
+        "equipment_type": "BAES_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 110,
+        "designation": "Bloc autonome éclairage sécurité Direction",
+        "equipment_type": "BAES_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 111,
+        "designation": "Interrupteur simple allumage",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 112,
+        "designation": "Interrupteur va et vient",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 113,
+        "designation": "Bouton poussoir avec témoin",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 116,
+        "designation": "Prise courant mosaïque blanc",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 117,
+        "designation": "Prise courant mosaïque rouge",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 118,
+        "designation": "Prise réseau",
+        "equipment_type": "NETWORK_SWITCH_24P",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 119,
+        "designation": "Prise téléphone",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 120,
+        "designation": "Prise TV",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 121,
+        "designation": "Prise courant étanche",
+        "equipment_type": "IT_RACK_42U",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 144,
+        "designation": "UPS Triphasé 30 kVA",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 146,
+        "designation": "Prises terre complètes + barrette",
+        "equipment_type": "GENERATOR_60_KVA",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 151,
+        "designation": "Onduleur 30KVA Online",
+        "equipment_type": "SOLAR_KIT_BT",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 160,
+        "designation": "WC à l'anglaise",
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 161,
+        "designation": "Receveur douche",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 162,
+        "designation": "Lavabo simple",
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 163,
+        "designation": "Evier simple",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 164,
+        "designation": "Evier double",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 165,
+        "designation": "Cabine douche",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 166,
+        "designation": "Siphon 50x75",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 167,
+        "designation": "Porte-papier",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 168,
+        "designation": "Porte-savon",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 169,
+        "designation": "Porte-balai",
+        "equipment_type": "ALU_DOOR_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 172,
+        "designation": "Miroir lavabo",
+        "equipment_type": "SANITARY_PACK_MEDIUM",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 187,
+        "designation": "PVC EP Ø110",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 190,
+        "designation": "Siphon D63",
+        "equipment_type": "PVC_PIPE_STANDARD",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 203,
+        "designation": "Module photovaltaîque 300Wc/ 24V",
+        "equipment_type": "PV_PANEL_550W",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 204,
+        "designation": "Batterie gel 200 AH / 12V",
+        "equipment_type": "LITHIUM_BATTERY_5KWH",
+        "issue": "Equipement detecte mais importabilite faible"
+      },
+      {
+        "row": 205,
+        "designation": "Onduleur hybrid 12 KVA / 48 VDC",
+        "equipment_type": "SOLAR_KIT_BT",
+        "issue": "Equipement detecte mais importabilite faible"
+      }
+    ],
+    "importable_rows": 7
+  },
+  "context": {
+    "CONTEXT_PROPAGATION_SCORE": 96.19,
+    "BUILDING_MAPPING_ERRORS": [
+      {
+        "row": 2,
+        "designation": "Mobilisation du personnel et du matériel",
+        "missing": "niveau",
+        "lot": "INSTALLATION_CHANTIER",
+        "sous_lot": "INSTALLATION_GENERALE"
+      },
+      {
+        "row": 3,
+        "designation": "Clôture provisoire du chantier en tôles",
+        "missing": "niveau",
+        "lot": "INSTALLATION_CHANTIER",
+        "sous_lot": "CLOTURE_SIGNALISATION"
+      },
+      {
+        "row": 4,
+        "designation": "Consommation en eau et électricité du chantier",
+        "missing": "niveau",
+        "lot": "INSTALLATION_CHANTIER",
+        "sous_lot": "CONSOMMABLES_CHANTIER"
+      },
+      {
+        "row": 5,
+        "designation": "Achat Nacelle 400kg 22m neuve(remplaçant la location del’échafaudage",
+        "missing": "niveau",
+        "lot": "LOGISTIQUE_CHANTIER",
+        "sous_lot": "MOYENS_LEVAGE_ACCES"
+      },
+      {
+        "row": 6,
+        "designation": "Gardiennage et HSE du chantier",
+        "missing": "niveau",
+        "lot": "SECURITE_HSE",
+        "sous_lot": "GARDIENNAGE_HSE"
+      },
+      {
+        "row": 7,
+        "designation": "Études techniques et essais (tests de conformité)",
+        "missing": "niveau",
+        "lot": "ETUDES_CONTROLES",
+        "sous_lot": "CONTROLE_QUALITE"
+      },
+      {
+        "row": 210,
+        "designation": "ALUCOBOND AVEC STRUCTURE ET MONTAGE",
+        "missing": "niveau",
+        "lot": "BARDAGE",
+        "sous_lot": "BARDAGE_FACADE"
+      },
+      {
+        "row": 211,
+        "designation": "ALUCOBOND AVEC STRUCTURE ET MONTAGE",
+        "missing": "niveau",
+        "lot": "BARDAGE",
+        "sous_lot": "BARDAGE_FACADE"
+      }
+    ],
+    "missing_context_count": 8
+  },
+  "cockpit": {
+    "DASHBOARD_CREDIBILITY_SCORE": 88.59,
+    "KPI_INCONSISTENCIES": [
+      {
+        "area": "Finance",
+        "issue": "Anomalies prix susceptibles de fausser CAPEX, waterfall et heatmaps",
+        "count": 157
+      },
+      {
+        "area": "ROI",
+        "issue": "Faux gains import possibles si prix local/FOB non fiables",
+        "count": 1
+      },
+      {
+        "area": "AG Grid",
+        "issue": "Types de lignes non fiables susceptibles de polluer les aggregations",
+        "count": 8
+      }
+    ]
+  },
+  "reference": {
+    "REFERENCE_ENGINE_SCORE": 81.85,
+    "DUPLICATION_RATE": 12.86,
+    "NORMALIZATION_QUALITY": 57.62,
+    "fragmentation_rate": 86.89,
+    "duplicate_references": [
+      {
+        "normalized_designation": "fenetre coulissante",
+        "count": 4
+      },
+      {
+        "normalized_designation": "fenetre coulissante annexe",
+        "count": 3
+      },
+      {
+        "normalized_designation": "cloisons interieures bat. principal en faux plafond",
+        "count": 2
+      },
+      {
+        "normalized_designation": "enduits faience sur cloisons faux plafond bat. principal",
+        "count": 2
+      },
+      {
+        "normalized_designation": "enduits sous plafond",
+        "count": 2
+      },
+      {
+        "normalized_designation": "reservations et calfeutrements divers",
+        "count": 2
+      },
+      {
+        "normalized_designation": "scellements et raccordements",
+        "count": 2
+      },
+      {
+        "normalized_designation": "marches d acces beton 350",
+        "count": 2
+      },
+      {
+        "normalized_designation": "marches d acces coffrage",
+        "count": 2
+      },
+      {
+        "normalized_designation": "linteaux annexe beton 400",
+        "count": 2
+      },
+      {
+        "normalized_designation": "linteaux annexe coffrage",
+        "count": 2
+      },
+      {
+        "normalized_designation": "linteaux annexe acier",
+        "count": 2
+      },
+      {
+        "normalized_designation": "cloisons interieures annexe en faux plafond",
+        "count": 2
+      },
+      {
+        "normalized_designation": "enduits faience sur cloisons faux plafond annexe",
+        "count": 2
+      },
+      {
+        "normalized_designation": "enduits sous plafond annexe",
+        "count": 2
+      },
+      {
+        "normalized_designation": "finition des tableaux",
+        "count": 2
+      },
+      {
+        "normalized_designation": "porte double battant double vitrage",
+        "count": 2
+      },
+      {
+        "normalized_designation": "porte simple",
+        "count": 2
+      },
+      {
+        "normalized_designation": "porte simple annexe",
+        "count": 2
+      },
+      {
+        "normalized_designation": "baies vitrees fixe et coulissante",
+        "count": 2
+      },
+      {
+        "normalized_designation": "gaine tpc ø110 rouleau 25m",
+        "count": 2
+      },
+      {
+        "normalized_designation": "faux plafond acoustique armstrong",
+        "count": 2
+      },
+      {
+        "normalized_designation": "cablage & accessoires divers",
+        "count": 2
+      },
+      {
+        "normalized_designation": "alucobond avec structure et montage",
+        "count": 2
+      }
+    ],
+    "weak_normalization": [
+      {
+        "row": 20,
+        "designation": "Enduits sous plafond",
+        "normalized": "enduits sous plafond",
+        "semantic_score": 49.0
+      },
+      {
+        "row": 21,
+        "designation": "Réservations et calfeutrements divers",
+        "normalized": "reservations et calfeutrements divers",
+        "semantic_score": 31.0
+      },
+      {
+        "row": 22,
+        "designation": "Scellements et raccordements",
+        "normalized": "scellements et raccordements",
+        "semantic_score": 31.0
+      },
+      {
+        "row": 30,
+        "designation": "Enduits sous plafond annexe",
+        "normalized": "enduits sous plafond annexe",
+        "semantic_score": 49.0
+      },
+      {
+        "row": 31,
+        "designation": "Finition des tableaux",
+        "normalized": "finition des tableaux",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 34,
+        "designation": "Enduits sous plafond",
+        "normalized": "enduits sous plafond",
+        "semantic_score": 49.0
+      },
+      {
+        "row": 35,
+        "designation": "Réservations et calfeutrements divers",
+        "normalized": "reservations et calfeutrements divers",
+        "semantic_score": 31.0
+      },
+      {
+        "row": 36,
+        "designation": "Scellements et raccordements",
+        "normalized": "scellements et raccordements",
+        "semantic_score": 31.0
+      },
+      {
+        "row": 44,
+        "designation": "Enduits sous plafond annexe",
+        "normalized": "enduits sous plafond annexe",
+        "semantic_score": 49.0
+      },
+      {
+        "row": 45,
+        "designation": "Finition des tableaux",
+        "normalized": "finition des tableaux",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 49,
+        "designation": "Sol PVC homogène hospitalier ISO 10581, classe 43, 2 mm – Fournisseur : Taizhou Huali New Materials",
+        "normalized": "sol pvc homogene hospitalier iso 10581, classe 43, 2 mm fournisseur taizhou huali new materials",
+        "semantic_score": 46.0
+      },
+      {
+        "row": 55,
+        "designation": "Fenêtre coulissante (réduite)",
+        "normalized": "fenetre coulissante reduite",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 56,
+        "designation": "Fenêtre bandeau RDC",
+        "normalized": "fenetre bandeau rdc",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 57,
+        "designation": "Fenêtre coulissante",
+        "normalized": "fenetre coulissante",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 58,
+        "designation": "Fenêtre coulissante",
+        "normalized": "fenetre coulissante",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 59,
+        "designation": "Fenêtre coulissante",
+        "normalized": "fenetre coulissante",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 60,
+        "designation": "Fenêtre coulissante",
+        "normalized": "fenetre coulissante",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 64,
+        "designation": "Porte simple",
+        "normalized": "porte simple",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 65,
+        "designation": "Porte simple",
+        "normalized": "porte simple",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 67,
+        "designation": "Porte coupe-feu EI60 double vantaux",
+        "normalized": "porte coupe feu ei60 double vantaux",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 68,
+        "designation": "Fenêtre coulissante annexe",
+        "normalized": "fenetre coulissante annexe",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 69,
+        "designation": "Fenêtre coulissante annexe",
+        "normalized": "fenetre coulissante annexe",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 70,
+        "designation": "Fenêtre coulissante annexe",
+        "normalized": "fenetre coulissante annexe",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 71,
+        "designation": "Porte double battant annexe",
+        "normalized": "porte double battant annexe",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 72,
+        "designation": "Porte simple annexe",
+        "normalized": "porte simple annexe",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 73,
+        "designation": "Porte simple annexe",
+        "normalized": "porte simple annexe",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 75,
+        "designation": "Baie vitrée alu étage 1 - 120×120",
+        "normalized": "baie vitree aluminium etage 1 120×120",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 76,
+        "designation": "Baie vitrée alu étage 1 - 298×300 (≈3.00×3.00)",
+        "normalized": "baie vitree aluminium etage 1 298×300 ≈3.00×3.00",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 77,
+        "designation": "Baie vitrée alu étage 1 - 180×220",
+        "normalized": "baie vitree aluminium etage 1 180×220",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 78,
+        "designation": "Baie vitrée alu étage 1 - 120×160",
+        "normalized": "baie vitree aluminium etage 1 120×160",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 79,
+        "designation": "Baie vitrée alu étage 1 - 100×120",
+        "normalized": "baie vitree aluminium etage 1 100×120",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 80,
+        "designation": "Baie vitrée alu étage 1 - 60×60",
+        "normalized": "baie vitree aluminium etage 1 60×60",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 81,
+        "designation": "Garde-corps aluminium étage 1",
+        "normalized": "garde corps aluminium etage 1",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 86,
+        "designation": "Baie vitrée alu étage 2 - 150×120",
+        "normalized": "baie vitree aluminium etage 2 150×120",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 87,
+        "designation": "Baie vitrée alu étage 2 - 120×160",
+        "normalized": "baie vitree aluminium etage 2 120×160",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 88,
+        "designation": "Baie vitrée alu étage 2 - 100×120",
+        "normalized": "baie vitree aluminium etage 2 100×120",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 89,
+        "designation": "Baie vitrée alu étage 2 - 60×60",
+        "normalized": "baie vitree aluminium etage 2 60×60",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 90,
+        "designation": "Garde-corps aluminium étage 2",
+        "normalized": "garde corps aluminium etage 2",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 98,
+        "designation": "Dalle led 60x60 40W",
+        "normalized": "dalle led 60x60 40w",
+        "semantic_score": 32.0
+      },
+      {
+        "row": 99,
+        "designation": "Réglette encastrable 60x60 4x14W",
+        "normalized": "reglette encastrable 60x60 4x14w",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 100,
+        "designation": "Réglette étanche 2x20w",
+        "normalized": "reglette etanche 2x20w",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 101,
+        "designation": "Panel led 120x30cm",
+        "normalized": "panel led 120x30cm",
+        "semantic_score": 32.0
+      },
+      {
+        "row": 103,
+        "designation": "Applique mural",
+        "normalized": "applique mural",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 104,
+        "designation": "Applique mural étanche",
+        "normalized": "applique mural etanche",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 105,
+        "designation": "Spot encastrable hallogène G5,3",
+        "normalized": "spot encastrable hallogene g5,3",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 106,
+        "designation": "Spot led 18w",
+        "normalized": "spot led 18w",
+        "semantic_score": 32.0
+      },
+      {
+        "row": 107,
+        "designation": "Spot led 22w",
+        "normalized": "spot led 22w",
+        "semantic_score": 32.0
+      },
+      {
+        "row": 108,
+        "designation": "Spot led 14w",
+        "normalized": "spot led 14w",
+        "semantic_score": 32.0
+      },
+      {
+        "row": 119,
+        "designation": "Prise téléphone",
+        "normalized": "prise telephone",
+        "semantic_score": 10.0
+      },
+      {
+        "row": 120,
+        "designation": "Prise TV",
+        "normalized": "prise tv",
+        "semantic_score": 10.0
+      },
+      {
+        "row": 137,
+        "designation": "Console CDC 500 galva (10pcs)",
+        "normalized": "console cdc 500 galva 10pcs",
+        "semantic_score": 40.0
+      },
+      {
+        "row": 138,
+        "designation": "Console CDC 300 galva (10pcs)",
+        "normalized": "console cdc 300 galva 10pcs",
+        "semantic_score": 40.0
+      },
+      {
+        "row": 139,
+        "designation": "Console CDC 200 galva (10pcs)",
+        "normalized": "console cdc 200 galva 10pcs",
+        "semantic_score": 40.0
+      },
+      {
+        "row": 140,
+        "designation": "Console CDC 100 galva (10pcs)",
+        "normalized": "console cdc 100 galva 10pcs",
+        "semantic_score": 40.0
+      },
+      {
+        "row": 144,
+        "designation": "UPS Triphasé 30 kVA",
+        "normalized": "ups triphase 30 kva",
+        "semantic_score": 22.0
+      },
+      {
+        "row": 146,
+        "designation": "Prises terre complètes + barrette",
+        "normalized": "prises terre completes + barrette",
+        "semantic_score": 10.0
+      },
+      {
+        "row": 149,
+        "designation": "TGDO précâblé",
+        "normalized": "tgdo precable",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 155,
+        "designation": "Hotte aspirante Whirlpool AKR439",
+        "normalized": "hotte aspirante whirlpool akr439",
+        "semantic_score": 25.0
+      },
+      {
+        "row": 160,
+        "designation": "WC à l'anglaise",
+        "normalized": "wc a l anglaise",
+        "semantic_score": 32.0
+      },
+      {
+        "row": 161,
+        "designation": "Receveur douche",
+        "normalized": "receveur douche",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 162,
+        "designation": "Lavabo simple",
+        "normalized": "lavabo simple",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 163,
+        "designation": "Evier simple",
+        "normalized": "evier simple",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 164,
+        "designation": "Evier double",
+        "normalized": "evier double",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 165,
+        "designation": "Cabine douche",
+        "normalized": "cabine douche",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 166,
+        "designation": "Siphon 50x75",
+        "normalized": "siphon 50x75",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 170,
+        "designation": "Vanne arrêt",
+        "normalized": "vanne arret",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 172,
+        "designation": "Miroir lavabo",
+        "normalized": "miroir lavabo",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 173,
+        "designation": "CE 50L",
+        "normalized": "ce 50l",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 174,
+        "designation": "CE 75L",
+        "normalized": "ce 75l",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 175,
+        "designation": "CE 100L",
+        "normalized": "ce 100l",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 176,
+        "designation": "Petites fournitures",
+        "normalized": "petites fournitures",
+        "semantic_score": 2.0
+      },
+      {
+        "row": 177,
+        "designation": "Acc. raccordements",
+        "normalized": "acc. raccordements",
+        "semantic_score": 2.0
+      },
+      {
+        "row": 178,
+        "designation": "PVC Ø63",
+        "normalized": "pvc ø63",
+        "semantic_score": 37.0
+      },
+      {
+        "row": 179,
+        "designation": "PVC Ø75",
+        "normalized": "pvc ø75",
+        "semantic_score": 37.0
+      },
+      {
+        "row": 180,
+        "designation": "PVC Ø100",
+        "normalized": "pvc ø100",
+        "semantic_score": 37.0
+      },
+      {
+        "row": 181,
+        "designation": "PVC Ø110",
+        "normalized": "pvc ø110",
+        "semantic_score": 37.0
+      },
+      {
+        "row": 182,
+        "designation": "PPR Ø25",
+        "normalized": "ppr ø25",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 183,
+        "designation": "Coude PPR Ø25",
+        "normalized": "coude ppr ø25",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 184,
+        "designation": "Manchon PPR Ø32",
+        "normalized": "manchon ppr ø32",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 185,
+        "designation": "Coude filetage",
+        "normalized": "coude filetage",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 186,
+        "designation": "Té PPR Ø25",
+        "normalized": "te ppr ø25",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 187,
+        "designation": "PVC EP Ø110",
+        "normalized": "pvc ep ø110",
+        "semantic_score": 37.0
+      },
+      {
+        "row": 188,
+        "designation": "Station surpression",
+        "normalized": "station surpression",
+        "semantic_score": 50.0
+      },
+      {
+        "row": 189,
+        "designation": "Raccordement bâches",
+        "normalized": "raccordement baches",
+        "semantic_score": 2.0
+      },
+      {
+        "row": 190,
+        "designation": "Siphon D63",
+        "normalized": "siphon d63",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 191,
+        "designation": "Vanne+compteur+clapet",
+        "normalized": "vanne+compteur+clapet",
+        "semantic_score": 20.0
+      },
+      {
+        "row": 195,
+        "designation": "Peinture intérieur sur murs (option plafond acoustique)",
+        "normalized": "peinture interieur sur murs option plafond acoustique",
+        "semantic_score": 40.0
+      },
+      {
+        "row": 210,
+        "designation": "ALUCOBOND AVEC STRUCTURE ET MONTAGE",
+        "normalized": "alucobond avec structure et montage",
+        "semantic_score": 25.0
+      },
+      {
+        "row": 211,
+        "designation": "ALUCOBOND AVEC STRUCTURE ET MONTAGE",
+        "normalized": "alucobond avec structure et montage",
+        "semantic_score": 25.0
+      }
+    ]
+  },
+  "heatmap": [
+    {
+      "family": "INSTALLATION_CHANTIER",
+      "sous_lot": "CLOTURE_SIGNALISATION",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "INSTALLATION_CHANTIER",
+      "sous_lot": "CONSOMMABLES_CHANTIER",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "LOGISTIQUE_CHANTIER",
+      "sous_lot": "MOYENS_LEVAGE_ACCES",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "SECURITE_HSE",
+      "sous_lot": "GARDIENNAGE_HSE",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ETUDES_CONTROLES",
+      "sous_lot": "CONTROLE_QUALITE",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "DEMOLITION",
+      "sous_lot": "DEMOLITION_STRUCTURE",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "DEMOLITION",
+      "sous_lot": "EVACUATION_GRAVATS",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "DEMOLITION",
+      "sous_lot": "CURAGE_DEPOSE",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "GROS_OEUVRE",
+      "sous_lot": "BETON_ARMATURE_COFFRAGE",
+      "rows": 34,
+      "mapping_errors": 0,
+      "financial_anomalies": 34,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ELECTRICITE",
+      "sous_lot": "TABLEAUX_ELECTRIQUES",
+      "rows": 4,
+      "mapping_errors": 0,
+      "financial_anomalies": 4,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ETANCHEITE",
+      "sous_lot": "TABLEAUX_ELECTRIQUES",
+      "rows": 3,
+      "mapping_errors": 0,
+      "financial_anomalies": 3,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "FINITIONS",
+      "sous_lot": "TABLEAUX_ELECTRIQUES",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "MENUISERIE",
+      "sous_lot": "BETON_ARMATURE_COFFRAGE",
+      "rows": 8,
+      "mapping_errors": 0,
+      "financial_anomalies": 8,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ELECTRICITE",
+      "sous_lot": "PRISES_ET_COMMANDES",
+      "rows": 12,
+      "mapping_errors": 0,
+      "financial_anomalies": 12,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "FINITIONS",
+      "sous_lot": "ISOLATION",
+      "rows": 3,
+      "mapping_errors": 0,
+      "financial_anomalies": 3,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "HVAC",
+      "sous_lot": "ISOLATION",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "SECURITE_HSE",
+      "sous_lot": "ISOLATION",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "VRD",
+      "sous_lot": "PLOMBERIE_SANITAIRE",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 55.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ELECTRICITE",
+      "sous_lot": "ENERGIE_SECOURS",
+      "rows": 8,
+      "mapping_errors": 0,
+      "financial_anomalies": 7,
+      "quality_score": 60.62,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "FINITIONS",
+      "sous_lot": "REVETEMENTS",
+      "rows": 5,
+      "mapping_errors": 0,
+      "financial_anomalies": 4,
+      "quality_score": 64.0,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "MENUISERIE",
+      "sous_lot": "REVETEMENTS",
+      "rows": 13,
+      "mapping_errors": 0,
+      "financial_anomalies": 10,
+      "quality_score": 65.38,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "MENUISERIE",
+      "sous_lot": "MENUISERIE_ALU",
+      "rows": 23,
+      "mapping_errors": 0,
+      "financial_anomalies": 15,
+      "quality_score": 70.65,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "PLOMBERIE",
+      "sous_lot": "PLOMBERIE_SANITAIRE",
+      "rows": 32,
+      "mapping_errors": 0,
+      "financial_anomalies": 20,
+      "quality_score": 71.88,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ELECTRICITE",
+      "sous_lot": "CABLAGE",
+      "rows": 25,
+      "mapping_errors": 0,
+      "financial_anomalies": 14,
+      "quality_score": 74.8,
+      "risk_level": "WARNING"
+    },
+    {
+      "family": "ELECTRICITE",
+      "sous_lot": "ECLAIRAGE",
+      "rows": 13,
+      "mapping_errors": 0,
+      "financial_anomalies": 7,
+      "quality_score": 75.77,
+      "risk_level": "OK"
+    },
+    {
+      "family": "ELECTRICITE",
+      "sous_lot": "REVETEMENTS",
+      "rows": 6,
+      "mapping_errors": 0,
+      "financial_anomalies": 3,
+      "quality_score": 77.5,
+      "risk_level": "OK"
+    },
+    {
+      "family": "HVAC",
+      "sous_lot": "CLIMATISATION_VENTILATION",
+      "rows": 4,
+      "mapping_errors": 0,
+      "financial_anomalies": 1,
+      "quality_score": 88.75,
+      "risk_level": "OK"
+    },
+    {
+      "family": "INSTALLATION_CHANTIER",
+      "sous_lot": "INSTALLATION_GENERALE",
+      "rows": 1,
+      "mapping_errors": 0,
+      "financial_anomalies": 0,
+      "quality_score": 100.0,
+      "risk_level": "OK"
+    },
+    {
+      "family": "FINITIONS",
+      "sous_lot": "PLOMBERIE_SANITAIRE",
+      "rows": 2,
+      "mapping_errors": 0,
+      "financial_anomalies": 0,
+      "quality_score": 100.0,
+      "risk_level": "OK"
+    },
+    {
+      "family": "BARDAGE",
+      "sous_lot": "BARDAGE_FACADE",
+      "rows": 2,
+      "mapping_errors": 0,
+      "financial_anomalies": 0,
+      "quality_score": 100.0,
+      "risk_level": "OK"
+    }
+  ]
+}

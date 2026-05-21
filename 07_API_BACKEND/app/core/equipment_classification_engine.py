@@ -18,7 +18,7 @@ class EquipmentClassificationEngine:
         self.financial_engine = financial_engine or FinancialReferenceEngine()
 
     def classify_line(self, line: dict[str, Any]) -> dict[str, Any]:
-        classification = self.taxonomy_engine.classify(str(line.get("designation", "")))
+        classification = self.taxonomy_engine.classify(str(line.get("designation", "")), context=line)
         reference = self.financial_engine.get_reference(
             classification.get("equipment_type"),
             region=str(line.get("region", "CENTRAL_AFRICA")),

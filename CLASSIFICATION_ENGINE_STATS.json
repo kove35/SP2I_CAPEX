@@ -1,0 +1,40 @@
+{
+  "source": {
+    "file": "03_DONNEES_REFERENCE/DQE_PROJECT_SP2I.xlsx",
+    "sheet": "DQE_CLEAN",
+    "rows": 210,
+    "mode": "read_only_audit"
+  },
+  "scores_after_hardening": {
+    "GLOBAL_REFERENCE_SCORE": 87.98,
+    "TAXONOMY_SCORE": 100.0,
+    "PROCUREMENT_SCORE": 83.33,
+    "REFERENCE_ENGINE_SCORE": 81.85,
+    "TYPE_LINE_QUALITY_SCORE": 96.19,
+    "DASHBOARD_CREDIBILITY_SCORE": 88.59
+  },
+  "classification_quality": {
+    "classified_rows": 210,
+    "general_rows": 0,
+    "ambiguous_rows": 0,
+    "mapping_error_count": 0,
+    "importability_errors": 0,
+    "duplication_rate": 12.86,
+    "normalization_quality": 57.62,
+    "fragmentation_rate": 86.89
+  },
+  "remaining_risks": {
+    "financial_score": 72.35,
+    "top_financial_risk": "Prix local a valider sur certaines lignes techniques, notamment prises de terre, TGBT, batteries, groupe electrogene et accessoires.",
+    "top_procurement_risk": "Certaines lignes restent detectees comme equipement mais non importables, principalement chantier/travaux ou references trop generiques.",
+    "master_reference_status": "GO conditionnel apres validation financiere des lignes suspectes."
+  },
+  "engine_changes": [
+    "Normalisation renforcee des abreviations chantier et electriques.",
+    "Classification contextuelle par LOT, FAMILLE, SOUS_LOT et TYPE_LIGNE.",
+    "Types officiels et exclusions explicites.",
+    "Regles anti faux positifs sur materiel, mobilisation, local GE et isolation.",
+    "Classification confidence HIGH/MEDIUM/LOW.",
+    "Classification reason explicable par ligne."
+  ]
+}

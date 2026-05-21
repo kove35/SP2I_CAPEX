@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-05-21T15:43:48",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\03_DONNEES_REFERENCE\\DQE_PROJECT_SP2I.xlsx",
+  "sheet": "DQE_CLEAN",
+  "family": "HVAC",
+  "hvac_rows": 8,
+  "master_references": 8,
+  "benchmark_rows": 32,
+  "confidence_distribution": {
+    "LOW": 5,
+    "MEDIUM": 3
+  },
+  "drift_alerts": {
+    "HIGH": 2,
+    "CRITICAL": 3,
+    "MEDIUM": 3
+  },
+  "procurement_review_required": 8,
+  "high_policy": "No HIGH without supplier, benchmark, FOB and acceptable drift validation.",
+  "duration_seconds": 0.13
+}

@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-05-21T15:37:42",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\MASTER_REFERENCE_GOVERNANCE_V2.xlsx",
+  "phase_family": "ELECTRICITE",
+  "references": 65,
+  "suppliers_in_registry": 3,
+  "verified_suppliers": 0,
+  "confidence_after": {
+    "LOW": 60,
+    "MEDIUM": 5
+  },
+  "fob_validation": {
+    "PARTIAL": 17,
+    "UNVERIFIED": 48
+  },
+  "local_market_validation": {
+    "REJECTED": 47,
+    "VERIFIED": 4,
+    "PARTIAL": 14
+  },
+  "drift_alerts": {
+    "CRITICAL": 47,
+    "MEDIUM": 4,
+    "HIGH": 13,
+    "LOW": 1
+  },
+  "critical_drift_references": 60,
+  "average_market_drift_score": 86.52,
+  "high_policy": "No HIGH without real supplier, FOB, local benchmark, finance and procurement validation.",
+  "duration_seconds": 0.2
+}

@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-05-21T16:29:24",
+  "source_candidates": "MASTER_REFERENCE_ENTERPRISE_CANDIDATES.xlsx",
+  "review_items": 235,
+  "manual_validation_required": 235,
+  "priority_distribution": {
+    "CRITICAL": 149,
+    "HIGH": 83,
+    "MEDIUM": 3
+  },
+  "status_distribution": {
+    "PENDING": 235
+  },
+  "escalation_distribution": {
+    "DOUBLE_VALIDATION": 13,
+    "PROCUREMENT_REVIEW": 83,
+    "SENIOR_PROCUREMENT_APPROVAL": 93,
+    "SENIOR_REVIEW": 43,
+    "STANDARD_REVIEW": 3
+  },
+  "families": {
+    "ELECTRICITE": 65,
+    "HVAC": 8,
+    "MENUISERIE_ALU": 41,
+    "PLOMBERIE": 121
+  },
+  "active_overrides": 0,
+  "active_comments": 0,
+  "duration_seconds": 0.68
+}

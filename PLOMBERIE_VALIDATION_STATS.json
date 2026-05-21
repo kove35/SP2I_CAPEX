@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-05-21T15:59:03",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\03_DONNEES_REFERENCE\\DQE_PROJECT_SP2I.xlsx",
+  "sheet": "DQE_CLEAN",
+  "family": "PLOMBERIE",
+  "plomberie_rows": 121,
+  "master_references": 121,
+  "supplier_candidates": 3,
+  "confidence_distribution": {
+    "LOW": 80,
+    "MEDIUM": 41
+  },
+  "water_risk": {
+    "LOW": 9,
+    "HIGH": 73,
+    "MEDIUM": 39
+  },
+  "technical_validation": {
+    "VERIFIED": 9,
+    "REJECTED": 13,
+    "PARTIAL": 99
+  },
+  "drift_alerts": {
+    "HIGH": 82,
+    "MEDIUM": 39
+  },
+  "decision_blockers": {
+    "BLOCK_IMPORT": 77,
+    "REVIEW_REQUIRED": 40,
+    "TECHNICAL_VALIDATION_REQUIRED": 3,
+    "HIGH_RISK": 1
+  },
+  "high_policy": "No HIGH without verified supplier, verified benchmark, coherent material, acceptable drift and stable procurement.",
+  "duration_seconds": 0.49
+}

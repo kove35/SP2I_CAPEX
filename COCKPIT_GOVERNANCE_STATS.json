@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-05-21T16:39:31",
+  "source_queue": "PROCUREMENT_REVIEW_QUEUE.xlsx",
+  "cockpit_references": 235,
+  "family_kpis": 4,
+  "workflow_states": {
+    "PENDING": 235
+  },
+  "governance_alerts": {
+    "CRITICAL": 149,
+    "HIGH": 83,
+    "MEDIUM": 3
+  },
+  "drift_alerts": {
+    "MEDIUM": 235
+  },
+  "procurement_alerts": {
+    "CRITICAL": 93,
+    "HIGH": 13,
+    "LOW": 68,
+    "MEDIUM": 61
+  },
+  "technical_alerts": {
+    "HIGH": 235
+  },
+  "escalations": {
+    "DOUBLE_VALIDATION": 13,
+    "PROCUREMENT_REVIEW": 83,
+    "SENIOR_PROCUREMENT_APPROVAL": 93,
+    "SENIOR_REVIEW": 43,
+    "STANDARD_REVIEW": 3
+  },
+  "audit_events": 235,
+  "components_prepared": 8,
+  "duration_seconds": 0.8
+}

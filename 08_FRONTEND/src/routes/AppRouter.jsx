@@ -10,6 +10,7 @@ import SimulationPage from "../modules/simulation/SimulationPage";
 import SiteExecutionPage from "../modules/chantier/SiteExecutionPage";
 
 const ProcurementIntelligenceCockpit = React.lazy(() => import("../modules/procurementCockpit/ProcurementIntelligenceCockpit"));
+const GovernanceCockpit = React.lazy(() => import("../modules/governanceCockpit/GovernanceCockpit"));
 
 const cockpitRoutes = {
   "/app": <CockpitPage />,
@@ -18,6 +19,11 @@ const cockpitRoutes = {
   "/app/procurement-intelligence": (
     <React.Suspense fallback={<div className="live-refresh">Chargement du cockpit procurement...</div>}>
       <ProcurementIntelligenceCockpit />
+    </React.Suspense>
+  ),
+  "/app/governance-cockpit": (
+    <React.Suspense fallback={<div className="live-refresh">Chargement du cockpit governance...</div>}>
+      <GovernanceCockpit />
     </React.Suspense>
   ),
   "/app/logistics": <LogisticsPage />,
