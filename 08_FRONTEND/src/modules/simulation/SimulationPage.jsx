@@ -10,6 +10,8 @@ import { useAppStore } from "../../store/appStore.jsx";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
+import { getProjectWorkflow } from "../../services/projectService";
+import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const SIMULATION_TIMEOUT_MS = Number(import.meta.env.VITE_ANALYTICS_TIMEOUT_MS || 18000);
 const DQE_SYNCED_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
@@ -134,6 +136,12 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const [notice, setNotice] = React.useState("");
   const { state, setState } = useAppStore();
   const dqeSummary = React.useMemo(() => getDqeSummary(state.activeProject || PROJECT_CONTEXT.code), [state.activeProject]);
+  const workflow = React.useMemo(
+    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
+    [state]
+  );
+  const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
+  const budgetDone = workflow.steps.find((step) => step.id === "budget")?.state === "done";
 
   React.useEffect(() => {
     setTab(defaultTab);
@@ -233,6 +241,38 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
 
       {error ? <div className="app-error">{error}</div> : null}
       {notice ? <div className="app-warning">{notice}</div> : null}
+      {!setupDone ? (
+        <WorkflowGuardEmptyState
+          title="Configuration projet requise"
+          message="Ce projet doit etre configure avant de poursuivre le workflow CAPEX."
+          actionLabel="Configurer le projet"
+          actionRoute="/app/projects"
+          severity="blocking"
+          currentStep={workflow.label}
+          requiredStep="Configuration projet"
+          testId="scenario-empty-state"
+        />
+      ) : !dqeSummary.hasActiveDqe ? (
+        <WorkflowGuardEmptyState
+          title="Aucun DQE actif"
+          message="Aucun DQE actif. Importez et certifiez un DQE avant de lancer une simulation."
+          actionLabel="Importer un DQE"
+          actionRoute="/app/dqe?tab=import"
+          currentStep={workflow.steps.find((step) => step.id === "dqe")?.status}
+          requiredStep="DQE certifie"
+          testId="scenario-empty-state"
+        />
+      ) : !budgetDone ? (
+        <WorkflowGuardEmptyState
+          title="Budget non synchronise"
+          message="Le budget doit etre synchronise avant de lancer les scenarios."
+          actionLabel="Synchroniser le budget"
+          actionRoute="/app/dqe?tab=sync"
+          currentStep={workflow.steps.find((step) => step.id === "budget")?.status}
+          requiredStep="Budget synchronise"
+          testId="scenario-empty-state"
+        />
+      ) : null}
       <section className={`scenario-source-strip ${dqeSummary.hasActiveDqe ? "ready" : "blocked"}`}>
         <div>
           <strong>Source donnees : {dqeSummary.label}</strong>

@@ -3,6 +3,8 @@ import AnalyticsCard from "../../ui/AnalyticsCard";
 import KpiCard from "../../ui/KpiCard";
 import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
+import { getProjectWorkflow } from "../../services/projectService";
+import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
@@ -130,6 +132,12 @@ function DataTable({ columns, rows, empty }) {
 export default function SiteExecutionPage() {
   const [tab, setTab] = React.useState(new URLSearchParams(window.location.search).get("tab") || "planning");
   const { state } = useAppStore();
+  const workflow = React.useMemo(
+    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
+    [state]
+  );
+  const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
+  const procurementDone = workflow.steps.find((step) => step.id === "procurement")?.state === "done";
   const context = React.useMemo(
     () => getExecutionContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, state.lastSimulation),
     [state.activeProject, state.activeScenario, state.lastSimulation]
@@ -232,13 +240,36 @@ export default function SiteExecutionPage() {
         </div>
       </section>
 
-      {!context.hasActiveDqe ? (
+      {!setupDone ? (
+        <WorkflowGuardEmptyState
+          title="Configuration projet requise"
+          message="Ce projet doit etre configure avant de poursuivre le workflow CAPEX."
+          actionLabel="Configurer le projet"
+          actionRoute="/app/projects"
+          severity="blocking"
+          currentStep={workflow.label}
+          requiredStep="Configuration projet"
+          testId="execution-empty-state"
+        />
+      ) : !procurementDone ? (
+        <WorkflowGuardEmptyState
+          title="Approvisionnement a preparer"
+          message="Preparez les arbitrages achat avant de suivre l'execution chantier."
+          actionLabel="Ouvrir Approvisionnement"
+          actionRoute="/app/procurement"
+          currentStep={workflow.steps.find((step) => step.id === "procurement")?.status}
+          requiredStep="Approvisionnement"
+          testId="execution-empty-state"
+        />
+      ) : null}
+
+      {setupDone && !context.hasActiveDqe ? (
         <div className="app-warning">
           Aucun DQE actif. Importez et validez un DQE avant de piloter l'execution chantier.
           <button type="button" className="link-button" onClick={() => navigate("/app/dqe?tab=import")}> Importer un DQE</button>
         </div>
       ) : null}
-      {!state.lastSimulation ? (
+      {setupDone && !state.lastSimulation ? (
         <div className="app-warning">
           Aucun scenario actif. Lancez une simulation pour estimer l'impact planning.
           <button type="button" className="link-button" onClick={() => navigate("/app/simulation")}> Tester un scenario</button>

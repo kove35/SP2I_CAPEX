@@ -10,6 +10,9 @@ import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilt
 import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
+import { useAppStore } from "../../store/appStore.jsx";
+import { getProjectPrimaryAction, getProjectWorkflow } from "../../services/projectService";
+import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import Skeleton from "../../ui/Skeleton";
 import AnalyticsHealthPage from "./AnalyticsHealthPage";
@@ -167,6 +170,12 @@ function useDashboardFromUrl() {
 
 export default function AnalyticsPage() {
   const [dashboard, setDashboard] = useDashboardFromUrl();
+  const { state } = useAppStore();
+  const workflow = React.useMemo(
+    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
+    [state]
+  );
+  const primaryAction = getProjectPrimaryAction(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state);
   const engine = useAnalyticsEngine(dashboard);
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
@@ -243,6 +252,18 @@ export default function AnalyticsPage() {
 
       {engine.error ? <div className="analytics-error">{engine.error.message}</div> : null}
       {engine.isFetching ? <div className="live-refresh">Mise a jour des indicateurs en cours...</div> : null}
+      {workflow.status !== "ACTIVE" ? (
+        <WorkflowGuardEmptyState
+          title="Donnees de pilotage partielles"
+          message="Les donnees de pilotage sont partielles. Completez le workflow projet pour fiabiliser les indicateurs."
+          actionLabel={primaryAction.label}
+          actionRoute={primaryAction.route}
+          severity="info"
+          currentStep={workflow.label}
+          requiredStep="Pilotage fiable"
+          testId="workflow-empty-state"
+        />
+      ) : null}
 
       {renderDashboard()}
     </main>

@@ -6,6 +6,8 @@ import { analyzeExcel, syncExcel, validateAiMapping } from "../../services/excel
 import { getAnalyticsDataQuality } from "../../services/analyticsService";
 import { useAppStore } from "../../store/appStore.jsx";
 import { PROJECT_CONTEXT } from "../../utils/businessContext";
+import { getProjectWorkflow } from "../../services/projectService";
+import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const SUPPORTED_UPLOAD_EXTENSIONS = [".xlsx", ".xlsm", ".xls", ".csv"];
 const SYNCED_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
@@ -84,6 +86,10 @@ function formatDate(value) {
 export default function DqePage() {
   const { state } = useAppStore();
   const projectId = state.activeProject || PROJECT_CONTEXT.code;
+  const workflow = getProjectWorkflow(state.activeProjectDetails || { id: projectId, workspace_key: projectId }, state);
+  const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
+  const dqeStep = workflow.steps.find((step) => step.id === "dqe");
+  const budgetStep = workflow.steps.find((step) => step.id === "budget");
   const searchParams = new URLSearchParams(window.location.search);
   const [tab, setTab] = React.useState(searchParams.get("tab") || "import");
   const [file, setFile] = React.useState(null);
@@ -327,6 +333,38 @@ export default function DqePage() {
         <p className="eyebrow">DQE & donnees projet</p>
         <h1>Importer, verifier et fiabiliser le budget du projet</h1>
       </section>
+      {!setupDone ? (
+        <WorkflowGuardEmptyState
+          title="Configuration projet requise"
+          message="Ce projet doit etre configure avant de poursuivre le workflow CAPEX."
+          actionLabel="Configurer le projet"
+          actionRoute="/app/projects"
+          severity="blocking"
+          currentStep={workflow.label}
+          requiredStep="Configuration projet"
+          testId="dqe-empty-state"
+        />
+      ) : !workflow.activeDqe ? (
+        <WorkflowGuardEmptyState
+          title="DQE a importer"
+          message="Importez un DQE pour analyser le budget du projet."
+          actionLabel="Importer le DQE"
+          actionRoute="/app/dqe?tab=import"
+          currentStep={dqeStep?.status}
+          requiredStep="DQE & donnees"
+          testId="dqe-empty-state"
+        />
+      ) : workflow.activeDqe && budgetStep?.state !== "done" ? (
+        <WorkflowGuardEmptyState
+          title="Budget a synchroniser"
+          message="Le DQE est certifie. Synchronisez le budget pour debloquer les scenarios."
+          actionLabel="Synchroniser le budget"
+          actionRoute="/app/dqe?tab=sync"
+          currentStep={budgetStep?.status}
+          requiredStep="Budget projet"
+          testId="dqe-empty-state"
+        />
+      ) : null}
       {showNewVersionConfirm ? (
         <div className="dqe-version-modal" role="dialog" aria-modal="true" aria-labelledby="dqe-new-version-title">
           <div className="dqe-version-dialog">

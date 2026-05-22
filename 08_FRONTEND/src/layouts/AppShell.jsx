@@ -31,7 +31,7 @@ export default function AppShell({ activePath, onNavigate, children }) {
     <div className={`saas-shell ${isCollapsed ? "is-collapsed" : ""}`}>
       <Sidebar activePath={activePath} onNavigate={onNavigate} />
       <div className="saas-main">
-        <header className="topbar">
+        <header className="topbar" data-testid="workspace-header">
           <button className="icon-button mobile-menu" type="button" onClick={toggleMobile} title="Menu">
             <Menu size={18} />
           </button>
