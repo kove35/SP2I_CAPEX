@@ -1,16 +1,14 @@
 import React from "react";
 import {
-  ArrowRight,
   BarChart3,
   Building2,
   CheckCircle2,
   CircleDollarSign,
   FileSpreadsheet,
-  Gauge,
-  LineChart,
   Menu,
   ShieldCheck,
 } from "lucide-react";
+import LoginCard from "./LoginCard";
 
 const decisionPillars = [
   ["Budget travaux", "Pilotage financier", CircleDollarSign],
@@ -28,6 +26,8 @@ const optimizationEngines = [
 ];
 
 export default function LandingPage({ onNavigate }) {
+  const openProjectHub = () => onNavigate("/app/projects");
+
   return (
     <main className="marketing-page one-screen">
       <section className="hero-section one-screen-hero">
@@ -41,9 +41,9 @@ export default function LandingPage({ onNavigate }) {
                 <span>Menu</span>
               </summary>
               <div className="landing-menu-panel">
-                <button type="button" onClick={() => onNavigate("/app")}>Cockpit</button>
-                <button type="button" onClick={() => onNavigate("/app/simulation")}>Tester un scenario</button>
-                <button type="button" onClick={() => onNavigate("/app/dqe")}>DQE & donnees</button>
+                <button type="button" onClick={openProjectHub}>Espace projet</button>
+                <button type="button" onClick={() => onNavigate("/app/governance-cockpit")}>Gouvernance</button>
+                <button type="button" onClick={() => onNavigate("/app/procurement-intelligence")}>Analyse achats</button>
                 <button type="button" onClick={() => onNavigate("/app/analytics")}>Tableaux de pilotage</button>
               </div>
             </details>
@@ -55,17 +55,15 @@ export default function LandingPage({ onNavigate }) {
             <p className="eyebrow">Pointe-Noire | Congo-Brazzaville</p>
             <h1>Systeme de Pilotage des Investissements Immobiliers</h1>
             <p>
-              Plateforme decisionnelle de pilotage budgetaire, d'analyse strategique
-              et d'optimisation immobiliere pour les projets et chantiers a
-              Pointe-Noire.
+              Plateforme SaaS collaborative pour piloter les projets immobiliers,
+              isoler les workspaces, gouverner les DQE et suivre les decisions
+              CAPEX avec plusieurs roles utilisateurs.
             </p>
 
             <div className="hero-actions">
-              <button type="button" onClick={() => onNavigate("/app/simulation")}>
-                Lancer une simulation <ArrowRight size={17} />
-              </button>
-              <button type="button" onClick={() => onNavigate("/app")}>Voir le cockpit</button>
-              <button type="button" onClick={() => onNavigate("/app/analytics")}>Pilotage direction</button>
+              <button type="button" onClick={openProjectHub}>Se connecter</button>
+              <button type="button" onClick={openProjectHub}>Creer un compte</button>
+              <button type="button" onClick={() => onNavigate("/app")}>Decouvrir SP2I</button>
             </div>
 
             <div className="local-commercial-strip">
@@ -74,21 +72,7 @@ export default function LandingPage({ onNavigate }) {
             </div>
           </div>
 
-          <div className="cockpit-mockup one-screen-mockup" aria-label="Mockup cockpit decisionnel SP2I">
-            <div className="mockup-top">
-              <span>Investment Decision Center</span>
-              <strong>Live</strong>
-            </div>
-            <div className="mockup-grid">
-              <article><span>Budget optimise</span><strong>1.9 Md</strong></article>
-              <article><span>Rentabilite</span><strong>+14.6%</strong></article>
-              <article><span>Strategies</span><strong>12</strong></article>
-              <article><span>Risque global</span><strong>MEDIUM</strong></article>
-            </div>
-            <div className="route-line">
-              <span>DQE</span><i /><LineChart size={18} /><i /><span>Decision</span><i /><Gauge size={18} /><i /><span>Pilotage</span>
-            </div>
-          </div>
+          <LoginCard onAuthenticated={openProjectHub} onDiscover={() => onNavigate("/app")} />
         </div>
 
         <div className="one-screen-bottom">
@@ -106,13 +90,13 @@ export default function LandingPage({ onNavigate }) {
           </section>
 
           <section className="one-screen-panel">
-            <h2>Optimisation integree</h2>
+            <h2>Workspace collaboratif</h2>
             <div className="optimization-list">
-              {optimizationEngines.map((item) => (
+              {["Utilisateurs", "Roles", "Projets", ...optimizationEngines.slice(0, 1)].map((item) => (
                 <span key={item}><CheckCircle2 size={15} /> {item}</span>
               ))}
             </div>
-            <p>Import, containers et logistique restent des leviers au service du budget travaux.</p>
+            <p>Organisation, utilisateurs, projets et DQE deviennent les points d'entree du pilotage CAPEX.</p>
           </section>
         </div>
       </section>

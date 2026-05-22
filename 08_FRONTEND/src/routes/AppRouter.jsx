@@ -6,6 +6,7 @@ import CockpitPage from "../modules/cockpit/CockpitPage";
 import DqePage from "../modules/dqe/DqePage";
 import LogisticsPage from "../modules/logistics/LogisticsPage";
 import ProcurementPage from "../modules/procurement/ProcurementPage";
+import ProjectHub from "../modules/projects/ProjectHub";
 import SimulationPage from "../modules/simulation/SimulationPage";
 import SiteExecutionPage from "../modules/chantier/SiteExecutionPage";
 
@@ -13,6 +14,7 @@ const ProcurementIntelligenceCockpit = React.lazy(() => import("../modules/procu
 const GovernanceCockpit = React.lazy(() => import("../modules/governanceCockpit/GovernanceCockpit"));
 
 const cockpitRoutes = {
+  "/app/projects": null,
   "/app": <CockpitPage />,
   "/app/simulation": <SimulationPage />,
   "/app/procurement": <ProcurementPage />,
@@ -55,6 +57,8 @@ export default function AppRouter() {
 
   const page = routePath === "/app/simulation"
     ? <SimulationPage defaultTab={searchParams.get("tab") || "simulation"} />
+    : routePath === "/app/projects"
+      ? <ProjectHub onNavigate={navigateTo} />
     : cockpitRoutes[routePath] || <CockpitPage />;
 
   return <AppShell activePath={path} onNavigate={navigateTo}>{page}</AppShell>;

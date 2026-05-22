@@ -40,6 +40,7 @@ export const sidebarSections = [
     icon: Home,
     badge: "Live",
     items: [
+      { label: "Mes projets", path: "/app/projects", icon: Building2 },
       { label: "Vue d'ensemble", path: "/app", icon: Gauge },
       { label: "Indicateurs cles", path: "/app/analytics?dashboard=direction", icon: BarChart3 },
       { label: "Budget travaux", path: "/app/analytics?dashboard=capex", icon: CircleDollarSign },
