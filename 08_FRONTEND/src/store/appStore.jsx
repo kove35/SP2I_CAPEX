@@ -6,6 +6,7 @@ const AppStoreContext = React.createContext(null);
 export function AppStoreProvider({ children }) {
   const [state, setState] = React.useState({
     activeProject: PROJECT_CONTEXT.code,
+    activeProjectDetails: null,
     activeScenario: SCENARIO_OPTIONS[0].code,
     lastSimulation: null,
   });
@@ -20,6 +21,7 @@ export function useAppStore() {
     return {
       state: {
         activeProject: PROJECT_CONTEXT.code,
+        activeProjectDetails: null,
         activeScenario: SCENARIO_OPTIONS[0].code,
         lastSimulation: null,
       },
