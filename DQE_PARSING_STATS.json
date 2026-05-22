@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-05-22T08:55:31",
+  "source_file": "C:\\Users\\Geoffrey\\Documents\\DEVELOPPEMENT\\SP2I_CAPEX\\03_DONNEES_REFERENCE\\DQE_PROJECT_SP2I.xlsx",
+  "sheet": "DQE_CLEAN",
+  "total_lignes": 210,
+  "lignes_validees": 123,
+  "warnings": 70,
+  "review_required": 17,
+  "rejetees": 0,
+  "ignorees": 0,
+  "ignored_title": 0,
+  "ignored_subtotal": 0,
+  "ignored_empty": 0,
+  "taux_perte_stricte": 0.0,
+  "taux_non_exploitable_kpi": 0.081,
+  "familles_impactees": {
+    "PLOMBERIE": 33,
+    "MENUISERIE_ALU": 30,
+    "UNKNOWN": 14,
+    "GROS_OEUVRE": 9,
+    "ELECTRICITE": 1
+  },
+  "top_erreurs": {
+    "MISSING_UNITE": 76,
+    "UNKNOWN_FAMILY": 14,
+    "MISSING_QTE": 3
+  },
+  "massive_loss_detected": false,
+  "governance_policy": "Strict: rejected/review lines must not feed KPI, ROI, CAPEX or procurement decisions without correction.",
+  "duration_seconds": 0.32
+}

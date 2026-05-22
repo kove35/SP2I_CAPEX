@@ -264,6 +264,12 @@ class ServicePipeline:
         lignes_source = payload.get("lignes", []) if isinstance(payload, dict) else []
         audit_excel = payload.get("audit_excel", {}) if isinstance(payload, dict) else {}
         ai_preview = audit_excel.get("ai_preview", {}) if isinstance(audit_excel, dict) else {}
+        ai_confidence = audit_excel.get("ai_confidence", {}) if isinstance(audit_excel, dict) else {}
+        governance_quality = (
+            ai_preview.get("governance_quality")
+            or ai_confidence.get("governance_quality")
+            or {}
+        )
         capex_source = sum(self._montant_local_source(ligne) for ligne in lignes_source if isinstance(ligne, dict))
         capex_fact_float = float(capex_fact or 0)
         ecart = capex_fact_float - capex_source
@@ -271,7 +277,11 @@ class ServicePipeline:
         lignes_excel = int(ai_preview.get("lignes_detectees") or len(lignes_source) or 0)
         lignes_parsees = len(lignes_source)
         lignes_fact_int = int(lignes_fact or 0)
-        pertes = max(lignes_excel - lignes_parsees, 0)
+        pertes_strictes = int(governance_quality.get("blocking_loss_rows") or 0)
+        revue_humaine = int(governance_quality.get("review_required_rows") or 0)
+        avertissements_qualite = int(governance_quality.get("warning_rows") or 0)
+        lignes_ignorees = int(governance_quality.get("ignored_rows") or 0)
+        pertes_legacy = max(lignes_excel - lignes_parsees, 0)
 
         score = 100.0
         if capex_source and ecart_pct > 0.005:
@@ -279,17 +289,27 @@ class ServicePipeline:
         if lignes_excel and lignes_fact_int:
             line_gap = abs(lignes_fact_int - lignes_parsees) / max(lignes_parsees, 1)
             score -= min(25, line_gap * 100)
-        if pertes:
-            score -= min(15, (pertes / max(lignes_excel, 1)) * 100)
+        if pertes_strictes:
+            score -= min(20, (pertes_strictes / max(lignes_excel, 1)) * 100)
+        if revue_humaine:
+            score -= min(8, (revue_humaine / max(lignes_excel, 1)) * 100)
+        if avertissements_qualite:
+            score -= min(6, (avertissements_qualite / max(lignes_excel, 1)) * 100)
         score = max(0, round(score, 1))
 
         return {
             "score_qualite": score,
+            "trust_score": int(ai_confidence.get("trust_score") or score),
+            "governance_status": "DATA_QUALITY_GOVERNANCE",
             "fichier": payload.get("source", "") if isinstance(payload, dict) else "",
             "lignes_excel": lignes_excel,
             "lignes_parsees": lignes_parsees,
             "lignes_fact_metre": lignes_fact_int,
-            "lignes_rejetees": pertes,
+            "lignes_rejetees": pertes_strictes,
+            "lignes_rejetees_legacy": pertes_legacy,
+            "lignes_review_required": revue_humaine,
+            "lignes_warning": avertissements_qualite,
+            "lignes_ignorees": lignes_ignorees,
             "capex_source": round(capex_source, 2),
             "capex_fact_metre": round(capex_fact_float, 2),
             "ecart_capex": round(ecart, 2),
@@ -298,6 +318,7 @@ class ServicePipeline:
             "colonnes_reconnues": int(ai_preview.get("recognized_columns") or 0),
             "anomalies": audit_excel.get("ai_anomalies", []) if isinstance(audit_excel, dict) else [],
             "sheet_selection": audit_excel.get("sheet_selection", {}) if isinstance(audit_excel, dict) else {},
+            "governance_quality": governance_quality,
         }
 
     def _montant_local_source(self, ligne: dict[str, Any]) -> float:

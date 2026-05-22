@@ -369,6 +369,11 @@ class AnalyticsService:
         source = self._latest_pipeline_source()
         history = self.repository.import_audit_history()
         source_rows = int(source.get("rows_in_source_json") or 0)
+        governance_quality = source.get("governance_quality") or {}
+        strict_rejected_rows = int(governance_quality.get("blocking_loss_rows") or 0)
+        review_required_rows = int(governance_quality.get("review_required_rows") or 0)
+        warning_rows = int(governance_quality.get("warning_rows") or 0)
+        ignored_rows = int(governance_quality.get("ignored_rows") or 0)
         source_capex = float(source.get("capex_source") or 0)
         fact_rows = int(metrics.get("nb_lignes") or debug.get("fact_metre_count") or 0)
         analytics_capex = float(metrics.get("capex_local_total") or 0)
@@ -389,8 +394,14 @@ class AnalyticsService:
             warnings.append("Aucun fichier source pipeline disponible.")
         if capex_delta_pct > 0.005:
             warnings.append("Ecart financier superieur a la tolerance de 0,5 %.")
-        if source_rows and fact_rows != source_rows:
-            warnings.append("Le nombre de lignes source et FACT_METRE differe.")
+        if strict_rejected_rows:
+            warnings.append(f"{strict_rejected_rows} lignes sont bloquees par la gouvernance DQE.")
+        if review_required_rows:
+            warnings.append(f"{review_required_rows} lignes demandent une revue humaine avant KPI.")
+        if warning_rows:
+            warnings.append(f"{warning_rows} lignes ont une qualite de donnees a verifier.")
+        if source_rows and fact_rows != source_rows and strict_rejected_rows:
+            warnings.append("Le nombre de lignes source et FACT_METRE differe sur des lignes bloquantes.")
         if family_pending:
             warnings.append(f"{family_pending} lignes restent sans classification metier robuste.")
         if invalid_rows:
@@ -398,16 +409,20 @@ class AnalyticsService:
 
         score = 100.0
         score -= min(35, capex_delta_pct * 1000)
-        score -= min(20, line_delta_pct * 100)
+        if strict_rejected_rows:
+            score -= min(20, line_delta_pct * 100)
         score -= min(20, (family_pending / max(fact_rows, 1)) * 100)
         score -= min(15, (invalid_rows / max(fact_rows, 1)) * 100)
+        score -= min(8, (review_required_rows / max(source_rows, 1)) * 100)
+        score -= min(6, (warning_rows / max(source_rows, 1)) * 100)
         score -= min(10, len(anomalies) * 1.5)
         score = round(max(0, score), 1)
 
         checks = {
             "excel_source_available": bool(source.get("available")),
             "financial_reconciliation_ok": capex_delta_pct <= 0.005,
-            "pipeline_rows_ok": bool(source_rows and fact_rows == source_rows),
+            "pipeline_rows_ok": strict_rejected_rows == 0,
+            "review_governance_ok": review_required_rows == 0,
             "fact_metre_non_empty": fact_rows > 0,
             "taxonomy_ok": family_pending == 0,
             "line_quality_ok": invalid_rows == 0,
@@ -425,7 +440,11 @@ class AnalyticsService:
                 "ecart_capex_pct": round(capex_delta_pct, 6),
                 "lignes_excel": source_rows,
                 "lignes_fact_metre": fact_rows,
-                "lignes_rejetees": max(source_rows - fact_rows, 0),
+                "lignes_rejetees": strict_rejected_rows,
+                "lignes_review_required": review_required_rows,
+                "lignes_warning": warning_rows,
+                "lignes_ignorees": ignored_rows,
+                "trust_score": source.get("trust_score", score),
                 "lignes_famille_a_classer": family_pending,
                 "anomalies": len(anomalies) + invalid_rows,
             },
@@ -442,6 +461,7 @@ class AnalyticsService:
             "metadata": {
                 "engine": "SP2I Data Quality Center",
                 "qa_status": "PASS" if not warnings else "WARN",
+                "governance_taxonomy": "DATA_LOSS/DATA_INTEGRITY/DATA_QUALITY/REVIEW_REQUIRED",
                 "tolerance_capex_pct": 0.005,
                 "source": source,
                 "metrics": metrics,
@@ -626,6 +646,8 @@ class AnalyticsService:
         audit_excel = payload.get("audit_excel", {}) if isinstance(payload, dict) else {}
         sheet_selection = audit_excel.get("sheet_selection", {})
         ai_preview = audit_excel.get("ai_preview", {})
+        ai_confidence = audit_excel.get("ai_confidence", {})
+        governance_quality = ai_preview.get("governance_quality") or ai_confidence.get("governance_quality") or {}
         lignes = payload.get("lignes", []) if isinstance(payload, dict) else []
         capex_source = 0.0
         for ligne in lignes:
@@ -660,6 +682,9 @@ class AnalyticsService:
             "blacklist_active": sheet_selection.get("blacklist_active", []),
             "ai_preview": ai_preview,
             "ai_anomalies": audit_excel.get("ai_anomalies", []),
+            "governance_quality": governance_quality,
+            "trust_score": ai_confidence.get("trust_score"),
+            "analytics_state": "LIVE",
         }
 
     def _build_dashboard(self, query: AnalyticsQuery, dashboard_type: str) -> dict[str, Any]:

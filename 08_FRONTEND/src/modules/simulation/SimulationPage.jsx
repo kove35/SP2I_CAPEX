@@ -11,13 +11,13 @@ import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex 
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext } from "../../utils/businessContext";
 
-const SIMULATION_TIMEOUT_MS = 18000;
+const SIMULATION_TIMEOUT_MS = Number(import.meta.env.VITE_ANALYTICS_TIMEOUT_MS || 18000);
 
 function withTimeout(promise, timeoutMs, label) {
   return Promise.race([
     promise,
     new Promise((_, reject) => {
-      window.setTimeout(() => reject(new Error(`${label} ne repond pas assez vite. Donnees analytics synchronisees affichees.`)), timeoutMs);
+      window.setTimeout(() => reject(new Error(`${label} ne repond pas assez vite. Snapshot analytics affiche. Synchronisation arriere-plan en cours.`)), timeoutMs);
     }),
   ]);
 }
@@ -109,7 +109,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         const fallback = buildSimulationFromPreview(preview, scenarioName);
         setSimulation(fallback);
         setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: fallback }));
-        setNotice(apiError.message || "Simulation temps reel indisponible. Donnees analytics synchronisees affichees.");
+        setNotice(apiError.message || "Affichage des dernieres donnees synchronisees.");
       } catch (previewError) {
         setError(previewError.message || apiError.message);
       }

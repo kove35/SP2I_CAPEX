@@ -11,6 +11,7 @@ from app.ai.excel_mapping_rules import (
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
 from app.core.errors import PipelineIntegrityError
 from app.core.ai import AIExcelOrchestrator
+from app.governance.rules import summarize_classified_rows
 from app.repositories import RepositoryExcel
 from app.schemas import SimulationItem, SimulationRequest
 from app.services.service_simulation import ServiceSimulation
@@ -293,6 +294,10 @@ class ServiceAIMapping:
             anomalies,
             classified_rows,
         )
+        governance_summary = summarize_classified_rows(classified_rows)
+        confidence["governance_quality"] = governance_summary
+        confidence["trust_score"] = self._calculer_trust_score_global(governance_summary)
+        confidence["quality_taxonomy"] = "DATA_QUALITY_GOVERNANCE"
         intelligent_preview = self.ai_orchestrator.preview_generator.generate(
             lignes,
             analyse_reference,
@@ -301,8 +306,10 @@ class ServiceAIMapping:
         )
         intelligent_preview["sheets_used"] = [analyse["feuille"] for analyse in analyses]
         intelligent_preview["source_fact_metre"] = (sheet_selection or {}).get("source_fact_metre", [])
+        intelligent_preview["governance_quality"] = governance_summary
+        intelligent_preview["analytics_state"] = "LIVE"
 
-        self._valider_integrite_pipeline(rows_in, lignes, classified_rows, sheet_selection)
+        self._valider_integrite_pipeline(rows_in, lignes, classified_rows, sheet_selection, governance_summary)
 
         return {
             "lignes_normalisees": lignes,
@@ -311,6 +318,7 @@ class ServiceAIMapping:
             "confidence": confidence,
             "intelligent_preview": intelligent_preview,
             "sheet_selection": sheet_selection or {},
+            "governance_quality": governance_summary,
         }
 
     def _evaluer_feuille_fact(self, analyse: dict[str, Any], rows: list[list[Any]]) -> dict[str, Any]:
@@ -399,10 +407,12 @@ class ServiceAIMapping:
         lignes: list[dict[str, Any]],
         classified_rows: list[dict[str, Any]],
         sheet_selection: dict[str, Any] | None,
+        governance_summary: dict[str, Any] | None = None,
     ) -> None:
         if rows_in <= 0:
             return
         rows_out = len(lignes)
+        governance_summary = governance_summary or summarize_classified_rows(classified_rows)
         expected_detail_rows = sum(
             int(evaluation.get("detailed_rows") or 0)
             for evaluation in (sheet_selection or {}).get("evaluations", [])
@@ -414,20 +424,30 @@ class ServiceAIMapping:
         # plus de 200 articles exploitables et un CAPEX positif ont ete trouves.
         capex_detecte = sum(nettoyer_nombre(ligne.get("prix_total_ht"), 0) or 0 for ligne in lignes)
         has_business_volume = rows_out >= 200 and capex_detecte > 0
-        if rows_out < reference_rows * 0.30 and reference_rows >= 50 and not has_business_volume:
+        blocking_loss_rows = int(governance_summary.get("blocking_loss_rows") or 0)
+        review_required_rows = int(governance_summary.get("review_required_rows") or 0)
+        ignored_rows = int(governance_summary.get("ignored_rows") or 0)
+        should_block_for_loss = (
+            rows_out < reference_rows * 0.30
+            and reference_rows >= 50
+            and not has_business_volume
+            and blocking_loss_rows > 0
+        )
+        if should_block_for_loss:
             top_rejets: dict[str, int] = {}
             for row in classified_rows:
-                row_type = str(row.get("row_type") or "inconnu")
-                if row_type != "article":
+                if row.get("governance_status") == "REJECTED":
+                    row_type = str(row.get("row_type") or "inconnu")
                     top_rejets[row_type] = top_rejets.get(row_type, 0) + 1
             logger.error(
-                "Perte massive de lignes detectee rows_in=%s reference_rows=%s rows_out=%s lost_rows=%s selection=%s top_rejets=%s",
+                "Perte massive critique detectee rows_in=%s reference_rows=%s rows_out=%s blocking_loss_rows=%s selection=%s top_rejets=%s governance=%s",
                 rows_in,
                 reference_rows,
                 rows_out,
-                reference_rows - rows_out,
+                blocking_loss_rows,
                 (sheet_selection or {}).get("source_fact_metre"),
                 top_rejets,
+                governance_summary,
             )
             raise PipelineIntegrityError(
                 "Perte massive de lignes detectee pendant le parsing DQE.",
@@ -436,20 +456,36 @@ class ServiceAIMapping:
                     "reference_rows": reference_rows,
                     "expected_detail_rows": expected_detail_rows,
                     "rows_out": rows_out,
-                    "lost_rows": reference_rows - rows_out,
-                    "loss_ratio": round((reference_rows - rows_out) / reference_rows, 3),
+                    "lost_rows": blocking_loss_rows,
+                    "loss_ratio": governance_summary.get("strict_loss_ratio", 0),
+                    "review_required_rows": review_required_rows,
+                    "ignored_rows": ignored_rows,
+                    "governance_summary": governance_summary,
                     "sheet_selection": sheet_selection or {},
                     "top_rejets": top_rejets,
                 },
             )
         if rows_out < rows_in * 0.30 and rows_in >= 50:
             logger.warning(
-                "DQE parsing bruyant mais accepte rows_in=%s reference_rows=%s rows_out=%s capex_detecte=%s",
+                "DQE parsing bruyant mais accepte rows_in=%s reference_rows=%s rows_out=%s review_required=%s ignored=%s blocking_loss=%s capex_detecte=%s",
                 rows_in,
                 reference_rows,
                 rows_out,
+                review_required_rows,
+                ignored_rows,
+                blocking_loss_rows,
                 capex_detecte,
             )
+
+    def _calculer_trust_score_global(self, governance_summary: dict[str, Any]) -> int:
+        total = int(governance_summary.get("total_rows") or 0)
+        if not total:
+            return 0
+        blocking = int(governance_summary.get("blocking_loss_rows") or 0)
+        review = int(governance_summary.get("review_required_rows") or 0)
+        warning = int(governance_summary.get("warning_rows") or 0)
+        penalty = (blocking * 40) + (review * 3) + (warning * 10)
+        return max(0, min(100, round(100 - (penalty / total))))
 
     def _normaliser_nom_feuille(self, sheet_name: str) -> str:
         return normaliser_libelle(sheet_name).upper()
