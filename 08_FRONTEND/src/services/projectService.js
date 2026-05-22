@@ -1,6 +1,8 @@
 import { getStoredSession } from "./authService";
 import { request } from "./apiClient";
 
+const LOCAL_PROJECTS_KEY = "sp2i:projects";
+
 export const demoProjects = [
   {
     id: "demo-pnr-medical",
@@ -102,10 +104,10 @@ export function getProjectWorkflow(project = {}, appState = {}) {
   const versions = readDqeVersions(project);
   const activeDqe = versions.find((version) => version.is_active);
   const dqeReady = activeDqe && DQE_READY_STATUSES.includes(activeDqe.status);
-  const budgetSynced = Boolean(project.budget || activeDqe?.synced_at || dqeReady);
+  const budgetSynced = Boolean(project.budget || activeDqe?.synced_at || activeDqe?.status === "SYNCED");
   const scenarioReady = Boolean(appState.lastSimulation || project.scenario_ready || project.workflow_status === "SCENARIO_READY" || project.workflow_status === "ACTIVE");
-  const procurementReady = Boolean(project.procurement_ready || scenarioReady);
-  const executionReady = Boolean(project.execution_ready || procurementReady);
+  const procurementReady = Boolean(project.procurement_ready || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "ACTIVE");
+  const executionReady = Boolean(project.execution_ready || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
 
   const steps = [
     {
@@ -198,23 +200,44 @@ function authHeaders() {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
+function readLocalProjects() {
+  try {
+    const stored = window.localStorage.getItem(LOCAL_PROJECTS_KEY);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLocalProjects(projects = []) {
+  try {
+    window.localStorage.setItem(LOCAL_PROJECTS_KEY, JSON.stringify(projects));
+  } catch {
+    // Local persistence is a progressive demo fallback only.
+  }
+}
+
 export async function listProjects() {
   const session = getStoredSession();
-  if (!session || session.token_type === "demo") return { projects: demoProjects };
+  if (!session || session.token_type === "demo") return { projects: readLocalProjects() || demoProjects };
   try {
-    return await request({ url: "/projects", headers: authHeaders() });
+    const payload = await request({ url: "/projects", headers: authHeaders() });
+    return { projects: payload.projects || readLocalProjects() || demoProjects };
   } catch {
-    return { projects: demoProjects };
+    return { projects: readLocalProjects() || demoProjects };
   }
 }
 
 export async function createProject(payload) {
   const session = getStoredSession();
   if (!session || session.token_type === "demo") {
+    const id = `local-${Date.now()}`;
     return {
       ...payload,
-      id: `local-${Date.now()}`,
-      workspace_key: `local-${Date.now()}`,
+      id,
+      workspace_key: id,
       trust_score: 60,
       last_dqe: "DQE a importer",
       budget: 0,
