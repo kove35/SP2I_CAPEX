@@ -31,3 +31,5 @@ temp/
 .ruff_cache/
 
 .vercel
+08_FRONTEND/test-results/
+08_FRONTEND/playwright-report/
