@@ -119,7 +119,7 @@ export default function ProjectHub({ onNavigate }) {
           const workflow = getProjectWorkflow(project, state);
           const primaryAction = getProjectPrimaryAction(project, state);
           return (
-            <article className="project-card" key={project.id}>
+            <article className="project-card" key={project.id} data-testid="project-card">
               <div className="project-card-top">
                 <span><Building2 size={16} /> {project.city || "Ville a renseigner"}, {project.country || "Pays a renseigner"}</span>
                 <strong>{workflow.label}</strong>
@@ -134,7 +134,7 @@ export default function ProjectHub({ onNavigate }) {
               </div>
               <ProjectWorkflowStepper workflow={workflow} onNavigate={onNavigate} onSetup={() => setSetupProject(project)} />
               <div className="project-card-actions">
-                <button type="button" onClick={() => runPrimaryAction(project)}>{primaryAction.label}</button>
+                <button type="button" data-testid="project-primary-action" onClick={() => runPrimaryAction(project)}>{primaryAction.label}</button>
                 <button type="button" className="secondary" onClick={() => openProject(project)}>Ouvrir le workspace</button>
               </div>
             </article>

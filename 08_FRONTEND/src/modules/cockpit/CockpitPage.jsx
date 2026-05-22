@@ -9,11 +9,65 @@ import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import InsightsPanel from "../../components/analytics/InsightsPanel";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
+import ProjectQuickActions from "../../components/ProjectQuickActions";
+import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
+import { useAppStore } from "../../store/appStore.jsx";
+import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey } from "../../services/projectService";
+import { getScenarioContext } from "../../utils/businessContext";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import Skeleton from "../../ui/Skeleton";
+import { formatMoney } from "../../shared/formatters";
+
+function navigateTo(path) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function getWorkspaceProject(state) {
+  if (state.activeProjectDetails) return state.activeProjectDetails;
+  return demoProjects.find((project) => getProjectWorkspaceKey(project) === state.activeProject) || demoProjects[0];
+}
+
+function getStep(workflow, id) {
+  return workflow.steps.find((step) => step.id === id) || {};
+}
+
+function buildProjectAlerts(workflow) {
+  const alerts = [];
+  const configuration = getStep(workflow, "configuration");
+  const dqe = getStep(workflow, "dqe");
+  const budget = getStep(workflow, "budget");
+  const scenarios = getStep(workflow, "scenarios");
+  const procurement = getStep(workflow, "procurement");
+
+  if (configuration.state !== "done") alerts.push("Ce projet doit etre configure avant de demarrer le workflow CAPEX.");
+  if (dqe.state !== "done") alerts.push("Aucun DQE actif certifie. Importez un DQE pour analyser le budget du projet.");
+  if (dqe.state === "done" && budget.state !== "done") alerts.push("Le DQE est certifie. Synchronisez le budget pour debloquer les scenarios.");
+  if (budget.state === "done" && scenarios.state !== "done") alerts.push("Le budget est pret. Lancez une simulation pour comparer les strategies CAPEX.");
+  if (scenarios.state === "done" && procurement.state !== "done") alerts.push("Un scenario est disponible. Preparez l'approvisionnement.");
+  return alerts.length ? alerts : ["Projet actif. Les principaux modules sont disponibles pour pilotage."];
+}
+
+function moduleTone(state) {
+  if (state === "done") return "ready";
+  if (state === "progress" || state === "todo") return "pending";
+  return "blocked";
+}
 
 export default function CockpitPage() {
+  const { state } = useAppStore();
   const engine = useAnalyticsEngine("direction");
+  const project = getWorkspaceProject(state);
+  const workflow = getProjectWorkflow(project, state);
+  const primaryAction = getProjectPrimaryAction(project, state);
+  const alerts = buildProjectAlerts(workflow);
+  const activeDqe = workflow.activeDqe;
+  const scenario = getScenarioContext(state.activeScenario);
+  const dqeStep = getStep(workflow, "dqe");
+  const budgetStep = getStep(workflow, "budget");
+  const scenarioStep = getStep(workflow, "scenarios");
+  const procurementStep = getStep(workflow, "procurement");
+  const executionStep = getStep(workflow, "execution");
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
   const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
@@ -24,11 +78,88 @@ export default function CockpitPage() {
   const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
   const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || table;
+  const estimatedSavings = Number(state.lastSimulation?.kpi?.economie_nette || kpis.economie_nette || 0);
+  const procurementGain = Number(kpis.economie_nette || 0);
+
+  const handlePrimaryAction = () => {
+    navigateTo(primaryAction.route);
+  };
 
   return (
     <main className="cockpit-page analytics-engine-page">
+      <section className="workspace-summary" data-testid="workspace-summary">
+        <header className="workspace-summary-hero">
+          <div>
+            <p className="eyebrow">Synthese projet</p>
+            <h1>{project.name || "Projet CAPEX"}</h1>
+            <p>{project.city || "Ville a renseigner"}, {project.country || "Pays a renseigner"} · {project.client_name || "Client a renseigner"}</p>
+          </div>
+          <div className="workspace-summary-status">
+            <span>{workflow.label}</span>
+            <strong>Confiance {project.trust_score ?? activeDqe?.trust_score ?? "-"}/100</strong>
+            <small>{workflow.completion}% du parcours projet</small>
+          </div>
+        </header>
+
+        <section className="workspace-next-action">
+          <div>
+            <span>Prochaine action recommandee</span>
+            <strong>{primaryAction.label}</strong>
+            <p>{alerts[0]}</p>
+          </div>
+          <button type="button" className="primary-action" data-testid="workspace-next-action" onClick={handlePrimaryAction}>{primaryAction.label}</button>
+        </section>
+
+        <ProjectWorkflowStepper workflow={workflow} onNavigate={navigateTo} onSetup={() => navigateTo("/app/projects")} />
+
+        <section className="workspace-module-grid">
+          <article className={`workspace-module-card ${moduleTone(dqeStep.state)}`}>
+            <span>DQE & donnees</span>
+            <strong>{dqeStep.status || "A importer"}</strong>
+            <p>{activeDqe ? `DQE v${activeDqe.version_number} · ${activeDqe.normalized_lines_count ?? "-"} lignes exploitables` : "Importez un DQE pour analyser le budget du projet."}</p>
+            <small>Trust score : {activeDqe?.trust_score ?? "-"}/100</small>
+            <button type="button" onClick={() => navigateTo("/app/dqe?tab=import")}>{activeDqe ? "Voir le DQE" : "Importer le DQE"}</button>
+          </article>
+
+          <article className={`workspace-module-card ${moduleTone(scenarioStep.state)}`}>
+            <span>Scenarios</span>
+            <strong>{scenarioStep.status || "Bloque"}</strong>
+            <p>{state.lastSimulation ? `${scenario.label} · economie estimee ${formatMoney(estimatedSavings)}` : "Lancez une simulation pour comparer les strategies CAPEX."}</p>
+            <small>Budget : {budgetStep.status || "Bloque"}</small>
+            <button type="button" onClick={() => navigateTo("/app/simulation")}>Tester un scenario</button>
+          </article>
+
+          <article className={`workspace-module-card ${moduleTone(procurementStep.state)}`}>
+            <span>Approvisionnement</span>
+            <strong>{procurementStep.status || "Bloque"}</strong>
+            <p>{procurementStep.state === "done" ? "Decisions achat disponibles." : "Preparez les arbitrages achat apres simulation."}</p>
+            <small>Gain net securisable : {procurementGain ? formatMoney(procurementGain) : "-"}</small>
+            <button type="button" onClick={() => navigateTo("/app/procurement")}>Ouvrir approvisionnement</button>
+          </article>
+
+          <article className={`workspace-module-card ${moduleTone(executionStep.state)}`}>
+            <span>Execution</span>
+            <strong>{executionStep.status || "Bloque"}</strong>
+            <p>{executionStep.state === "done" ? "Le suivi chantier peut demarrer." : "En attente des arbitrages achat et logistique."}</p>
+            <small>Lots critiques : {executionStep.state === "done" ? "a surveiller" : "-"}</small>
+            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Ouvrir execution</button>
+          </article>
+        </section>
+
+        <section className="workspace-summary-footer">
+          <div className="workspace-alerts">
+            <span>Alertes projet</span>
+            {alerts.map((alert) => <p key={alert}>{alert}</p>)}
+          </div>
+          <div>
+            <span>Actions rapides</span>
+            <ProjectQuickActions onNavigate={navigateTo} />
+          </div>
+        </section>
+      </section>
+
       <section className="page-hero compact">
-        <p className="eyebrow">Cockpit decisionnel immobilier</p>
+        <p className="eyebrow">Pilotage consolide</p>
         <h1>Piloter le budget, les risques et les arbitrages du projet</h1>
         <p>Le moteur de pilotage SP2I consolide les indicateurs, les filtres et les decisions local/import en temps reel.</p>
       </section>

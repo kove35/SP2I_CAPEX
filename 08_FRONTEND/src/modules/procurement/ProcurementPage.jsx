@@ -12,6 +12,8 @@ import { formatCurrency, formatMoney, formatPercent } from "../../shared/formatt
 import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
 import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
+import { getProjectWorkflow } from "../../services/projectService";
+import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const LANDED_COST_RATES = [
   ["Transport maritime", 0.15],
@@ -773,6 +775,11 @@ export default function ProcurementPage() {
   const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilter, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
   const { state } = useAppStore();
+  const workflow = React.useMemo(
+    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
+    [state]
+  );
+  const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
 
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
@@ -880,6 +887,18 @@ export default function ProcurementPage() {
 
       {analytics.error ? <div className="app-error">Approvisionnement indisponible : {analytics.error.message}</div> : null}
       {exportNotice ? <div className="app-warning">{exportNotice}</div> : null}
+      {!setupDone ? (
+        <WorkflowGuardEmptyState
+          title="Configuration projet requise"
+          message="Ce projet doit etre configure avant de poursuivre le workflow CAPEX."
+          actionLabel="Configurer le projet"
+          actionRoute="/app/projects"
+          severity="blocking"
+          currentStep={workflow.label}
+          requiredStep="Configuration projet"
+          testId="procurement-empty-state"
+        />
+      ) : null}
       <section className={`procurement-context-strip ${sourceContext.hasActiveDqe ? "ready" : "blocked"}`}>
         <div>
           <strong>Source DQE : {sourceContext.dqeLabel}</strong>
@@ -898,8 +917,16 @@ export default function ProcurementPage() {
           <span>Projet FCFA · Sourcing {activeCurrency} · taux a confirmer si USD/EUR</span>
         </div>
       </section>
-      {!state.lastSimulation ? (
-        <div className="app-warning">Aucun scenario actif simule. Lancez une simulation avant de valider un arbitrage achat.</div>
+      {setupDone && !state.lastSimulation ? (
+        <WorkflowGuardEmptyState
+          title="Aucun scenario actif"
+          message="Aucun scenario actif. Lancez une simulation avant de preparer l'approvisionnement."
+          actionLabel="Tester un scenario"
+          actionRoute="/app/simulation"
+          currentStep={workflow.steps.find((step) => step.id === "scenarios")?.status}
+          requiredStep="Scenario CAPEX"
+          testId="procurement-empty-state"
+        />
       ) : null}
 
       {hasActiveAnalysis ? (

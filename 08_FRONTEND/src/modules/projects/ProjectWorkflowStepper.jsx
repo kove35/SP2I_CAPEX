@@ -13,7 +13,7 @@ export default function ProjectWorkflowStepper({ workflow, compact = false, onNa
   const steps = workflow?.steps || [];
 
   return (
-    <section className={`project-workflow-stepper ${compact ? "compact" : ""}`} aria-label="Parcours projet">
+    <section className={`project-workflow-stepper ${compact ? "compact" : ""}`} aria-label="Parcours projet" data-testid="project-workflow-stepper">
       {!compact ? (
         <header>
           <div>

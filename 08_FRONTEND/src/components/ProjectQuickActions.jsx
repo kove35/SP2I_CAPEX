@@ -53,7 +53,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   };
 
   return (
-    <div className="project-quick-actions" aria-label="Actions du projet actif">
+    <div className="project-quick-actions" aria-label="Actions du projet actif" data-testid="project-quick-actions">
       {actions.map((action) => {
         const Icon = action.icon;
         return (

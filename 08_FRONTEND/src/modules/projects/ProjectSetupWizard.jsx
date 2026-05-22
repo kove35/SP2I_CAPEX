@@ -44,7 +44,7 @@ export default function ProjectSetupWizard({ project, onClose, onSave, onImportD
 
   return (
     <div className="project-setup-overlay" role="presentation" onClick={onClose}>
-      <section className="project-setup-dialog" role="dialog" aria-modal="true" aria-label="Configuration projet" onClick={(event) => event.stopPropagation()}>
+      <section className="project-setup-dialog" role="dialog" aria-modal="true" aria-label="Configuration projet" data-testid="project-setup-wizard" onClick={(event) => event.stopPropagation()}>
         <header>
           <div>
             <span>Configuration projet</span>
