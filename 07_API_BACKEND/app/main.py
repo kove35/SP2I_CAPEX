@@ -9,8 +9,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.analytics.routes import router as analytics_router
+from app.auth.routes import router as auth_router
 from app.cloud_migrations import ensure_powerbi_schema
 from app.database import Base, SessionLocal, engine
+from app.projects.routes import router as projects_router
 from app.routes import capex, decision, dqe, logistics, monitoring, procurement, simulation, upload
 from app.services.monitoring import MonitoringService
 
@@ -19,6 +21,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sp2i-capex-api")
 
 import_routes = import_module("app.routes.import")
+import_module("app.auth.models")
+import_module("app.projects.models")
 
 
 def _get_cors_origins() -> list[str]:
@@ -61,6 +65,8 @@ app.add_middleware(
 )
 
 app.include_router(dqe.router, prefix="/dqe", tags=["DQE"])
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+app.include_router(projects_router, prefix="/projects", tags=["Projects"])
 app.include_router(upload.router, prefix="/api/upload", tags=["Upload intelligent"])
 app.include_router(import_routes.router, prefix="/import", tags=["Import"])
 app.include_router(simulation.router, prefix="/simulation", tags=["Simulation CAPEX"])

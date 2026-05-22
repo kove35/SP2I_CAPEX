@@ -1957,7 +1957,7 @@ a {
 
 .one-screen-content {
   min-height: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 520px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
   gap: clamp(24px, 4vw, 54px);
   align-items: center;
 }
@@ -1981,6 +1981,165 @@ a {
 
 .one-screen .cockpit-mockup {
   padding: 16px;
+}
+
+.landing-login-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(103,232,201,.22);
+  border-radius: 12px;
+  padding: clamp(16px, 2.4vw, 22px);
+  background:
+    linear-gradient(145deg, rgba(12, 25, 42, .88), rgba(7, 17, 31, .74)),
+    rgba(8, 17, 31, .78);
+  box-shadow: 0 28px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06);
+  backdrop-filter: blur(18px);
+}
+
+.login-card-heading span,
+.project-card-top span,
+.project-hub-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-card-heading span {
+  color: #67e8c9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.login-card-heading h2 {
+  margin: 8px 0 0;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.05;
+}
+
+.login-card-heading p {
+  margin: 10px 0 0;
+  color: #b9c6d5;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.landing-login-card label {
+  display: grid;
+  gap: 7px;
+  color: #dce7f0;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.landing-login-card input {
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #f8fafc;
+  background: rgba(2, 8, 23, .58);
+  outline: none;
+}
+
+.landing-login-card input:focus {
+  border-color: rgba(103,232,201,.55);
+  box-shadow: 0 0 0 3px rgba(103,232,201,.10);
+}
+
+.login-card-status {
+  margin: 0;
+  border: 1px solid rgba(251,191,36,.24);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #fde68a;
+  background: rgba(120, 53, 15, .22);
+  font-size: 12px;
+}
+
+.login-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.login-card-actions button,
+.project-hub-toolbar button,
+.project-card button {
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 8px;
+  padding: 0 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.login-card-actions button:first-child,
+.project-hub-toolbar button,
+.project-card button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #04111f;
+  background: #67e8c9;
+}
+
+.login-card-actions button:last-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #f8fafc;
+  background: rgba(255,255,255,.08);
+}
+
+.login-card-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.login-card-links button {
+  border: 0;
+  padding: 0;
+  color: #9eead9;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.workspace-chain,
+.workspace-model-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workspace-chain {
+  border-top: 1px solid rgba(255,255,255,.10);
+  padding-top: 12px;
+}
+
+.workspace-chain span,
+.workspace-model-strip span {
+  border: 1px solid rgba(103,232,201,.18);
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #d7fbf3;
+  background: rgba(103,232,201,.08);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.workspace-chain i {
+  width: 12px;
+  height: 1px;
+  background: rgba(103,232,201,.38);
 }
 
 .one-screen .mockup-grid {
@@ -2140,12 +2299,19 @@ a {
 }
 
 @media (max-width: 980px) {
-  .one-screen-content {
-    grid-template-columns: 1fr;
+  .marketing-page.one-screen {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
-  .one-screen-mockup {
-    display: none;
+  .one-screen-hero {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .one-screen-content {
+    grid-template-columns: 1fr;
   }
 
   .one-screen-bottom {
@@ -2155,6 +2321,136 @@ a {
   .pillar-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+.project-hub-page {
+  display: grid;
+  gap: 18px;
+}
+
+.project-hub-hero,
+.project-hub-toolbar,
+.project-card {
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .72);
+  box-shadow: 0 20px 70px rgba(0,0,0,.25);
+}
+
+.project-hub-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: clamp(20px, 3vw, 30px);
+}
+
+.project-hub-hero h1 {
+  margin: 0;
+  font-size: clamp(34px, 5vw, 58px);
+  line-height: 1;
+}
+
+.project-hub-hero p {
+  max-width: 680px;
+  margin: 12px 0 0;
+  color: #b7c4d3;
+  line-height: 1.55;
+}
+
+.project-hub-user {
+  align-self: start;
+  border: 1px solid rgba(103,232,201,.18);
+  border-radius: 999px;
+  padding: 10px 12px;
+  background: rgba(103,232,201,.08);
+}
+
+.project-hub-user strong {
+  color: #67e8c9;
+}
+
+.workspace-model-strip {
+  padding: 4px 0;
+}
+
+.project-hub-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+}
+
+.project-hub-toolbar div {
+  display: grid;
+  gap: 4px;
+}
+
+.project-hub-toolbar span,
+.project-card p {
+  color: #aebccd;
+}
+
+.project-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.project-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.project-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.project-card-top span {
+  color: #9fb1c5;
+  font-size: 12px;
+}
+
+.project-card-top strong {
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #67e8c9;
+  background: rgba(18,184,134,.12);
+  font-size: 11px;
+}
+
+.project-card h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.project-card p {
+  margin: -6px 0 0;
+}
+
+.project-card-metrics {
+  display: grid;
+  gap: 8px;
+}
+
+.project-card-metrics span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #dce7f0;
+  background: rgba(255,255,255,.045);
+  font-size: 13px;
+}
+
+.skeleton-project {
+  color: #9fb1c5;
 }
 
 @media (max-width: 680px), (max-height: 650px) {
