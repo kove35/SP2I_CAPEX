@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { PROJECT_CONTEXT, SCENARIO_OPTIONS } from "../../../utils/businessContext";
 
-const defaultOpenedSections = ["navigation", "other"];
+const defaultOpenedSections = ["overview", "project", "scenarios"];
 
 export const useSidebarStore = create(
   persist(
