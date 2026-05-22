@@ -4,6 +4,7 @@ import re
 from typing import Any
 
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
+from app.governance.rules import assess_parsed_row
 
 
 def _texte(valeur: Any) -> str:
@@ -30,19 +31,23 @@ class AIDQEParser:
         columns = {item["champ_standard"]: item["colonne_index"] for item in analysis.get("mapping", [])}
         normalized_rows: list[dict[str, Any]] = []
         classified_rows: list[dict[str, Any]] = []
-        current_lot = clean_lot(analysis.get("feuille", ""))
+        initial_lot = clean_lot(analysis.get("feuille", ""))
+        current_lot = initial_lot if initial_lot.startswith("LOT ") else ""
 
         for absolute_index, row in enumerate(rows[header_line:], start=header_line + 1):
             row_type, reason, detected_lot = self.classify_row(row, columns, current_lot)
             if detected_lot:
                 current_lot = detected_lot
 
+            governance = assess_parsed_row(row_type, reason)
             classified_rows.append(
                 {
                     "row_index": absolute_index,
                     "row_type": row_type,
                     "reason": reason,
                     "current_lot": current_lot,
+                    "raw_text": self._row_text(row),
+                    **governance.as_dict(),
                 }
             )
 
@@ -51,6 +56,15 @@ class AIDQEParser:
 
             normalized = self._normalize_article(row, columns, current_lot)
             if normalized:
+                normalized.update(
+                    {
+                        "governance_status": governance.governance_status,
+                        "trust_score": governance.trust_score,
+                        "governance_issues": [issue.as_dict() for issue in governance.governance_issues],
+                        "review_required": governance.review_required,
+                        "certification_status": governance.certification_status,
+                    }
+                )
                 normalized_rows.append(normalized)
 
         return normalized_rows, classified_rows
@@ -68,25 +82,26 @@ class AIDQEParser:
         if self._is_analytics_or_ratio_line(text):
             return "ratio_analytics", "Ligne ratio/analytics ignoree pour FACT_METRE.", ""
 
-        lot = self._detect_lot(row, columns, text)
-        if lot:
-            return "lot", f"Contexte lot detecte: {lot}.", lot
-
         lowered = text.lower()
         if "sous-total" in lowered or lowered.startswith("total") or " total " in lowered:
             return "total", "Ligne de total/sous-total ignoree pour eviter les doubles comptes.", ""
 
         designation = str(self._value(row, columns, "designation", "")).strip()
-        if self._is_summary_designation(designation):
+        if designation and self._is_summary_designation(designation):
             return "total", "Ligne recap/total ignoree pour eviter les doubles comptes.", ""
 
         quantity = nettoyer_nombre(self._value(row, columns, "quantite", 0), 0) or 0
         amount = nettoyer_nombre(self._value(row, columns, "prix_total_ht", 0), 0) or 0
 
         unit_price = nettoyer_nombre(self._value(row, columns, "prix_unitaire_ht", 0), 0) or 0
+        lot_cell = clean_lot(self._value(row, columns, "lot", ""))
 
-        if designation and quantity > 0 and (amount > 0 or unit_price > 0) and current_lot:
+        if designation and quantity > 0 and (amount > 0 or unit_price > 0) and (current_lot or lot_cell):
             return "article", "Designation avec quantite ou montant et contexte lot.", ""
+
+        lot = self._detect_lot(row, columns, text)
+        if lot:
+            return "lot", f"Contexte lot detecte: {lot}.", lot
 
         if designation and not current_lot:
             return "inconnu", "Article potentiel sans lot courant.", ""
@@ -129,7 +144,11 @@ class AIDQEParser:
         }
 
     def _detect_lot(self, row: list[Any], columns: dict[str, int], text: str) -> str:
-        for value in (self._value(row, columns, "lot", ""), self._value(row, columns, "designation", ""), text):
+        explicit_lot = clean_lot(self._value(row, columns, "lot", ""))
+        if explicit_lot and not self._is_invalid_lot(explicit_lot):
+            return explicit_lot
+
+        for value in (self._value(row, columns, "designation", ""), text):
             lot = clean_lot(value)
             if lot.startswith("LOT ") and not self._is_invalid_lot(lot):
                 return lot
@@ -176,3 +195,6 @@ class AIDQEParser:
             return default
         value = row[index]
         return default if value is None else value
+
+    def _row_text(self, row: list[Any]) -> str:
+        return " ".join(str(value) for value in row if value not in (None, "")).strip()

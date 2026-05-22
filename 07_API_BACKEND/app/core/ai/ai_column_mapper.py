@@ -43,6 +43,8 @@ class AIColumnMapper:
 
     def map_single_column(self, label: Any) -> dict[str, Any] | None:
         normalized_label = normaliser_libelle(label)
+        if normalized_label in {"code_bpu", "bpu_code", "code_prix"}:
+            return None
         best_field = ""
         best_keyword = ""
         best_score = 0.0

@@ -17,7 +17,7 @@ import {
 
 const DASHBOARDS = [
   ["direction", "Direction"],
-  ["procurement", "Intelligence achats"],
+  ["procurement", "Analyse achats"],
   ["financial", "Cohérence financière"],
   ["scenario", "Analyse des scénarios"],
   ["explainability", "Décisions expliquées"],
@@ -259,7 +259,7 @@ export default function ProcurementIntelligenceCockpit() {
     <main className="procurement-enterprise-page">
       <section className="procurement-enterprise-hero">
         <div>
-          <p className="eyebrow">Cockpit intelligence achats</p>
+          <p className="eyebrow">Cockpit Analyse achats</p>
           <h1>Cockpit décisionnel CAPEX</h1>
           <p>Arbitrage stratégique des achats, rentabilité, risques et anomalies.</p>
         </div>
