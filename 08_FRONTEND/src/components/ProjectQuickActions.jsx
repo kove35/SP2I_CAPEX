@@ -1,18 +1,40 @@
 import React from "react";
 import { sidebarQuickActions } from "../navigation/sidebarConfig";
 import { useAppStore } from "../store/appStore.jsx";
+import { PROJECT_CONTEXT } from "../utils/businessContext";
+
+const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
+
+function hasActiveDqeVersion(projectId) {
+  try {
+    const stored = window.localStorage.getItem(`sp2i:dqeVersions:${projectId || PROJECT_CONTEXT.code}`);
+    if (stored) {
+      const versions = JSON.parse(stored);
+      return Array.isArray(versions) && versions.some((version) => version.is_active && DQE_READY_STATUSES.includes(version.status));
+    }
+  } catch {
+    return false;
+  }
+  return (projectId || PROJECT_CONTEXT.code) === PROJECT_CONTEXT.code;
+}
 
 export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const { state } = useAppStore();
   const hasProject = Boolean(state.activeProject);
   const isDisabled = disabled || !hasProject;
 
-  const handleClick = (path) => {
+  const handleClick = (action) => {
     if (!hasProject) {
       onNavigate?.("/app/projects");
       return;
     }
-    onNavigate?.(path);
+
+    if (action.label === "Tester un scenario" && !hasActiveDqeVersion(state.activeProject)) {
+      onNavigate?.("/app/dqe?tab=import&notice=dqe-required");
+      return;
+    }
+
+    onNavigate?.(action.path);
   };
 
   return (
@@ -24,7 +46,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
             key={action.label}
             type="button"
             className="project-action-button"
-            onClick={() => handleClick(action.path)}
+            onClick={() => handleClick(action)}
             disabled={isDisabled}
             title={hasProject ? action.label : "Selectionner un projet"}
           >

@@ -10,6 +10,8 @@ import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { exportAnalyticsGainAnalysis, exportAnalyticsProcurementFile } from "../../services/analyticsService";
 import { formatCurrency, formatMoney, formatPercent } from "../../shared/formatters";
 import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
+import { useAppStore } from "../../store/appStore.jsx";
+import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
 
 const LANDED_COST_RATES = [
   ["Transport maritime", 0.15],
@@ -25,6 +27,85 @@ const STRATEGIES = [
   { label: "Import agressif", importShare: 0.75, risk: "Eleve", lead: "75 j", description: "Maximise les economies avec pilotage logistique renforce." },
   { label: "Securisation logistique", importShare: 0.55, risk: "Moyen", lead: "60 j", description: "Optimise les achats critiques avec buffers chantier." },
 ];
+const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
+
+function displayScope(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized.toLowerCase() === "default") return "Projet complet";
+  return toBusinessLabel(normalized, "Projet complet");
+}
+
+function readDqeVersions(projectId) {
+  try {
+    const stored = window.localStorage.getItem(`sp2i:dqeVersions:${projectId || PROJECT_CONTEXT.code}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {
+    return [];
+  }
+
+  if ((projectId || PROJECT_CONTEXT.code) === PROJECT_CONTEXT.code) {
+    return [{
+      id: "seed-dqe-v1",
+      version_number: 1,
+      file_name: "DQE_PROJECT_SP2I.xlsx",
+      status: "SYNCED",
+      trust_score: 87,
+      normalized_lines_count: 46,
+      data_loss_count: 0,
+      review_required_count: 0,
+      is_active: true,
+    }];
+  }
+  return [];
+}
+
+function getProcurementSourceContext(projectId, scenarioCode, lastSimulation) {
+  const versions = readDqeVersions(projectId);
+  const activeDqe = versions.find((version) => version.is_active && DQE_READY_STATUSES.includes(version.status));
+  const scenario = getScenarioContext(scenarioCode);
+  return {
+    hasActiveDqe: Boolean(activeDqe),
+    dqeLabel: activeDqe ? `DQE v${activeDqe.version_number}` : "Aucun DQE actif",
+    dqeStatus: activeDqe?.status === "CERTIFIED" ? "Certifie" : activeDqe?.status === "CERTIFIED_WITH_WARNINGS" ? "Certifie avec points a verifier" : activeDqe?.status === "SYNCED" ? "Synchronise" : "Non disponible",
+    trustScore: activeDqe?.trust_score,
+    lines: activeDqe?.normalized_lines_count,
+    dataLoss: activeDqe?.data_loss_count,
+    reviewRequired: activeDqe?.review_required_count,
+    scenarioLabel: scenario.label,
+    scenarioStatus: lastSimulation ? "Simule" : "A lancer",
+  };
+}
+
+function decisionUiLabel(value) {
+  const decision = String(value || "").toUpperCase();
+  if (decision === "IMPORT") return "Importer";
+  if (decision === "LOCAL") return "Acheter local";
+  if (decision === "HYBRIDE" || decision === "MIXTE") return "Hybride / a arbitrer";
+  if (decision === "REVIEW_REQUIRED") return "A verifier";
+  if (decision === "BLOCKED") return "Bloquant";
+  return value || "A verifier";
+}
+
+function decisionUiClass(value) {
+  const decision = String(value || "").toUpperCase();
+  if (decision === "MIXTE") return "hybride";
+  return decision.toLowerCase().replaceAll("_", "-") || "review-required";
+}
+
+function decisionJustification(row) {
+  const decision = String(row?.decision_ia || row?.decision_import || "").toUpperCase();
+  const roi = Number(row?.roi_import || 0);
+  const risk = Number(row?.risque || 0);
+  if (decision === "IMPORT") return "Import recommande : ROI positif et risque logistique a confirmer.";
+  if (decision === "LOCAL") return "Local recommande : delai chantier, SAV ou gain import insuffisant.";
+  if (decision === "HYBRIDE" || decision === "MIXTE") return "Hybride recommande : standard importable, points critiques a conserver ou verifier localement.";
+  if (risk >= 70) return "Validation requise : risque achat ou logistique eleve.";
+  if (roi > 0) return "Decision a verifier : gain detecte mais validation achat necessaire.";
+  return "Validation achat requise avant decision finale.";
+}
 
 function rowValue(row) {
   return Number(row.capex_optimise || row.capex_local || row.capex_brut || row.value || 0);
@@ -138,7 +219,7 @@ function buildInsights(kpis, lots, suppliers) {
 }
 
 function buildActiveAnalysis(rows = [], filters = {}, drilldownTarget = null, globalKpis = {}) {
-  const activeLabel = filters.lot || filters.famille || filters.importLocal || drilldownTarget?.selectedLabel || "";
+  const activeLabel = displayScope(filters.lot || filters.famille || filters.importLocal || drilldownTarget?.selectedLabel || "");
   const scopedRows = rows.length ? rows : [];
   const capexLocal = scopedRows.reduce((sum, row) => sum + Number(row.capex_local || row.capex_brut || rowValue(row) || 0), 0);
   const capexImport = scopedRows.reduce((sum, row) => sum + Number(row.capex_import || 0), 0);
@@ -152,7 +233,7 @@ function buildActiveAnalysis(rows = [], filters = {}, drilldownTarget = null, gl
     const family = normalizeFamily(row.famille || "Classification en attente");
     familyCount.set(family, (familyCount.get(family) || 0) + rowValue(row));
   });
-  const mainSupplier = [...familyCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || drilldownTarget?.selectedLabel || "A confirmer";
+  const mainSupplier = displayScope([...familyCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || drilldownTarget?.selectedLabel || "A confirmer");
   const delay = importRate > 0.6 ? 75 : importRate > 0.25 ? 45 : 14;
   const risk = importRate > 0.65 ? "Eleve" : importRate > 0.3 ? "Maitrise" : "Faible";
   const containers = Math.max(1, Math.ceil(capexOptimise / 42_000_000));
@@ -276,15 +357,15 @@ function GainPotentialCard({ gainAnalysis, fallbackGain, currency, onOpen }) {
   return (
     <article className="gain-potential-card">
       <div>
-        <span>Gain potentiel net</span>
+        <span>Gain net securisable</span>
         <strong>{formatCurrency(gainNet, currency)}</strong>
-        <small>Apres transport, douane, assurance, logistique et risques estimes.</small>
+        <small>Perimetre : scenario actif. Apres transport, douane, assurance, logistique et risques estimes.</small>
       </div>
       <div className="gain-confidence-ring">
         <b>{formatPercent(confidence)}</b>
         <small>Confiance</small>
       </div>
-      <button type="button" onClick={onOpen}>Detail du gain potentiel</button>
+      <button type="button" onClick={onOpen}>Detail du gain securisable</button>
     </article>
   );
 }
@@ -445,15 +526,24 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
       headerName: "Decision IA",
       minWidth: 130,
       pinned: "right",
-      cellRenderer: ({ value }) => <span className={`decision-badge ${String(value || "").toLowerCase().replaceAll(" ", "-")}`}>{value}</span>,
+      cellRenderer: ({ value }) => <span className={`decision-badge ${decisionUiClass(value)}`}>{decisionUiLabel(value)}</span>,
+      filter: "agSetColumnFilter",
+    },
+    {
+      field: "validation_achat",
+      headerName: "Decision validee",
+      minWidth: 145,
+      pinned: "right",
+      valueGetter: ({ data: row }) => row?.validation_achat || "En attente",
+      cellRenderer: ({ value }) => <span className="validation-badge pending">{value || "En attente"}</span>,
       filter: "agSetColumnFilter",
     },
     { field: "score_confiance_ia", headerName: "Confiance IA", minWidth: 130, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
     {
       field: "decision_reasons",
-      headerName: "Pourquoi ?",
+      headerName: "Justification IA",
       minWidth: 220,
-      valueGetter: ({ data: row }) => (row?.decision_reasons || []).map((reason) => reason.label).join(" | "),
+      valueGetter: ({ data: row }) => (row?.decision_reasons || []).map((reason) => reason.label).join(" | ") || decisionJustification(row),
       tooltipValueGetter: ({ value }) => value,
     },
   ], [currency]);
@@ -469,11 +559,11 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
         <div>
           <span>Vue strategique par famille</span>
           <strong>Arbitrage fournisseur ligne par ligne</strong>
-          <small>{Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} lignes | Gain net {formatCurrency(kpis.gain_net_total, currency)} | ROI moyen {formatPercent(kpis.roi_moyen)}</small>
+          <small>{Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} lignes | Gain apres cout rendu chantier {formatCurrency(kpis.gain_net_total, currency)} | ROI scenario {formatPercent(kpis.roi_moyen)}</small>
         </div>
         <div className="line-arbitrage-kpis">
           <i>IMPORT {kpis.nb_import || 0}</i>
-          <i>HYBRIDE {kpis.nb_hybride || 0}</i>
+        <i>HYBRIDE / A ARBITRER {kpis.nb_hybride || 0}</i>
           <i>Risque {Math.round(Number(kpis.risque_moyen || 0))}/100</i>
         </div>
         <input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Rechercher une ligne, un fournisseur, un port..." />
@@ -515,6 +605,8 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
             </div>
             <p>{selectedRow.storytelling}</p>
             <div className="decision-reason-list">
+              <span className="warning">Validation achat : {selectedRow.validation_achat || "En attente"}</span>
+              <span className="neutral">Justification : {decisionJustification(selectedRow)}</span>
               {(selectedRow.decision_reasons || []).map((reason) => (
                 <span className={reason.type} key={reason.label}>{reason.type === "positive" ? "OK" : reason.type === "warning" ? "!" : "-"} {reason.label}</span>
               ))}
@@ -540,7 +632,7 @@ function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
   const charts = data?.charts || {};
   const metadata = data?.metadata || {};
   const comparison = charts.comparison || {};
-  const activeTitle = metadata.family_scope || "Famille selectionnee";
+  const activeTitle = displayScope(metadata.family_scope || "Famille selectionnee");
 
   if (!data?.table?.length) {
     return null;
@@ -563,15 +655,15 @@ function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
       <div className="family-kpi-grid">
         <span><b>{formatCurrency(kpis.capex_local, currency)}</b> CAPEX local</span>
         <span><b>{formatCurrency(kpis.capex_chine_rendu_chantier, currency)}</b> Chine rendu chantier</span>
-        <span><b>{formatCurrency(kpis.gain_net_total, currency)}</b> Gain net reel</span>
-        <span><b>{formatPercent(kpis.roi_moyen)}</b> ROI import</span>
+        <span><b>{formatCurrency(kpis.gain_net_total, currency)}</b> Gain apres cout rendu chantier</span>
+        <span title="ROI import = economie nette / CAPEX local"><b>{formatPercent(kpis.roi_moyen)}</b> ROI scenario</span>
         <span><b>{kpis.nb_lignes || 0}</b> Lignes</span>
         <span><b>{kpis.nb_fournisseurs || 0}</b> Fournisseurs</span>
         <span><b>{Math.round(Number(comparison.china?.lead_time || 0))} j</b> Delai moyen Chine</span>
         <span><b>{Math.round(Number(kpis.risque_moyen || 0))}/100</b> Risque moyen</span>
         <span><b>{formatCurrency(kpis.cout_logistique, currency)}</b> Cout logistique</span>
         <span><b>{formatCurrency(kpis.cout_douane, currency)}</b> Cout douane</span>
-        <span><b>{kpis.containers || 0}</b> Containers</span>
+        <span><b>{kpis.containers || 0}</b> Containers estimes a confirmer</span>
         <span><b>{formatPercent(kpis.part_capex_projet)}</b> Part projet</span>
       </div>
 
@@ -579,6 +671,7 @@ function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
         <div>
           <span>Resume IA decisionnel</span>
           {(metadata.storytelling || []).map((line) => <p key={line}>{line}</p>)}
+          <p>Decision validee : en attente de validation achat humaine.</p>
         </div>
         <div className="hybrid-strategy-card">
           <span>Mode hybride</span>
@@ -617,9 +710,9 @@ function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
           ))}
         </article>
         <article>
-          <span>Containers</span>
-          <strong>{charts.containers?.count || 0} container(s)</strong>
-          <p>{charts.containers?.cbm || 0} CBM estimes. {charts.containers?.mutualisation}</p>
+          <span>Logistique a consolider</span>
+          <strong>Containers estimes : a confirmer</strong>
+          <p>{charts.containers?.cbm || 0} CBM estimes. {charts.containers?.mutualisation || "Consolidation par lot et fournisseur requise."}</p>
           <b>{formatCurrency(charts.containers?.logistics_cost, currency)} de cout logistique</b>
         </article>
       </section>
@@ -648,11 +741,11 @@ function ActiveProcurementAnalysis({ analysis, activeChips, drilldownTarget, onR
       </div>
       <div className="analysis-kpi-strip">
         <span><b>{formatMoney(analysis.capexLocal)}</b> CAPEX lot</span>
-        <span><b>{formatMoney(analysis.gain)}</b> Gain potentiel</span>
-        <span><b>{formatPercent(analysis.roi)}</b> ROI</span>
+        <span><b>{formatMoney(analysis.gain)}</b> Gain net securisable</span>
+        <span title="ROI import = economie nette / CAPEX local"><b>{formatPercent(analysis.roi)}</b> ROI scenario</span>
         <span><b>{analysis.delay} j</b> Delai</span>
         <span><b>{analysis.risk}</b> Risque</span>
-        <span><b>{analysis.containers}</b> container(s)</span>
+        <span><b>{analysis.containers}</b> estimation logistique a confirmer</span>
       </div>
       <div className="analysis-story">
         <p>
@@ -664,7 +757,7 @@ function ActiveProcurementAnalysis({ analysis, activeChips, drilldownTarget, onR
           <button type="button" onClick={() => onTab("import")}>Importer ce lot</button>
           <button type="button" onClick={() => onTab("import")}>Conserver local</button>
           <button type="button" onClick={() => onTab("suppliers")}>Voir fournisseurs</button>
-          <button type="button" onClick={() => onTab("containers")}>Voir containers</button>
+          <button type="button" onClick={() => onTab("containers")}>Voir logistique</button>
           <button type="button" onClick={() => onTab("strategy")}>Mode hybride</button>
         </div>
       </div>
@@ -676,8 +769,10 @@ export default function ProcurementPage() {
   const [tab, setTab] = React.useState(new URLSearchParams(window.location.search).get("tab") || "import");
   const [analysisPanelClosed, setAnalysisPanelClosed] = React.useState(false);
   const [gainDrawerOpen, setGainDrawerOpen] = React.useState(false);
+  const [exportNotice, setExportNotice] = React.useState("");
   const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilter, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
+  const { state } = useAppStore();
 
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
@@ -707,6 +802,15 @@ export default function ProcurementPage() {
   const importRate = Number(kpis.taux_importable || 0);
   const activeCurrency = filters.devise || gainAnalysisData?.metadata?.currency || "FCFA";
   const roiImport = Number(kpis.roi_import || 0);
+  const gainSecurisable = Number(gainAnalysisData?.kpis?.gain_net || kpis.economie_nette || 0);
+  const localLines = rows.filter((row) => normalizeDecision(row.decision_import) === "LOCAL").length;
+  const importLines = rows.filter((row) => normalizeDecision(row.decision_import) === "IMPORT").length;
+  const hybridLines = rows.filter((row) => ["HYBRIDE", "MIXTE"].includes(normalizeDecision(row.decision_import))).length;
+  const sourceContext = React.useMemo(
+    () => getProcurementSourceContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, state.lastSimulation),
+    [state.activeProject, state.activeScenario, state.lastSimulation]
+  );
+  const activeScopeLabel = displayScope(filters.lot || filters.famille || filters.importLocal || "Projet complet");
   const totalCost = costRows.reduce((sum, row) => sum + row.value, 0);
   const activeAnalysis = React.useMemo(
     () => buildActiveAnalysis(rows, filters, drilldownTarget, kpis),
@@ -723,6 +827,11 @@ export default function ProcurementPage() {
   };
 
   const handleProcurementExport = async () => {
+    if (!sourceContext.hasActiveDqe || !state.lastSimulation) {
+      setExportNotice("Dossier exportable en version provisoire. Certaines references necessitent encore validation DQE ou scenario.");
+    } else {
+      setExportNotice("Dossier achat exporte avec source DQE, scenario actif, hypotheses et validations en attente.");
+    }
     const blob = await exportAnalyticsProcurementFile(filters);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -761,15 +870,37 @@ export default function ProcurementPage() {
       </section>
 
       <div className="tab-row">
-        <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Arbitrage local / import</button>
-        <button className={tab === "suppliers" ? "active" : ""} onClick={() => setTab("suppliers")} type="button">Fournisseurs</button>
-        <button className={tab === "containers" ? "active" : ""} onClick={() => setTab("containers")} type="button">Containers</button>
+        <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Arbitrage</button>
         <button className={tab === "costs" || tab === "cashflow" ? "active" : ""} onClick={() => setTab("costs")} type="button">Cout rendu chantier</button>
-        <button className={tab === "risks" ? "active" : ""} onClick={() => setTab("risks")} type="button">Risques import</button>
-        <button className={tab === "strategy" || tab === "moq" ? "active" : ""} onClick={() => setTab("strategy")} type="button">Strategies achat</button>
+        <button className={tab === "suppliers" ? "active" : ""} onClick={() => setTab("suppliers")} type="button">Fournisseurs</button>
+        <button className={tab === "containers" ? "active" : ""} onClick={() => setTab("containers")} type="button">Logistique</button>
+        <button className={tab === "risks" ? "active" : ""} onClick={() => setTab("risks")} type="button">Risques</button>
+        <button className={tab === "strategy" || tab === "moq" ? "active" : ""} onClick={() => setTab("strategy")} type="button">Strategie achat</button>
       </div>
 
       {analytics.error ? <div className="app-error">Approvisionnement indisponible : {analytics.error.message}</div> : null}
+      {exportNotice ? <div className="app-warning">{exportNotice}</div> : null}
+      <section className={`procurement-context-strip ${sourceContext.hasActiveDqe ? "ready" : "blocked"}`}>
+        <div>
+          <strong>Source DQE : {sourceContext.dqeLabel}</strong>
+          <span>{sourceContext.hasActiveDqe ? `${sourceContext.dqeStatus} · Trust score ${sourceContext.trustScore ?? "-"}/100 · ${sourceContext.lines ?? "-"} lignes exploitables` : "Importez et validez un DQE avant de preparer l'approvisionnement."}</span>
+        </div>
+        <div>
+          <strong>Scenario actif : {sourceContext.scenarioLabel}</strong>
+          <span>{sourceContext.scenarioStatus} · Perimetre : {activeScopeLabel}</span>
+        </div>
+        <div>
+          <strong>Gouvernance</strong>
+          <span>{sourceContext.hasActiveDqe ? `${sourceContext.dataLoss ?? 0} perte stricte · ${sourceContext.reviewRequired ?? 0} validation bloquante` : "Gouvernance indisponible"}</span>
+        </div>
+        <div>
+          <strong>Devises</strong>
+          <span>Projet FCFA · Sourcing {activeCurrency} · taux a confirmer si USD/EUR</span>
+        </div>
+      </section>
+      {!state.lastSimulation ? (
+        <div className="app-warning">Aucun scenario actif simule. Lancez une simulation avant de valider un arbitrage achat.</div>
+      ) : null}
 
       {hasActiveAnalysis ? (
         <ActiveProcurementAnalysis
@@ -783,11 +914,19 @@ export default function ProcurementPage() {
       ) : null}
 
       <section className="metric-grid">
-        <KpiCard label="ROI import" value={formatPercent(roiImport)} tone={roiImport > 0.1 ? "success" : "neutral"} />
+        <KpiCard label="Gain net securisable" value={formatCurrency(gainSecurisable, activeCurrency)} tone="success" />
+        <KpiCard label="ROI scenario" value={formatPercent(roiImport)} tone={roiImport > 0.1 ? "success" : "neutral"} />
         <GainPotentialCard gainAnalysis={gainAnalysisData} fallbackGain={kpis.economie_nette} currency={activeCurrency} onOpen={() => setGainDrawerOpen(true)} />
         <KpiCard label="Taux importable" value={formatPercent(importRate)} />
         <KpiCard label="Budget optimise" value={formatMoney(kpis.capex_optimise)} />
-        <KpiCard label="Lignes achat" value={Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} tone="warning" />
+        <KpiCard label="Lignes achat" value={`${Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} lignes`} tone="warning" />
+      </section>
+      <section className="procurement-scope-note">
+        <span>Perimetre KPI : {activeScopeLabel}</span>
+        <span>Orientation import : {importLines} ligne(s)</span>
+        <span>Achat local : {localLines} ligne(s)</span>
+        <span>Hybride / a arbitrer : {hybridLines} ligne(s)</span>
+        <span title="ROI import = economie nette / CAPEX local">ROI import = economie nette / CAPEX local</span>
       </section>
 
       {gainDrawerOpen ? <GainDetailDrawer analysis={gainAnalysisData} filters={filters} currency={activeCurrency} onClose={() => setGainDrawerOpen(false)} /> : null}
@@ -850,15 +989,16 @@ export default function ProcurementPage() {
         ) : null}
 
         {tab === "containers" ? (
-          <AnalyticsCard title="Cockpit containers" eyebrow="Mutualisation et capacite">
+          <AnalyticsCard title="Logistique import a consolider" eyebrow="Mutualisation, capacite et delais">
+            <p className="procurement-prudent-note">Estimation logistique provisoire. Les containers doivent etre consolides par lot, fournisseur et volume CBM avant decision achat.</p>
             <div className="procurement-card-grid">
               {containerRows.map((container) => (
                 <article className="procurement-mini-card" key={container.id}>
                   <span>{container.id}</span>
                   <strong>{container.lot}</strong>
-                  <p>Remplissage {Math.round(container.fill * 100)}% | ETA {container.eta}</p>
+                  <p>Remplissage estime {Math.round(container.fill * 100)}% | ETA {container.eta}</p>
                   <div className="procurement-progress"><i style={{ width: `${Math.round(container.fill * 100)}%` }} /></div>
-                  <small>{container.status}</small>
+                  <small>{container.status} · a confirmer par le responsable logistique</small>
                 </article>
               ))}
             </div>
@@ -930,7 +1070,7 @@ export default function ProcurementPage() {
               {lotRows.slice(0, 5).map((lot) => (
                 <li key={lot.lot}>
                   <button className="link-button" type="button" onClick={() => handleLotClick(lot.lot)}>
-                    {lot.lot} : {formatMoney(lot.gain)} de gain, {formatPercent(lot.importRate)} import.
+                    {lot.lot} - {formatMoney(lot.gain)} de gain - {lot.importRate > 0.4 ? "Import recommande" : "Arbitrage selectif"} - Risque {lot.importRate > 0.65 ? "eleve" : "moyen"} - Valider fournisseur.
                   </button>
                 </li>
               ))}
@@ -939,7 +1079,8 @@ export default function ProcurementPage() {
           </AnalyticsCard>
           <AnalyticsCard title="Recommandation SP2I" eyebrow="Storytelling IA">
             <ul className="signal-list">
-              <li>Importer les lots a ROI positif avec un risque logistique sous controle.</li>
+              <li>Recommandation IA : importer les lots a ROI positif sous reserve de validation achat.</li>
+              <li>Decision validee : en attente pour les lignes non revues humainement.</li>
               <li>Conserver en local les familles sensibles au delai chantier.</li>
               <li>Mutualiser les containers sur les lots a forte densite CAPEX.</li>
               <li>Remonter les risques critiques vers le cockpit direction.</li>
