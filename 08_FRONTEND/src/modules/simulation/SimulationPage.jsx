@@ -9,9 +9,10 @@ import ScenarioComparison from "../../components/procurement/ScenarioComparison"
 import { useAppStore } from "../../store/appStore.jsx";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
-import { getProjectContext, getScenarioContext } from "../../utils/businessContext";
+import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
 
 const SIMULATION_TIMEOUT_MS = Number(import.meta.env.VITE_ANALYTICS_TIMEOUT_MS || 18000);
+const DQE_SYNCED_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
 function withTimeout(promise, timeoutMs, label) {
   return Promise.race([
@@ -27,6 +28,62 @@ function riskLabel(value) {
   if (score >= 70) return "Eleve";
   if (score >= 50) return "Moyen";
   return "Maitrise";
+}
+
+function scenarioRiskLabel(lines = []) {
+  if (!lines.length) return "A evaluer";
+  const highRisk = lines.filter((line) => String(line.risk_level || "").toLowerCase().includes("eleve") || String(line.risk_level || "").toLowerCase().includes("high")).length;
+  if (highRisk > 0) return "Eleve";
+  const mediumRisk = lines.filter((line) => String(line.risk_level || "").toLowerCase().includes("moyen") || String(line.risk_level || "").toLowerCase().includes("medium")).length;
+  return mediumRisk > 0 ? "Moyen" : "Maitrise";
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return "-";
+  return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
+}
+
+function readDqeVersions(projectId) {
+  try {
+    const stored = window.localStorage.getItem(`sp2i:dqeVersions:${projectId || PROJECT_CONTEXT.code}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {
+    return [];
+  }
+
+  if ((projectId || PROJECT_CONTEXT.code) === PROJECT_CONTEXT.code) {
+    return [{
+      id: "seed-dqe-v1",
+      version_number: 1,
+      file_name: "DQE_PROJECT_SP2I.xlsx",
+      status: "SYNCED",
+      trust_score: 87,
+      normalized_lines_count: 46,
+      data_loss_count: 0,
+      review_required_count: 0,
+      is_active: true,
+    }];
+  }
+
+  return [];
+}
+
+function getDqeSummary(projectId) {
+  const versions = readDqeVersions(projectId);
+  const active = versions.find((version) => version.is_active && DQE_SYNCED_STATUSES.includes(version.status));
+  return {
+    active,
+    hasActiveDqe: Boolean(active),
+    label: active ? `DQE v${active.version_number}` : "Aucun DQE actif",
+    status: active?.status === "CERTIFIED" ? "Certifie" : active?.status === "CERTIFIED_WITH_WARNINGS" ? "Certifie avec points a verifier" : active?.status === "SYNCED" ? "Synchronise" : "Non disponible",
+    trustScore: active?.trust_score,
+    lines: active?.normalized_lines_count,
+    dataLoss: active?.data_loss_count,
+    reviewRequired: active?.review_required_count,
+  };
 }
 
 function mapPreviewLine(row) {
@@ -75,13 +132,19 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
   const [notice, setNotice] = React.useState("");
-  const { setState } = useAppStore();
+  const { state, setState } = useAppStore();
+  const dqeSummary = React.useMemo(() => getDqeSummary(state.activeProject || PROJECT_CONTEXT.code), [state.activeProject]);
 
   React.useEffect(() => {
     setTab(defaultTab);
   }, [defaultTab]);
 
   const runSimulation = async () => {
+    if (!dqeSummary.hasActiveDqe) {
+      setError("Aucune version DQE active disponible. Importez et validez un DQE avant de lancer une simulation.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setNotice("");
@@ -127,8 +190,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   };
 
   React.useEffect(() => {
-    runSimulation();
-  }, []);
+    if (dqeSummary.hasActiveDqe) runSimulation();
+  }, [dqeSummary.hasActiveDqe]);
 
   const runCompare = async () => {
     if (scenarios.length < 2) return;
@@ -138,51 +201,105 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
 
   const kpi = simulation?.kpi || {};
   const lines = simulation?.lignes || [];
-  const criticalLines = lines.filter((line) => String(line.risk_level || "").toUpperCase().includes("HIGH")).length;
-  const importedLines = kpi.lignes ? Math.round((Number(kpi.lignes_import || 0) / Number(kpi.lignes || 1)) * 100) : 0;
+  const analyzedLines = Number(kpi.lignes || lines.length || 0);
+  const importLineCount = Number(kpi.lignes_import || lines.filter((row) => String(row.decision_finale || row.decision_import || "").toUpperCase() === "IMPORT").length);
+  const criticalLines = lines.filter((line) => String(line.risk_level || "").toLowerCase().includes("eleve") || String(line.risk_level || "").toLowerCase().includes("high")).length;
+  const localBudget = Number(kpi.capex_local || 0);
+  const optimizedBudget = Number(kpi.capex_optimise || 0);
+  const savings = Number(kpi.economie_nette || Math.max(localBudget - optimizedBudget, 0));
+  const savingsRate = localBudget ? (savings / localBudget) * 100 : NaN;
+  const scenarioRisk = scenarioRiskLabel(lines);
+  const scenarioStatus = simulation ? "Simule" : "Brouillon";
   const activeScenario = getScenarioContext(scenarioName);
-  const activeProject = getProjectContext();
+  const activeProject = getProjectContext(state.activeProject);
+  const simulationDisabledReason = !dqeSummary.hasActiveDqe
+    ? "Importez et validez un DQE avant de lancer une simulation."
+    : "";
 
   return (
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
         <p className="eyebrow">Budget & scenarios</p>
-        <h1>Tester les options et comparer les decisions projet</h1>
+        <h1>Simuler les scenarios CAPEX et arbitrer les decisions projet</h1>
+        <p>Comparez les hypotheses import/local, mesurez les economies et preparez les decisions d'achat du projet.</p>
       </section>
 
       <div className="tab-row">
-        <button className={tab === "simulation" ? "active" : ""} onClick={() => setTab("simulation")} type="button">Simulation</button>
-        <button className={tab === "scenarios" ? "active" : ""} onClick={() => setTab("scenarios")} type="button">Strategies</button>
+        <button className={tab === "simulation" ? "active" : ""} onClick={() => setTab("simulation")} type="button">Simuler</button>
+        <button className={tab === "scenarios" ? "active" : ""} onClick={() => setTab("scenarios")} type="button">Hypotheses</button>
+        <button className={tab === "compare" ? "active" : ""} onClick={() => setTab("compare")} type="button">Comparer</button>
         <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")} type="button">Historique</button>
-        <button className={tab === "compare" ? "active" : ""} onClick={() => setTab("compare")} type="button">Comparaison</button>
       </div>
 
       {error ? <div className="app-error">{error}</div> : null}
       {notice ? <div className="app-warning">{notice}</div> : null}
+      <section className={`scenario-source-strip ${dqeSummary.hasActiveDqe ? "ready" : "blocked"}`}>
+        <div>
+          <strong>Source donnees : {dqeSummary.label}</strong>
+          <span>
+            {dqeSummary.hasActiveDqe
+              ? `${dqeSummary.status} · Trust score ${dqeSummary.trustScore ?? "-"}/100 · ${dqeSummary.lines ?? "-"} lignes exploitables`
+              : "Aucun DQE actif. Importez et validez un DQE avant de lancer une simulation."}
+          </span>
+        </div>
+        <div>
+          <strong>Gouvernance</strong>
+          <span>
+            {dqeSummary.hasActiveDqe
+              ? `${dqeSummary.dataLoss ?? 0} perte stricte · ${dqeSummary.reviewRequired ?? 0} revue bloquante`
+              : "Gouvernance indisponible sans version DQE active"}
+          </span>
+        </div>
+        {!dqeSummary.hasActiveDqe ? <button type="button" className="primary-action secondary-action" onClick={() => { window.history.pushState({}, "", "/app/dqe?tab=import"); window.dispatchEvent(new PopStateEvent("popstate")); }}>Importer un DQE</button> : null}
+      </section>
 
       {tab === "simulation" ? (
         <>
           <section className="metric-grid">
-            <KpiCard label="Budget local" value={formatMoney(kpi.capex_local)} />
-            <KpiCard label="Budget optimise" value={formatMoney(kpi.capex_optimise)} tone="success" />
-            <KpiCard label="Economies" value={formatMoney(kpi.economie_nette)} tone="warning" />
-            <KpiCard label="Imports recommandes" value={`${importedLines}%`} />
+            <KpiCard label="Budget local" value={formatMoney(localBudget)} />
+            <KpiCard label="Budget optimise" value={formatMoney(optimizedBudget)} tone="success" />
+            <KpiCard label="Economie nette" value={formatMoney(savings)} tone="warning" />
+            <KpiCard label="Taux economie" value={formatPercent(savingsRate)} />
+            <KpiCard label="Lignes analysees" value={analyzedLines || "-"} />
+            <KpiCard label="Risque scenario" value={scenarioRisk} tone={scenarioRisk === "Eleve" ? "warning" : "success"} />
           </section>
           <section className="cockpit-split">
-            <AnalyticsCard title="Lignes de la strategie testee" eyebrow={activeScenario.label}>
+            <AnalyticsCard title="Lignes d'arbitrage du scenario" eyebrow={`${activeScenario.label} · ${scenarioStatus}`}>
               <div className="panel-scroll">
                 {loading ? <Skeleton /> : <SimulationTable rows={lines} />}
               </div>
             </AnalyticsCard>
             <aside className="context-panel">
-              <SimulationToolbar running={loading} onRun={runSimulation} scenarioName={scenarioName} onScenarioNameChange={setScenarioName} />
+              <AnalyticsCard title="Scenario actif" eyebrow="Decision projet">
+                <ul className="signal-list">
+                  <li>Strategie active : {activeScenario.label}</li>
+                  <li>Statut scenario : {scenarioStatus}</li>
+                  <li>Source : {dqeSummary.label}</li>
+                  <li>Risque : {scenarioRisk}</li>
+                </ul>
+              </AnalyticsCard>
+              <AnalyticsCard title="Hypotheses" eyebrow="Parametres CAPEX">
+                <SimulationToolbar running={loading} onRun={runSimulation} scenarioName={scenarioName} onScenarioNameChange={setScenarioName} disabled={!dqeSummary.hasActiveDqe} disabledReason={simulationDisabledReason} />
+              </AnalyticsCard>
+              <AnalyticsCard title="Impact estime" eyebrow="Resultat scenario">
+                <ul className="signal-list">
+                  <li>Economie estimee : {formatMoney(savings)}</li>
+                  <li>Taux economie : {formatPercent(savingsRate)}</li>
+                  <li>Lignes analysees : {analyzedLines || "-"}</li>
+                  <li>Risque : {scenarioRisk.toLowerCase()}</li>
+                </ul>
+              </AnalyticsCard>
               <AnalyticsCard title="Synthese de decision" eyebrow="Arbitrage projet">
                 <ul className="signal-list">
-                  <li>{lines.length} lignes analysees dans la strategie active.</li>
-                  <li>{importedLines}% d'imports recommandes par le moteur.</li>
-                  <li>{criticalLines} lignes a risque eleve a verifier.</li>
-                  <li>Les details financiers restent consolides dans la base projet et le cockpit direction.</li>
+                  <li>{analyzedLines || 0} lignes analysees.</li>
+                  <li>{importLineCount} lignes orientees import.</li>
+                  <li>{formatMoney(savings)} d'economie nette estimee.</li>
+                  <li>{criticalLines} ligne(s) a risque eleve.</li>
+                  <li>Decision : {criticalLines ? "validation requise avant arbitrage." : "scenario exploitable pour comparaison."}</li>
                 </ul>
+                <button className="primary-action secondary-action" type="button" disabled={!simulation} onClick={() => { window.history.pushState({}, "", "/app/procurement"); window.dispatchEvent(new PopStateEvent("popstate")); }}>
+                  Preparer l'approvisionnement
+                </button>
               </AnalyticsCard>
             </aside>
           </section>

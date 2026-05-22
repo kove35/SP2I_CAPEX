@@ -1,7 +1,7 @@
 import React from "react";
 import { getScenarioContext, SCENARIO_OPTIONS } from "../../utils/businessContext";
 
-export default function SimulationToolbar({ running, onRun, scenarioName, onScenarioNameChange }) {
+export default function SimulationToolbar({ running, onRun, scenarioName, onScenarioNameChange, disabled = false, disabledReason = "" }) {
   const scenario = getScenarioContext(scenarioName);
 
   return (
@@ -27,7 +27,8 @@ export default function SimulationToolbar({ running, onRun, scenarioName, onScen
         Tresorerie
         <input value="30/70" readOnly />
       </label>
-      <button type="button" onClick={onRun} disabled={running}>
+      {disabledReason ? <p className="scenario-disabled-reason">{disabledReason}</p> : null}
+      <button type="button" onClick={onRun} disabled={running || disabled}>
         {running ? "Simulation..." : "Lancer simulation"}
       </button>
     </section>
