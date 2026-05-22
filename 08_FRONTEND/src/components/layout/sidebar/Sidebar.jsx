@@ -3,8 +3,8 @@ import { X } from "lucide-react";
 import { sidebarSections } from "../../../navigation/sidebarConfig";
 import SidebarCollapseToggle from "./SidebarCollapseToggle";
 import SidebarProjectStatus from "./SidebarProjectStatus";
-import SidebarQuickActions from "./SidebarQuickActions";
 import SidebarSection from "./SidebarSection";
+import SidebarSystemStatus from "./SidebarSystemStatus";
 import { useSidebarStore } from "./sidebarStore";
 
 export default function Sidebar({ activePath, onNavigate }) {
@@ -25,14 +25,15 @@ export default function Sidebar({ activePath, onNavigate }) {
         </div>
 
         <SidebarCollapseToggle />
-        <SidebarQuickActions onNavigate={onNavigate} />
-        <SidebarProjectStatus />
+        <SidebarProjectStatus onNavigate={onNavigate} />
 
         <nav className="sidebar-nav modern-sidebar-nav">
           {sidebarSections.map((section) => (
             <SidebarSection key={section.id} section={section} activePath={activePath} onNavigate={onNavigate} />
           ))}
         </nav>
+
+        <SidebarSystemStatus />
       </aside>
       {isMobileOpen ? <button className="sidebar-mobile-backdrop" type="button" aria-label="Fermer le menu" onClick={closeMobile} /> : null}
     </>

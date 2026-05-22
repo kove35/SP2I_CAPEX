@@ -6,7 +6,7 @@ import { useSidebarStore } from "./sidebarStore";
 export default function SidebarSection({ section, activePath, onNavigate }) {
   const { isCollapsed, openedSections, toggleSection } = useSidebarStore();
   const Icon = section.icon;
-  const isOpen = openedSections.includes(section.id);
+  const isOpen = section.defaultOpen || openedSections.includes(section.id);
   const activeRoute = activePath.split("?")[0];
   const activeSearch = activePath.split("?")[1] || "";
   const hasActiveItem = section.items.some((item) => {

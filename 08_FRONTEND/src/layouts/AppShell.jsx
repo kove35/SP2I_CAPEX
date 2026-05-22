@@ -1,11 +1,12 @@
 import React from "react";
-import { AlertTriangle, BarChart3, FileSpreadsheet, Gauge, Menu, Play } from "lucide-react";
+import { AlertTriangle, Gauge, Menu } from "lucide-react";
 import Sidebar from "../components/layout/sidebar/Sidebar";
 import { useSidebarStore } from "../components/layout/sidebar/sidebarStore";
 import { useAppStore } from "../store/appStore.jsx";
 import { getScenarioContext } from "../utils/businessContext";
 import AlertCenter from "../ui/AlertCenter";
 import ProjectSelector from "../ui/ProjectSelector";
+import ProjectQuickActions from "../components/ProjectQuickActions";
 
 export default function AppShell({ activePath, onNavigate, children }) {
   const { state } = useAppStore();
@@ -31,10 +32,8 @@ export default function AppShell({ activePath, onNavigate, children }) {
           <div className="topbar-metrics">
             <span><Gauge size={16} /> Strategie : {scenario.label}</span>
             <span><AlertTriangle size={16} /> Risque global moyen</span>
-            <button type="button" onClick={() => onNavigate("/app/dqe?tab=import")}><FileSpreadsheet size={16} /> Importer DQE</button>
-            <button type="button" onClick={() => onNavigate("/app/simulation")}><Play size={16} /> Tester un scenario</button>
-            <button type="button" onClick={() => onNavigate("/app/analytics?dashboard=direction")}><BarChart3 size={16} /> Pilotage</button>
           </div>
+          <ProjectQuickActions onNavigate={onNavigate} />
           <AlertCenter />
         </header>
         <section className="content-area">{children}</section>
