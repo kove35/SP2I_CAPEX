@@ -2578,6 +2578,212 @@ a {
   font-size: 13px;
 }
 
+.project-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.project-card-actions button.secondary {
+  background: rgba(255,255,255,.08);
+  color: #dbeafe;
+  box-shadow: none;
+}
+
+.project-workflow-stepper {
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(2, 6, 23, .22);
+}
+
+.project-workflow-stepper.compact {
+  margin: 0 0 14px;
+  padding: 8px;
+}
+
+.project-workflow-stepper header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.project-workflow-stepper header span {
+  display: block;
+  color: #67e8c9;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.project-workflow-stepper header strong,
+.project-workflow-stepper header b {
+  color: #f8fafc;
+}
+
+.project-workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.project-workflow-step {
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  padding: 9px;
+  display: grid;
+  gap: 5px;
+  justify-items: start;
+  color: #dbeafe;
+  background: rgba(15, 23, 42, .65);
+  cursor: pointer;
+  text-align: left;
+}
+
+.project-workflow-step span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.project-workflow-step small {
+  color: #9fb4d1;
+}
+
+.project-workflow-step.done {
+  border-color: rgba(103, 232, 201, .24);
+  color: #a7f3d0;
+  background: rgba(20, 184, 166, .10);
+}
+
+.project-workflow-step.progress,
+.project-workflow-step.todo {
+  border-color: rgba(251, 191, 36, .24);
+  color: #fde68a;
+}
+
+.project-workflow-step.blocking,
+.project-workflow-step.blocked {
+  border-color: rgba(248, 113, 113, .20);
+  color: #fecaca;
+  background: rgba(127, 29, 29, .10);
+}
+
+.project-workflow-step:disabled {
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.project-setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(2, 6, 23, .76);
+  backdrop-filter: blur(8px);
+}
+
+.project-setup-dialog {
+  width: min(1120px, 100%);
+  max-height: min(88vh, 920px);
+  overflow: auto;
+  border: 1px solid rgba(103, 232, 201, .20);
+  border-radius: 12px;
+  padding: 18px;
+  background: #071522;
+  box-shadow: 0 24px 80px rgba(0,0,0,.38);
+}
+
+.project-setup-dialog header,
+.project-setup-dialog footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.project-setup-dialog h2 {
+  margin: 4px 0 8px;
+  color: #f8fafc;
+}
+
+.project-setup-dialog p {
+  margin: 0;
+  color: #b7c9df;
+}
+
+.project-setup-dialog header span,
+.project-setup-grid legend {
+  color: #67e8c9;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.project-setup-progress {
+  position: relative;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  margin: 14px 0;
+  padding: 12px;
+  overflow: hidden;
+  background: rgba(2, 6, 23, .30);
+}
+
+.project-setup-progress strong,
+.project-setup-progress span {
+  position: relative;
+  z-index: 1;
+  margin-right: 10px;
+  color: #f8fafc;
+}
+
+.project-setup-progress i {
+  position: absolute;
+  inset: auto auto 0 0;
+  height: 3px;
+  background: #67e8c9;
+}
+
+.project-setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.project-setup-grid fieldset {
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.project-setup-grid label {
+  display: grid;
+  gap: 6px;
+  color: #c7d8ec;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-setup-grid input,
+.project-setup-grid textarea {
+  border: 1px solid rgba(148, 163, 184, .20);
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #f8fafc;
+  background: rgba(2, 6, 23, .45);
+}
+
+.project-setup-grid textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
 .skeleton-project {
   color: #9fb1c5;
 }
@@ -6495,6 +6701,15 @@ button.procurement-kpi-card:hover {
   .execution-context-strip,
   .execution-operational-grid {
     grid-template-columns: 1fr;
+  }
+
+  .project-workflow-steps,
+  .project-setup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-workflow-stepper.compact .project-workflow-step small {
+    display: none;
   }
 
   .dqe-state-grid {

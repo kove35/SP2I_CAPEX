@@ -1,7 +1,9 @@
 import React from "react";
+import { Settings } from "lucide-react";
 import { sidebarQuickActions } from "../navigation/sidebarConfig";
 import { useAppStore } from "../store/appStore.jsx";
 import { PROJECT_CONTEXT } from "../utils/businessContext";
+import { getProjectWorkflow } from "../services/projectService";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
@@ -21,7 +23,20 @@ function hasActiveDqeVersion(projectId) {
 export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const { state } = useAppStore();
   const hasProject = Boolean(state.activeProject);
+  const workflow = getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state);
+  const needsSetup = workflow.steps?.[0]?.state !== "done";
+  const budgetSynced = workflow.steps?.find((step) => step.id === "budget")?.state === "done";
+  const scenarioReady = workflow.steps?.find((step) => step.id === "scenarios")?.state === "done";
   const isDisabled = disabled || !hasProject;
+
+  const actions = needsSetup
+    ? [{ label: "Configurer le projet", path: "/app/projects", icon: Settings }]
+    : sidebarQuickActions.map((action) => {
+        if (action.label === "Tester un scenario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de tester un scenario" };
+        if (action.label === "Nouveau scenario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de creer un scenario" };
+        if (scenarioReady && action.label === "Tester un scenario") return { ...action, label: "Approvisionnement", path: "/app/procurement" };
+        return action;
+      });
 
   const handleClick = (action) => {
     if (!hasProject) {
@@ -39,7 +54,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
 
   return (
     <div className="project-quick-actions" aria-label="Actions du projet actif">
-      {sidebarQuickActions.map((action) => {
+      {actions.map((action) => {
         const Icon = action.icon;
         return (
           <button
@@ -47,8 +62,8 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
             type="button"
             className="project-action-button"
             onClick={() => handleClick(action)}
-            disabled={isDisabled}
-            title={hasProject ? action.label : "Selectionner un projet"}
+            disabled={isDisabled || action.disabled}
+            title={hasProject ? action.title || action.label : "Selectionner un projet"}
           >
             <Icon size={16} />
             <span>{action.label}</span>

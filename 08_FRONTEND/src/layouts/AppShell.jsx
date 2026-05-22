@@ -7,11 +7,18 @@ import { getScenarioContext } from "../utils/businessContext";
 import AlertCenter from "../ui/AlertCenter";
 import ProjectSelector from "../ui/ProjectSelector";
 import ProjectQuickActions from "../components/ProjectQuickActions";
+import ProjectWorkflowStepper from "../modules/projects/ProjectWorkflowStepper";
+import { getProjectWorkflow } from "../services/projectService";
 
 export default function AppShell({ activePath, onNavigate, children }) {
   const { state } = useAppStore();
   const { isCollapsed, toggleMobile, setProjectContext } = useSidebarStore();
   const scenario = getScenarioContext(state.activeScenario);
+  const workflow = React.useMemo(
+    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
+    [state]
+  );
+  const showWorkspaceWorkflow = !String(activePath || "").startsWith("/app/projects");
 
   React.useEffect(() => {
     setProjectContext({
@@ -36,7 +43,17 @@ export default function AppShell({ activePath, onNavigate, children }) {
           <ProjectQuickActions onNavigate={onNavigate} />
           <AlertCenter />
         </header>
-        <section className="content-area">{children}</section>
+        <section className="content-area">
+          {showWorkspaceWorkflow ? (
+            <ProjectWorkflowStepper
+              workflow={workflow}
+              compact
+              onNavigate={onNavigate}
+              onSetup={() => onNavigate("/app/projects")}
+            />
+          ) : null}
+          {children}
+        </section>
       </div>
     </div>
   );
