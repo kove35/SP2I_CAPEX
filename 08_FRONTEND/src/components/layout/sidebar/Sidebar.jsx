@@ -8,7 +8,11 @@ import SidebarSystemStatus from "./SidebarSystemStatus";
 import { useSidebarStore } from "./sidebarStore";
 
 export default function Sidebar({ activePath, onNavigate }) {
-  const { isCollapsed, isMobileOpen, closeMobile } = useSidebarStore();
+  const { isCollapsed, isMobileOpen, closeMobile, activeProject } = useSidebarStore();
+  const generalSections = sidebarSections.filter((section) => section.area === "general");
+  const workspaceSections = sidebarSections.filter((section) => section.area === "workspace");
+  const otherSections = sidebarSections.filter((section) => section.area === "other");
+  const hasProject = Boolean(activeProject);
 
   return (
     <>
@@ -25,10 +29,28 @@ export default function Sidebar({ activePath, onNavigate }) {
         </div>
 
         <SidebarCollapseToggle />
+
+        <nav className="sidebar-nav modern-sidebar-nav">
+          {generalSections.map((section) => (
+            <SidebarSection key={section.id} section={section} activePath={activePath} onNavigate={onNavigate} />
+          ))}
+        </nav>
+
         <SidebarProjectStatus onNavigate={onNavigate} />
 
         <nav className="sidebar-nav modern-sidebar-nav">
-          {sidebarSections.map((section) => (
+          {hasProject ? workspaceSections.map((section) => (
+            <SidebarSection key={section.id} section={section} activePath={activePath} onNavigate={onNavigate} />
+          )) : (
+            <div className="sidebar-no-project">
+              <span>Selectionnez un projet</span>
+              <button type="button" onClick={() => onNavigate("/app/projects")}>Mes projets</button>
+            </div>
+          )}
+        </nav>
+
+        <nav className="sidebar-nav modern-sidebar-nav sidebar-nav-other">
+          {otherSections.map((section) => (
             <SidebarSection key={section.id} section={section} activePath={activePath} onNavigate={onNavigate} />
           ))}
         </nav>

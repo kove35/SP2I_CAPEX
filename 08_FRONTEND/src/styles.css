@@ -792,6 +792,14 @@ a {
   white-space: nowrap;
 }
 
+.sidebar-section-title {
+  color: #8ea2b8;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+}
+
 .sidebar-section-badge,
 .sidebar-item-badge {
   min-width: 22px;
@@ -860,6 +868,38 @@ a {
 .sidebar-item.active {
   color: #06111f;
   background: #67e8c9;
+  font-weight: 850;
+}
+
+.sidebar-item.disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+
+.sidebar-item.disabled:hover {
+  color: #aebfd0;
+  background: transparent;
+  transform: none;
+}
+
+.sidebar-no-project {
+  border: 1px dashed rgba(148, 163, 184, .20);
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  color: #9db0c3;
+  background: rgba(255,255,255,.035);
+  font-size: 12px;
+}
+
+.sidebar-no-project button {
+  min-height: 30px;
+  border: 1px solid rgba(103,232,201,.22);
+  border-radius: 8px;
+  color: #67e8c9;
+  background: rgba(103,232,201,.07);
+  cursor: pointer;
   font-weight: 850;
 }
 

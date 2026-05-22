@@ -9,12 +9,8 @@ export default function SidebarSection({ section, activePath, onNavigate }) {
   const activeRoute = activePath.split("?")[0];
   const activeSearch = activePath.split("?")[1] || "";
   const items = section.items || [];
-  const sectionRoute = section.path?.split("?")[0] || "";
-  const sectionSearch = section.path?.split("?")[1] || "";
-  const isActiveSection = section.path
-    ? section.path === activePath || (sectionRoute === activeRoute && (sectionSearch ? activeSearch === sectionSearch : !activeSearch))
-    : false;
   const hasActiveItem = items.some((item) => {
+    if (item.disabled || !item.path) return false;
     const itemRoute = item.path.split("?")[0];
     const itemSearch = item.path.split("?")[1] || "";
     return item.path === activePath || (itemRoute === activeRoute && (itemSearch ? activeSearch === itemSearch : !activeSearch));
@@ -23,15 +19,11 @@ export default function SidebarSection({ section, activePath, onNavigate }) {
   const shouldRenderItems = isOpen && !isCollapsed && items.length > 0;
 
   const handleTrigger = () => {
-    if (section.path) {
-      onNavigate(section.path);
-      return;
-    }
     toggleSection(section.id);
   };
 
   return (
-    <section className={`sidebar-section ${isOpen ? "open" : ""} ${hasActiveItem || isActiveSection ? "has-active" : ""}`}>
+    <section className={`sidebar-section ${isOpen ? "open" : ""} ${hasActiveItem ? "has-active" : ""}`}>
       <button
         type="button"
         className="sidebar-section-trigger"
