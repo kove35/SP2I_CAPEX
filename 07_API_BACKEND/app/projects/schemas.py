@@ -127,6 +127,30 @@ class ScenarioStatus(BaseModel):
     message: str = ""
 
 
+class ProcurementStatus(BaseModel):
+    status: str = "BLOCKED"
+    is_ready: bool = False
+    decisions_count: int = 0
+    import_lines_count: int = 0
+    local_lines_count: int = 0
+    hybrid_lines_count: int = 0
+    validated_decisions_count: int = 0
+    export_available: bool = False
+    source: str = "fact_simulation"
+    message: str = ""
+
+
+class ExecutionStatus(BaseModel):
+    status: str = "BLOCKED"
+    is_ready: bool = False
+    actions_count: int = 0
+    critical_lots_count: int = 0
+    deliveries_to_watch_count: int = 0
+    eta_to_watch_count: int = 0
+    source: str = "fact_simulation"
+    message: str = ""
+
+
 class ProjectWorkflowResponse(BaseModel):
     status: str
     label: str
@@ -136,3 +160,5 @@ class ProjectWorkflowResponse(BaseModel):
     dqe: DqeStatus = Field(default_factory=DqeStatus)
     budget: BudgetStatus = Field(default_factory=BudgetStatus)
     scenario: ScenarioStatus = Field(default_factory=ScenarioStatus)
+    procurement: ProcurementStatus = Field(default_factory=ProcurementStatus)
+    execution: ExecutionStatus = Field(default_factory=ExecutionStatus)

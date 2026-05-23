@@ -137,7 +137,9 @@ export default function SiteExecutionPage() {
     [state]
   );
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
-  const procurementDone = workflow.steps.find((step) => step.id === "procurement")?.state === "done";
+  const procurementReady = workflow.procurement?.is_ready || workflow.steps.find((step) => step.id === "procurement")?.state === "done";
+  const executionStatus = workflow.execution?.status || "BLOCKED";
+  const executionReady = workflow.execution?.is_ready || workflow.steps.find((step) => step.id === "execution")?.state === "done";
   const context = React.useMemo(
     () => getExecutionContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, state.lastSimulation),
     [state.activeProject, state.activeScenario, state.lastSimulation]
@@ -251,7 +253,7 @@ export default function SiteExecutionPage() {
           requiredStep="Configuration projet"
           testId="execution-empty-state"
         />
-      ) : !procurementDone ? (
+      ) : !procurementReady ? (
         <WorkflowGuardEmptyState
           title="Approvisionnement a preparer"
           message="Preparez les arbitrages achat avant de suivre l'execution chantier."
@@ -259,6 +261,16 @@ export default function SiteExecutionPage() {
           actionRoute="/app/procurement"
           currentStep={workflow.steps.find((step) => step.id === "procurement")?.status}
           requiredStep="Approvisionnement"
+          testId="execution-empty-state"
+        />
+      ) : !executionReady && executionStatus === "REQUIRED" ? (
+        <WorkflowGuardEmptyState
+          title="Execution a preparer"
+          message="L'approvisionnement est pret. Preparez les actions chantier avant le suivi operationnel."
+          actionLabel="Preparer l'execution"
+          actionRoute="/app/site?tab=planning"
+          currentStep={workflow.steps.find((step) => step.id === "execution")?.status}
+          requiredStep="Actions chantier"
           testId="execution-empty-state"
         />
       ) : null}

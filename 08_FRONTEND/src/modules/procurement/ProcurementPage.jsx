@@ -780,6 +780,8 @@ export default function ProcurementPage() {
     [state]
   );
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
+  const scenarioReady = workflow.scenario?.is_ready || workflow.steps.find((step) => step.id === "scenarios")?.state === "done";
+  const procurementStatus = workflow.procurement?.status || workflow.steps.find((step) => step.id === "procurement")?.status;
 
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
@@ -917,7 +919,7 @@ export default function ProcurementPage() {
           <span>Projet FCFA · Sourcing {activeCurrency} · taux a confirmer si USD/EUR</span>
         </div>
       </section>
-      {setupDone && !state.lastSimulation ? (
+      {setupDone && !scenarioReady ? (
         <WorkflowGuardEmptyState
           title="Aucun scenario actif"
           message="Aucun scenario actif. Lancez une simulation avant de preparer l'approvisionnement."
@@ -927,6 +929,15 @@ export default function ProcurementPage() {
           requiredStep="Scenario CAPEX"
           testId="procurement-empty-state"
         />
+      ) : null}
+      {setupDone && scenarioReady && procurementStatus === "REQUIRED" ? (
+        <div className="app-warning">Le scenario est disponible. Preparez les arbitrages achat pour generer les decisions import/local.</div>
+      ) : null}
+      {setupDone && scenarioReady && procurementStatus === "REVIEW_REQUIRED" ? (
+        <div className="app-warning">Arbitrages achat generes. Validation humaine requise avant execution chantier.</div>
+      ) : null}
+      {setupDone && scenarioReady && ["READY", "EXPORTABLE"].includes(procurementStatus) ? (
+        <div className="app-success">Approvisionnement pret pour execution. Le dossier achat peut etre exploite.</div>
       ) : null}
 
       {hasActiveAnalysis ? (

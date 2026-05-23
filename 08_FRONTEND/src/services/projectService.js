@@ -54,6 +54,7 @@ export const projectStatusLabels = {
   BUDGET_SYNCED: "Budget synchronise",
   SCENARIO_REQUIRED: "Scenario a lancer",
   SCENARIO_READY: "Scenario disponible",
+  PROCUREMENT_REVIEW_REQUIRED: "Arbitrages achat a valider",
   PROCUREMENT_READY: "Approvisionnement pret",
   EXECUTION_READY: "Execution prete",
   ACTIVE: "Actif",
@@ -117,8 +118,11 @@ export function getProjectWorkflow(project = {}, appState = {}) {
   const dqeReady = activeDqe && DQE_READY_STATUSES.includes(activeDqe.status);
   const budgetSynced = Boolean(project.budget || activeDqe?.synced_at || activeDqe?.status === "SYNCED");
   const scenarioReady = Boolean(appState.lastSimulation || project.scenario_ready || project.workflow_status === "SCENARIO_READY" || project.workflow_status === "ACTIVE");
-  const procurementReady = Boolean(project.procurement_ready || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "ACTIVE");
-  const executionReady = Boolean(project.execution_ready || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
+  const procurementReady = Boolean(project.procurement_ready || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
+  const procurementReviewRequired = Boolean(project.procurement_review_required || project.workflow_status === "PROCUREMENT_REVIEW_REQUIRED");
+  const procurementRequired = Boolean(scenarioReady && !procurementReady && !procurementReviewRequired);
+  const executionReady = Boolean(project.execution_ready || project.workflow_status === "EXECUTION_READY");
+  const executionRequired = Boolean(procurementReady && !executionReady);
 
   const steps = [
     {
@@ -156,16 +160,16 @@ export function getProjectWorkflow(project = {}, appState = {}) {
     {
       id: "procurement",
       label: "Approvisionnement",
-      status: procurementReady ? "Pret" : scenarioReady ? "A preparer" : "Bloque",
-      state: procurementReady ? "done" : scenarioReady ? "todo" : "blocked",
+      status: procurementReady ? "Pret" : procurementReviewRequired ? "Validation requise" : scenarioReady ? "A preparer" : "Bloque",
+      state: procurementReady ? "done" : procurementReviewRequired ? "progress" : procurementRequired ? "todo" : "blocked",
       action: "Preparer",
       route: "/app/procurement",
     },
     {
       id: "execution",
       label: "Execution",
-      status: executionReady ? "Pret" : procurementReady ? "En attente" : "Bloque",
-      state: executionReady ? "done" : procurementReady ? "todo" : "blocked",
+      status: executionReady ? "Pret" : executionRequired ? "A preparer" : "Bloque",
+      state: executionReady ? "done" : executionRequired ? "todo" : "blocked",
       action: "Suivre",
       route: "/app/site?tab=planning",
     },
@@ -181,9 +185,13 @@ export function getProjectWorkflow(project = {}, appState = {}) {
           ? "BUDGET_SYNC_REQUIRED"
           : !scenarioReady
             ? "SCENARIO_REQUIRED"
+            : procurementReviewRequired
+              ? "PROCUREMENT_REVIEW_REQUIRED"
             : !procurementReady
               ? "SCENARIO_READY"
-              : "ACTIVE";
+              : executionReady
+                ? "EXECUTION_READY"
+                : "PROCUREMENT_READY";
 
   return {
     status,
@@ -191,6 +199,44 @@ export function getProjectWorkflow(project = {}, appState = {}) {
     steps,
     completion: Math.round((steps.filter((step) => step.state === "done").length / steps.length) * 100),
     activeDqe,
+    scenario: {
+      status: scenarioReady ? "SIMULATED" : "NOT_STARTED",
+      is_ready: scenarioReady,
+      line_count: Number(appState.lastSimulation?.kpi?.nb_lignes || appState.lastSimulation?.lignes?.length || 0),
+      source: "local_demo",
+    },
+    procurement: {
+      status: procurementReady ? "READY" : procurementReviewRequired ? "REVIEW_REQUIRED" : procurementRequired ? "REQUIRED" : "BLOCKED",
+      is_ready: procurementReady,
+      decisions_count: Number(project.procurement_decisions_count || appState.lastSimulation?.lignes?.length || 0),
+      import_lines_count: Number(project.procurement_import_lines_count || 0),
+      local_lines_count: Number(project.procurement_local_lines_count || 0),
+      hybrid_lines_count: Number(project.procurement_hybrid_lines_count || 0),
+      validated_decisions_count: procurementReady ? Number(project.procurement_validated_decisions_count || project.procurement_decisions_count || 0) : 0,
+      export_available: Boolean(project.procurement_export_available || procurementReady),
+      source: "local_demo",
+      message: procurementReady
+        ? "Approvisionnement pret pour execution."
+        : procurementReviewRequired
+          ? "Arbitrages achat generes. Validation humaine requise avant execution."
+          : procurementRequired
+            ? "Le scenario est disponible. Preparez les arbitrages achat."
+            : "Lancez un scenario avant de preparer l'approvisionnement.",
+    },
+    execution: {
+      status: executionReady ? "READY" : executionRequired ? "REQUIRED" : "BLOCKED",
+      is_ready: executionReady,
+      actions_count: Number(project.execution_actions_count || 0),
+      critical_lots_count: Number(project.execution_critical_lots_count || 0),
+      deliveries_to_watch_count: Number(project.execution_deliveries_to_watch_count || 0),
+      eta_to_watch_count: Number(project.execution_eta_to_watch_count || 0),
+      source: "local_demo",
+      message: executionReady
+        ? "Execution prete pour suivi chantier."
+        : executionRequired
+          ? "L'approvisionnement est pret. Preparez les actions chantier."
+          : "Preparez l'approvisionnement avant de suivre l'execution chantier.",
+    },
   };
 }
 
@@ -205,7 +251,10 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
   if (nextStep.id === "dqe") return { label: workflow.activeDqe ? "Analyser le DQE" : "Importer le DQE", route: "/app/dqe?tab=import" };
   if (nextStep.id === "budget") return { label: "Synchroniser le budget", route: "/app/dqe?tab=sync" };
   if (nextStep.id === "scenarios") return { label: "Tester un scenario", route: "/app/simulation" };
+  if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les arbitrages achat", route: "/app/procurement" };
   if (nextStep.id === "procurement") return { label: "Preparer l'approvisionnement", route: "/app/procurement" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Preparer l'execution", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution") return { label: "Ouvrir Execution", route: "/app/site?tab=planning" };
   return { label: "Ouvrir le workspace", route: "/app" };
 }
 

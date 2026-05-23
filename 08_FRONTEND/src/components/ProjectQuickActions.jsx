@@ -1,5 +1,5 @@
 import React from "react";
-import { Settings } from "lucide-react";
+import { HardHat, Settings } from "lucide-react";
 import { sidebarQuickActions } from "../navigation/sidebarConfig";
 import { useAppStore } from "../store/appStore.jsx";
 import { PROJECT_CONTEXT } from "../utils/businessContext";
@@ -27,6 +27,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const needsSetup = workflow.steps?.[0]?.state !== "done";
   const budgetSynced = isBudgetSynced(workflow);
   const scenarioReady = workflow.steps?.find((step) => step.id === "scenarios")?.state === "done";
+  const procurementReady = workflow.procurement?.is_ready || workflow.steps?.find((step) => step.id === "procurement")?.state === "done";
   const isDisabled = disabled || !hasProject;
 
   const actions = needsSetup
@@ -34,6 +35,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
     : sidebarQuickActions.map((action) => {
         if (action.label === "Tester un scenario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de tester un scenario" };
         if (action.label === "Nouveau scenario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de creer un scenario" };
+        if (procurementReady && action.label === "Tester un scenario") return { ...action, label: "Execution", path: "/app/site?tab=planning", icon: HardHat };
         if (scenarioReady && action.label === "Tester un scenario") return { ...action, label: "Approvisionnement", path: "/app/procurement" };
         return action;
       });
