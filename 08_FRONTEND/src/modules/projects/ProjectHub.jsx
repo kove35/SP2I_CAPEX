@@ -14,6 +14,21 @@ const roleLabels = {
   VIEWER: "Lecture seule",
 };
 
+function projectCardBadge(workflow, primaryAction) {
+  const label = primaryAction?.label || workflow?.label || "Projet";
+  const mapping = [
+    [/configurer/i, "Configuration requise"],
+    [/importer.*dqe/i, "DQE a importer"],
+    [/synchroniser.*budget/i, "Budget a synchroniser"],
+    [/tester.*scenario/i, "Scenario a lancer"],
+    [/preparer.*approvisionnement/i, "Approvisionnement a preparer"],
+    [/valider.*arbitrages/i, "Arbitrages a valider"],
+    [/preparer.*execution/i, "Execution a preparer"],
+    [/ouvrir.*execution/i, "Execution prete"],
+  ];
+  return mapping.find(([pattern]) => pattern.test(label))?.[1] || workflow?.label || label;
+}
+
 export default function ProjectHub({ onNavigate }) {
   const { state, setState } = useAppStore();
   const [session] = React.useState(() => getStoredSession());
@@ -123,7 +138,7 @@ export default function ProjectHub({ onNavigate }) {
             <article className="project-card" key={project.id} data-testid="project-card">
               <div className="project-card-top">
                 <span><Building2 size={16} /> {project.city || "Ville a renseigner"}, {project.country || "Pays a renseigner"}</span>
-                <strong>{workflow.label}</strong>
+                <strong>{projectCardBadge(workflow, primaryAction)}</strong>
               </div>
               <h2>{project.name}</h2>
               <p>{project.client_name || "Client / organisation a renseigner"}</p>
@@ -133,7 +148,7 @@ export default function ProjectHub({ onNavigate }) {
                 <span><FileSpreadsheet size={15} /> {project.last_dqe || "DQE a importer"}</span>
                 <span><Gauge size={15} /> {project.budget ? formatMoney(project.budget) : "Budget a synchroniser"}</span>
               </div>
-              <ProjectWorkflowStepper workflow={workflow} onNavigate={onNavigate} onSetup={() => setSetupProject(project)} />
+              <ProjectWorkflowStepper compact workflow={workflow} onNavigate={onNavigate} onSetup={() => setSetupProject(project)} />
               <div className="project-card-actions">
                 <button type="button" data-testid="project-primary-action" onClick={() => runPrimaryAction(project)}>{primaryAction.label}</button>
                 <button type="button" className="secondary" onClick={() => openProject(project)}>Ouvrir le workspace</button>

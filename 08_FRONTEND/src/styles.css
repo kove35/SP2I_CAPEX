@@ -2606,8 +2606,89 @@ a {
 }
 
 .project-workflow-stepper.compact {
-  margin: 0 0 14px;
-  padding: 8px;
+  margin: 0;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.project-workflow-compact-header {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.project-workflow-compact-header > div,
+.project-workflow-compact-action {
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(15, 23, 42, .58);
+}
+
+.project-workflow-compact-header span,
+.project-workflow-compact-action span {
+  display: block;
+  color: #9fb1c5;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.project-workflow-compact-header strong,
+.project-workflow-compact-action strong {
+  display: block;
+  margin-top: 3px;
+  color: #f8fafc;
+  font-size: 17px;
+}
+
+.project-workflow-compact-action {
+  width: 100%;
+  color: #dbeafe;
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-workflow-compact-action.todo,
+.project-workflow-compact-action.progress,
+.project-workflow-compact-action.blocking {
+  border-color: rgba(251, 191, 36, .26);
+  background: rgba(120, 53, 15, .16);
+}
+
+.project-workflow-compact-action small {
+  display: block;
+  margin-top: 4px;
+  color: #cbd5e1;
+}
+
+.project-workflow-compact-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.project-workflow-compact-statuses span {
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, .04);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.project-workflow-compact-statuses .done {
+  color: #a7f3d0;
+  border-color: rgba(52, 211, 153, .22);
+}
+
+.project-workflow-compact-statuses .todo,
+.project-workflow-compact-statuses .progress,
+.project-workflow-compact-statuses .blocking {
+  color: #fde68a;
+  border-color: rgba(251, 191, 36, .22);
 }
 
 .project-workflow-stepper header {
