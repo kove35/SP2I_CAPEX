@@ -11,11 +11,14 @@ import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import { useAppStore } from "../../store/appStore.jsx";
-import { getProjectPrimaryAction, getProjectWorkflow } from "../../services/projectService";
+import ProjectQuickActions from "../../components/ProjectQuickActions";
+import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey } from "../../services/projectService";
+import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import Skeleton from "../../ui/Skeleton";
 import AnalyticsHealthPage from "./AnalyticsHealthPage";
+import { formatMoney } from "../../shared/formatters";
 
 const dashboards = [
   ["direction", "Direction"],
@@ -53,6 +56,155 @@ function DirectionIndicatorsView({ engine, kpis, barRows, table, riskRows }) {
         </AnalyticsCard>
       </section>
     </>
+  );
+}
+
+function navigateTo(path) {
+  window.history.pushState({}, "", path);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function getWorkspaceProject(state) {
+  if (state.activeProjectDetails) return state.activeProjectDetails;
+  return demoProjects.find((project) => getProjectWorkspaceKey(project) === state.activeProject) || demoProjects[0];
+}
+
+function getStep(workflow, id) {
+  return workflow.steps?.find((step) => step.id === id) || {};
+}
+
+function moduleTone(state) {
+  if (state === "done") return "ready";
+  if (state === "progress" || state === "todo") return "pending";
+  return "blocked";
+}
+
+function displayMoney(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? formatMoney(numeric) : "-";
+}
+
+function displayPercent(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "-";
+  return `${(numeric > 1 ? numeric : numeric * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
+}
+
+function buildPilotageAlerts(workflow) {
+  const alerts = [];
+  const configuration = getStep(workflow, "configuration");
+  const dqe = getStep(workflow, "dqe");
+  const budget = getStep(workflow, "budget");
+  const scenarios = getStep(workflow, "scenarios");
+  const procurement = workflow.procurement || {};
+  const execution = workflow.execution || {};
+
+  if (configuration.state !== "done") alerts.push("Configuration projet incomplete.");
+  if (dqe.state !== "done") alerts.push("DQE absent ou non certifie.");
+  if (dqe.state === "done" && budget.state !== "done") alerts.push("Budget non synchronise avec la base projet.");
+  if (budget.state === "done" && scenarios.state !== "done") alerts.push("Aucun scenario actif pour arbitrage CAPEX.");
+  if (procurement.status === "REVIEW_REQUIRED") alerts.push("Arbitrages achat generes mais validation humaine requise.");
+  if (procurement.status === "REQUIRED") alerts.push("Approvisionnement a preparer depuis le scenario actif.");
+  if (execution.status === "REQUIRED") alerts.push("Execution a preparer : actions chantier non encore generees.");
+  if (execution.status === "AT_RISK") alerts.push("Execution a risque : lots critiques ou livraisons a surveiller.");
+  if (!alerts.length) alerts.push("Projet pret pour pilotage direction avec donnees disponibles.");
+  return alerts;
+}
+
+function ModuleStatusCard({ title, step, message, actionLabel, actionRoute, detail }) {
+  return (
+    <article className={`workspace-module-card ${moduleTone(step?.state)}`}>
+      <span>{title}</span>
+      <strong>{step?.status || "Non disponible"}</strong>
+      <p>{message}</p>
+      <small>{detail || "-"}</small>
+      {actionLabel && actionRoute ? <button type="button" onClick={() => navigateTo(actionRoute)}>{actionLabel}</button> : null}
+    </article>
+  );
+}
+
+function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state }) {
+  const dqeStep = getStep(workflow, "dqe");
+  const budgetStep = getStep(workflow, "budget");
+  const scenarioStep = getStep(workflow, "scenarios");
+  const procurementStep = getStep(workflow, "procurement");
+  const executionStep = getStep(workflow, "execution");
+  const alerts = buildPilotageAlerts(workflow);
+  const dqe = workflow.dqe || workflow.activeDqe || {};
+  const scenario = workflow.scenario || {};
+  const procurement = workflow.procurement || {};
+  const execution = workflow.execution || {};
+  const scenarioName = scenario.scenario_name || state.activeScenario || "-";
+
+  const directionKpis = [
+    ["Budget local", displayMoney(kpis.capex_local || kpis.budget_local)],
+    ["Budget optimise", displayMoney(kpis.capex_optimise || kpis.budget_optimise)],
+    ["Economie nette", displayMoney(kpis.economie_nette || state.lastSimulation?.kpi?.economie_nette)],
+    ["Taux economie", displayPercent(kpis.taux_economie || kpis.roi || state.lastSimulation?.kpi?.taux_economie)],
+    ["Trust score DQE", dqe.trust_score ? `${dqe.trust_score}/100` : "-"],
+    ["Lignes DQE", dqe.normalized_lines_count ? dqe.normalized_lines_count.toLocaleString("fr-FR") : "-"],
+    ["Scenario actif", scenarioName],
+    ["Approvisionnement", procurement.status || "-"],
+    ["Lots critiques", execution.critical_lots_count != null ? execution.critical_lots_count : "-"],
+    ["Livraisons a risque", execution.deliveries_to_watch_count != null ? execution.deliveries_to_watch_count : "-"],
+  ];
+
+  return (
+    <section className="workspace-summary pilotage-decision-summary" data-testid="pilotage-summary">
+      <header className="workspace-summary-hero">
+        <div>
+          <p className="eyebrow">Synthese direction projet</p>
+          <h1>{project.name || "Projet CAPEX"}</h1>
+          <p>{project.city || "Ville a renseigner"}, {project.country || "Pays a renseigner"} · {project.client_name || "Client a renseigner"}</p>
+        </div>
+        <div className="workspace-summary-status">
+          <span>{workflow.status || "Workflow"}</span>
+          <strong>{workflow.label || "Etat projet"}</strong>
+          <small>Confiance DQE : {dqe.trust_score ? `${dqe.trust_score}/100` : "-"}</small>
+        </div>
+      </header>
+
+      <section className="workspace-next-action">
+        <div>
+          <span>Decision recommandee</span>
+          <strong>{primaryAction.label}</strong>
+          <p>{alerts[0]}</p>
+        </div>
+        <button type="button" className="primary-action" data-testid="pilotage-primary-action" onClick={() => navigateTo(primaryAction.route)}>
+          {primaryAction.label}
+        </button>
+      </section>
+
+      <ProjectWorkflowStepper workflow={workflow} onNavigate={navigateTo} onSetup={() => navigateTo("/app/projects")} />
+
+      <section className="metric-grid pilotage-kpi-grid">
+        {directionKpis.map(([label, value]) => (
+          <article className="metric-card" key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </section>
+
+      <section className="workspace-module-grid">
+        <ModuleStatusCard title="DQE" step={dqeStep} message={dqe.file_name ? `${dqe.file_name} · ${dqe.certification_status || dqe.status}` : "Controle de certification DQE requis."} detail={`Trust score : ${dqe.trust_score ? `${dqe.trust_score}/100` : "-"}`} actionLabel="Ouvrir DQE" actionRoute="/app/dqe?tab=import" />
+        <ModuleStatusCard title="Budget" step={budgetStep} message={workflow.budget?.message || "Etat de synchronisation budget projet."} detail={displayMoney(workflow.budget?.total_amount)} actionLabel="Voir budget" actionRoute="/app/dqe?tab=sync" />
+        <ModuleStatusCard title="Scenarios" step={scenarioStep} message={scenario.message || "Scenario CAPEX utilise pour l'arbitrage."} detail={`${scenario.line_count || "-"} lignes simulees`} actionLabel="Ouvrir scenarios" actionRoute="/app/simulation" />
+        <ModuleStatusCard title="Approvisionnement" step={procurementStep} message={procurement.message || "Etat des arbitrages achat."} detail={`${procurement.decisions_count || "-"} decisions achat`} actionLabel="Ouvrir approvisionnement" actionRoute="/app/procurement" />
+        <ModuleStatusCard title="Execution" step={executionStep} message={execution.message || "Etat des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Ouvrir execution" actionRoute="/app/site?tab=planning" />
+      </section>
+
+      <section className="workspace-summary-footer">
+        <div className="workspace-alerts" data-testid="pilotage-alerts">
+          <span>Alertes projet</span>
+          {alerts.map((alert) => <p key={alert}>{alert}</p>)}
+        </div>
+        <div>
+          <span>Actions rapides</span>
+          <ProjectQuickActions onNavigate={navigateTo} />
+        </div>
+      </section>
+    </section>
   );
 }
 
@@ -171,11 +323,12 @@ function useDashboardFromUrl() {
 export default function AnalyticsPage() {
   const [dashboard, setDashboard] = useDashboardFromUrl();
   const { state } = useAppStore();
+  const project = getWorkspaceProject(state);
   const workflow = React.useMemo(
-    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
-    [state]
+    () => getProjectWorkflow(project, state),
+    [project, state]
   );
-  const primaryAction = getProjectPrimaryAction(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state);
+  const primaryAction = getProjectPrimaryAction(project, state);
   const engine = useAnalyticsEngine(dashboard);
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
@@ -252,6 +405,7 @@ export default function AnalyticsPage() {
 
       {engine.error ? <div className="analytics-error">{engine.error.message}</div> : null}
       {engine.isFetching ? <div className="live-refresh">Mise a jour des indicateurs en cours...</div> : null}
+      <PilotageDecisionSummary project={project} workflow={workflow} primaryAction={primaryAction} kpis={kpis} state={state} />
       {workflow.status !== "ACTIVE" ? (
         <WorkflowGuardEmptyState
           title="Donnees de pilotage partielles"
