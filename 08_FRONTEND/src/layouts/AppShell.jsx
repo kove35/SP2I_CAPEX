@@ -8,10 +8,10 @@ import AlertCenter from "../ui/AlertCenter";
 import ProjectSelector from "../ui/ProjectSelector";
 import ProjectQuickActions from "../components/ProjectQuickActions";
 import ProjectWorkflowStepper from "../modules/projects/ProjectWorkflowStepper";
-import { getProjectWorkflow } from "../services/projectService";
+import { getBackendProjectWorkflow, getProjectWorkflow } from "../services/projectService";
 
 export default function AppShell({ activePath, onNavigate, children }) {
-  const { state } = useAppStore();
+  const { state, setState } = useAppStore();
   const { isCollapsed, toggleMobile, setProjectContext } = useSidebarStore();
   const scenario = getScenarioContext(state.activeScenario);
   const workflow = React.useMemo(
@@ -26,6 +26,32 @@ export default function AppShell({ activePath, onNavigate, children }) {
       scenario: state.activeScenario,
     });
   }, [setProjectContext, state.activeProject, state.activeScenario]);
+
+  React.useEffect(() => {
+    const project = state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject };
+    const projectId = project?.id;
+    if (!projectId || project.backendWorkflow || project.backend_workflow) return;
+
+    let mounted = true;
+    getBackendProjectWorkflow(projectId).then((backendWorkflow) => {
+      if (!mounted || !backendWorkflow) return;
+      setState((current) => {
+        if (!current.activeProjectDetails || String(current.activeProjectDetails.id) !== String(projectId)) {
+          return current;
+        }
+        return {
+          ...current,
+          activeProjectDetails: {
+            ...current.activeProjectDetails,
+            backendWorkflow,
+          },
+        };
+      });
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [state.activeProject, state.activeProjectDetails, setState]);
 
   return (
     <div className={`saas-shell ${isCollapsed ? "is-collapsed" : ""}`}>
