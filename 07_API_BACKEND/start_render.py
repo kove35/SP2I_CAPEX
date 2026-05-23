@@ -15,7 +15,7 @@ def main() -> None:
     detecte aucun service HTTP ouvert et coupe le process.
     """
     port = int(os.getenv("PORT", "10000"))
-    host = os.getenv("HOST", "0.0.0.0")
+    host = "0.0.0.0"
 
     backend_dir = os.path.dirname(os.path.abspath(__file__))
     if backend_dir not in sys.path:
