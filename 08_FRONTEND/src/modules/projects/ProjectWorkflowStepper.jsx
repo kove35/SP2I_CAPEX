@@ -9,6 +9,26 @@ const stateIcon = {
   blocked: LockKeyhole,
 };
 
+function compactActionLabel(workflow, nextStep) {
+  if (nextStep?.id !== "execution") return nextStep?.action || workflow?.primary_action?.label || "Ouvrir";
+  const status = workflow?.execution?.status;
+  if (status === "REQUIRED") return "Preparer l'execution";
+  if (status === "ACTIVE") return "Suivre l'execution";
+  if (status === "AT_RISK") return "Suivre l'execution a risque";
+  if (status === "READY") return "Ouvrir Execution";
+  return workflow?.primary_action?.label || nextStep?.action || "Ouvrir";
+}
+
+function compactStepStatus(workflow, step) {
+  if (step?.id !== "execution") return step?.status || "";
+  const status = workflow?.execution?.status;
+  if (status === "REQUIRED") return "a preparer";
+  if (status === "READY") return "prete";
+  if (status === "ACTIVE") return "active";
+  if (status === "AT_RISK") return "a risque";
+  return step?.status || "";
+}
+
 export default function ProjectWorkflowStepper({ workflow, compact = false, onNavigate, onSetup }) {
   const steps = workflow?.steps || [];
   const doneCount = steps.filter((step) => step.state === "done").length;
@@ -38,12 +58,12 @@ export default function ProjectWorkflowStepper({ workflow, compact = false, onNa
           disabled={!nextStep || nextStep.state === "blocked"}
         >
           <span>Prochaine action</span>
-          <strong>{nextStep?.action || workflow?.primary_action?.label || "Ouvrir"}</strong>
-          <small>{nextStep ? `${nextStep.label} · ${nextStep.status}` : workflow?.label}</small>
+          <strong>{compactActionLabel(workflow, nextStep)}</strong>
+          <small>{nextStep ? `${nextStep.label}: ${compactStepStatus(workflow, nextStep)}` : workflow?.label}</small>
         </button>
         <div className="project-workflow-compact-statuses">
           {visibleSteps.map((step) => (
-            <span key={step.id} className={step.state}>{step.label}: {step.status}</span>
+            <span key={step.id} className={step.state}>{step.label}: {compactStepStatus(workflow, step)}</span>
           ))}
         </div>
       </section>

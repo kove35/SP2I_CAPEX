@@ -409,7 +409,7 @@ test("Pilotage with execution at risk shows alert", async ({ page }) => {
 
   const summary = page.getByTestId("pilotage-summary");
   await expect(summary).toBeVisible();
-  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/ouvrir execution/i);
+  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/suivre l'execution a risque/i);
   await expect(page.getByTestId("pilotage-alerts")).toContainText(/execution a risque/i);
 });
 

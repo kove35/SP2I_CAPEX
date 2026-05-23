@@ -244,6 +244,10 @@ export function getProjectWorkflow(project = {}, appState = {}) {
 export function getProjectPrimaryAction(project = {}, appState = {}) {
   const workflow = getProjectWorkflow(project, appState);
   if (workflow.primary_action) {
+    if (workflow.execution?.status === "REQUIRED") return { label: "Preparer l'execution", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "READY") return { label: "Ouvrir Execution", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "ACTIVE") return { label: "Suivre l'execution", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "AT_RISK") return { label: "Suivre l'execution a risque", route: "/app/site?tab=planning" };
     return workflow.primary_action;
   }
 
@@ -255,6 +259,8 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
   if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les arbitrages achat", route: "/app/procurement" };
   if (nextStep.id === "procurement") return { label: "Preparer l'approvisionnement", route: "/app/procurement" };
   if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Preparer l'execution", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Suivre l'execution", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "AT_RISK") return { label: "Suivre l'execution a risque", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution") return { label: "Ouvrir Execution", route: "/app/site?tab=planning" };
   return { label: "Ouvrir le workspace", route: "/app" };
 }
