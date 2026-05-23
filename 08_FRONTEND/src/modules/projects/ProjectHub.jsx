@@ -24,6 +24,8 @@ function projectCardBadge(workflow, primaryAction) {
     [/preparer.*approvisionnement/i, "Approvisionnement a preparer"],
     [/valider.*arbitrages/i, "Arbitrages a valider"],
     [/preparer.*execution/i, "Execution a preparer"],
+    [/suivre.*execution.*risque/i, "Execution a risque"],
+    [/suivre.*execution/i, "Execution active"],
     [/ouvrir.*execution/i, "Execution prete"],
   ];
   return mapping.find(([pattern]) => pattern.test(label))?.[1] || workflow?.label || label;
