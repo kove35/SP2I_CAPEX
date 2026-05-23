@@ -66,6 +66,24 @@ async function setCertifiedDqeWithoutBudget(page) {
   });
 }
 
+async function setSyncedDqe(page) {
+  await page.evaluate(() => {
+    window.localStorage.setItem("sp2i:dqeVersions:demo-brazza-clinic", JSON.stringify([
+      {
+        id: "test-synced-dqe",
+        version_number: 1,
+        file_name: "DQE_TEST_SYNCED.xlsx",
+        status: "SYNCED",
+        trust_score: 93,
+        normalized_lines_count: 130,
+        data_loss_count: 0,
+        review_required_count: 0,
+        is_active: true,
+      },
+    ]));
+  });
+}
+
 async function navigateSpa(page, path) {
   await page.evaluate((nextPath) => {
     window.history.pushState({}, "", nextPath);
@@ -180,6 +198,31 @@ test("scenarios with certified DQE but unsynced budget shows sync CTA", async ({
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/budget doit etre synchronise/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/synchroniser le budget/i);
+});
+
+test("project quick actions block simulation when budget non synchronise", async ({ page }) => {
+  await openConfiguredProjectWorkspace(page, "Projet quick actions budget bloque");
+  await setCertifiedDqeWithoutBudget(page);
+  await navigateSpa(page, "/app");
+
+  const testerButton = page.getByTestId("project-quick-actions").getByRole("button", { name: /tester un scenario/i }).first();
+  await expect(testerButton).toBeDisabled();
+});
+
+test("budget synchronise debloque Tester un scenario", async ({ page }) => {
+  const projectName = "Projet budget synchronise";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await expect(projectCard).toBeVisible();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await expect(page.getByTestId("workspace-header")).toBeVisible();
+
+  await expect(page.getByTestId("workspace-next-action")).toHaveText(/tester un scenario/i);
+  const testerButton = page.getByTestId("project-quick-actions").getByRole("button", { name: /tester un scenario/i }).first();
+  await expect(testerButton).toBeEnabled();
 });
 
 test("procurement page without scenario shows guided empty state", async ({ page }) => {

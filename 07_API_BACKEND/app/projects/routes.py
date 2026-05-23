@@ -190,10 +190,55 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
     }
 
 
+def _resolve_project_budget_status(dqe_status: dict[str, Any], db: Session | None = None) -> dict[str, Any]:
+    lines_count = 0
+    total_amount = 0.0
+    is_synced = False
+    synced_at = None
+    source = "FACT_METRE"
+    message = "Budget non synchronisé."
+    status = "SYNC_REQUIRED"
+
+    if db is not None:
+        try:
+            lines_count = int(db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one() or 0)
+            total_amount = float(db.execute(text("SELECT COALESCE(SUM(capex_local), 0) FROM fact_metre")).scalar_one() or 0.0)
+            is_synced = lines_count > 0 and total_amount > 0.0
+            synced_at = dqe_status.get("synced_at") if is_synced else None
+            if is_synced:
+                status = "SYNCED"
+                message = "Budget synchronisé dans PostgreSQL."
+            elif lines_count > 0:
+                status = "SYNC_REQUIRED"
+                message = "Des lignes FACT_METRE existent, mais le budget n'est pas encore marqué comme synchronisé."
+            else:
+                status = "SYNC_REQUIRED"
+                message = "Aucune ligne FACT_METRE synchronisée."
+        except Exception:
+            status = "SYNC_REQUIRED"
+            message = "Impossible de déterminer le statut de synchronisation du budget."
+    else:
+        is_synced = dqe_status["status"] == "SYNCED"
+        synced_at = dqe_status.get("synced_at") if is_synced else None
+        status = "SYNCED" if is_synced else "SYNC_REQUIRED"
+        message = "Budget considéré synchronisé d'après l'état DQE." if is_synced else "Budget non synchronisé d'après l'état DQE."
+
+    return {
+        "status": status,
+        "is_synced": is_synced,
+        "synced_at": synced_at,
+        "lines_count": lines_count,
+        "total_amount": round(total_amount, 2),
+        "source": source,
+        "message": message,
+    }
+
+
 def compute_project_workflow_status(project: Project, db: Session | None = None) -> ProjectWorkflowResponse:
     setup_configured = _is_project_configured(project) and project.setup_status == "CONFIGURED"
     dqe_status = _resolve_project_dqe_status(project.id, db)
-    budget_synced = dqe_status["status"] == "SYNCED"
+    budget_status = _resolve_project_budget_status(dqe_status, db)
+    budget_synced = bool(budget_status["is_synced"])
     scenario_ready = budget_synced
     procurement_ready = False
     execution_ready = False
@@ -359,7 +404,7 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
         steps=steps,
         primary_action=primary_action,
         dqe=dqe_status,
-        budget={"status": "SYNCED" if budget_synced else "SYNC_REQUIRED"},
+        budget=budget_status,
     )
 
 

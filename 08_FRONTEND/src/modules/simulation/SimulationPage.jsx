@@ -10,7 +10,7 @@ import { useAppStore } from "../../store/appStore.jsx";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getProjectWorkflow } from "../../services/projectService";
+import { getProjectWorkflow, getBudgetStatus, isBudgetSynced } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const SIMULATION_TIMEOUT_MS = Number(import.meta.env.VITE_ANALYTICS_TIMEOUT_MS || 18000);
@@ -141,7 +141,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
     [state]
   );
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
-  const budgetDone = workflow.steps.find((step) => step.id === "budget")?.state === "done";
+  const budgetStatus = getBudgetStatus(workflow);
+  const budgetDone = budgetStatus === "SYNCED" || isBudgetSynced(workflow);
 
   React.useEffect(() => {
     setTab(defaultTab);
@@ -264,9 +265,21 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         />
       ) : !budgetDone ? (
         <WorkflowGuardEmptyState
-          title="Budget non synchronise"
-          message="Le budget doit etre synchronise avant de lancer les scenarios."
-          actionLabel="Synchroniser le budget"
+          title={budgetStatus === "SYNC_FAILED" ? "Synchronisation du budget echouee" : budgetStatus === "PARTIAL_SYNC" ? "Synchronisation partielle" : "Budget non synchronise"}
+          message={
+            budgetStatus === "SYNC_FAILED"
+              ? "La synchronisation du budget a echoue. Relancez la synchronisation avant de tester un scenario."
+              : budgetStatus === "PARTIAL_SYNC"
+                ? "La synchronisation du budget est partielle. Verifiez la synchronisation avant de tester un scenario."
+                : "Le budget doit etre synchronise avant de lancer les scenarios."
+          }
+          actionLabel={
+            budgetStatus === "SYNC_FAILED"
+              ? "Relancer la synchronisation"
+              : budgetStatus === "PARTIAL_SYNC"
+                ? "Verifier la synchronisation"
+                : "Synchroniser le budget"
+          }
           actionRoute="/app/dqe?tab=sync"
           currentStep={workflow.steps.find((step) => step.id === "budget")?.status}
           requiredStep="Budget synchronise"

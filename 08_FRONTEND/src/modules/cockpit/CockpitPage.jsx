@@ -39,10 +39,19 @@ function buildProjectAlerts(workflow) {
   const budget = getStep(workflow, "budget");
   const scenarios = getStep(workflow, "scenarios");
   const procurement = getStep(workflow, "procurement");
+  const budgetStatus = workflow?.budget?.status;
 
   if (configuration.state !== "done") alerts.push("Ce projet doit etre configure avant de demarrer le workflow CAPEX.");
   if (dqe.state !== "done") alerts.push("Aucun DQE actif certifie. Importez un DQE pour analyser le budget du projet.");
-  if (dqe.state === "done" && budget.state !== "done") alerts.push("Le DQE est certifie. Synchronisez le budget pour debloquer les scenarios.");
+  if (dqe.state === "done" && budget.state !== "done") {
+    if (budgetStatus === "SYNC_FAILED") {
+      alerts.push("La synchronisation du budget a echoue. Relancez la synchronisation.");
+    } else if (budgetStatus === "PARTIAL_SYNC") {
+      alerts.push("La synchronisation du budget est partielle. Verifiez la synchronisation avant de lancer les scenarios.");
+    } else {
+      alerts.push("Le DQE est certifie. Synchronisez le budget pour debloquer les scenarios.");
+    }
+  }
   if (budget.state === "done" && scenarios.state !== "done") alerts.push("Le budget est pret. Lancez une simulation pour comparer les strategies CAPEX.");
   if (scenarios.state === "done" && procurement.state !== "done") alerts.push("Un scenario est disponible. Preparez l'approvisionnement.");
   return alerts.length ? alerts : ["Projet actif. Les principaux modules sont disponibles pour pilotage."];
