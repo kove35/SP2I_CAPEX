@@ -29,11 +29,33 @@ function compactStepStatus(workflow, step) {
   return step?.status || "";
 }
 
-export default function ProjectWorkflowStepper({ workflow, compact = false, onNavigate, onSetup }) {
+export default function ProjectWorkflowStepper({ workflow, compact = false, variant = "card", onNavigate, onSetup }) {
   const steps = workflow?.steps || [];
   const doneCount = steps.filter((step) => step.state === "done").length;
   const nextStep = steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || steps[steps.length - 1];
   const visibleSteps = steps.filter((step) => step.state !== "blocked").slice(-3);
+
+  if (compact && variant === "inline") {
+    return (
+      <section className="project-workflow-inline" aria-label="Workflow projet" data-testid="project-workflow-stepper">
+        <div>
+          <span>Workflow projet</span>
+          <strong>{visibleSteps.map((step) => `${step.label} ${compactStepStatus(workflow, step)}`).join(" · ") || workflow?.label}</strong>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (nextStep?.id === "configuration") onSetup?.();
+            else onNavigate?.(nextStep?.route);
+          }}
+          disabled={!nextStep || nextStep.state === "blocked"}
+        >
+          <span>Prochaine action</span>
+          {compactActionLabel(workflow, nextStep)}
+        </button>
+      </section>
+    );
+  }
 
   if (compact) {
     return (
