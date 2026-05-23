@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
 
-CMD ["python", "07_API_BACKEND/start_render.py"]
+CMD ["sh", "-c", "python -m uvicorn app.main:app --app-dir 07_API_BACKEND --host 0.0.0.0 --port ${PORT:-10000} --proxy-headers --forwarded-allow-ips '*'"]

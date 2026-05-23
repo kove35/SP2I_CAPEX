@@ -24,11 +24,16 @@ elif DATABASE_URL.startswith("postgres://"):
     # `postgres://`. SQLAlchemy 2 prefere un dialecte explicite.
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
 
+connect_args = {}
+if DATABASE_URL.startswith("postgresql+psycopg://"):
+    connect_args["connect_timeout"] = int(os.getenv("DB_CONNECT_TIMEOUT", "5"))
+
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
     pool_size=int(os.getenv("DB_POOL_SIZE", "5")),
     max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
+    connect_args=connect_args,
     future=True,
 )
 
