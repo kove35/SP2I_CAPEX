@@ -209,6 +209,36 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
   return { label: "Ouvrir le workspace", route: "/app" };
 }
 
+export function getBudgetStatus(workflow = {}) {
+  const budget = workflow?.budget;
+  if (budget && typeof budget === "object" && typeof budget.status === "string") {
+    return budget.status;
+  }
+
+  const budgetStep = workflow?.steps?.find((step) => step.id === "budget");
+  if (!budgetStep) return "SYNC_REQUIRED";
+  if (budgetStep.state === "done") return "SYNCED";
+  if (budgetStep.state === "todo") return "SYNC_REQUIRED";
+  return "SYNC_REQUIRED";
+}
+
+export function isBudgetSynced(workflow = {}) {
+  const budget = workflow?.budget;
+  if (budget && typeof budget === "object") {
+    if (budget.is_synced === true) return true;
+    if (typeof budget.status === "string") return budget.status === "SYNCED";
+  }
+  return getBudgetStatus(workflow) === "SYNCED";
+}
+
+export function isBudgetSyncFailed(workflow = {}) {
+  return getBudgetStatus(workflow) === "SYNC_FAILED";
+}
+
+export function isBudgetPartialSync(workflow = {}) {
+  return getBudgetStatus(workflow) === "PARTIAL_SYNC";
+}
+
 function authHeaders() {
   const session = getStoredSession();
   if (!session?.access_token || session.token_type === "demo") return {};

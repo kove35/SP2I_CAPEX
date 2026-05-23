@@ -87,7 +87,7 @@ class WorkflowAction(BaseModel):
 
 
 class DqeStatus(BaseModel):
-    status: str
+    status: str = "NOT_IMPORTED"
     version_number: int = 0
     file_name: str = ""
     certification_status: str = "UNKNOWN"
@@ -104,7 +104,13 @@ class DqeStatus(BaseModel):
 
 
 class BudgetStatus(BaseModel):
-    status: str
+    status: str = "SYNC_REQUIRED"
+    is_synced: bool = False
+    synced_at: datetime | None = None
+    lines_count: int = 0
+    total_amount: float = 0.0
+    source: str = "FACT_METRE"
+    message: str = ""
 
 
 class ProjectWorkflowResponse(BaseModel):
@@ -114,4 +120,4 @@ class ProjectWorkflowResponse(BaseModel):
     steps: list[WorkflowStep]
     primary_action: WorkflowAction
     dqe: DqeStatus = Field(default_factory=DqeStatus)
-    budget: BudgetStatus = Field(default_factory=lambda: BudgetStatus(status="SYNC_REQUIRED"))
+    budget: BudgetStatus = Field(default_factory=BudgetStatus)

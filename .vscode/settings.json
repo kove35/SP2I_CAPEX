@@ -1,6 +1,11 @@
 {
     "chat.tools.terminal.autoApprove": {
         "&": true,
-        "npm run build": true
+        "npm run build": true,
+        "/^python -c \"from app\\.projects\\.routes import compute_project_workflow_status; from app\\.projects\\.models import Project; from datetime import datetime; p=Project\\(id=1,name='a',client_name='b',city='c',country='d',currency='e',project_type='f',project_manager='g',setup_status='CONFIGURED',setup_completed_at=datetime\\.now\\(\\),owner_id=1,status='ACTIVE'\\); w=compute_project_workflow_status\\(p,None\\); print\\(w\\.budget\\); print\\(w\\.dqe\\.status\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "set": true
     }
 }

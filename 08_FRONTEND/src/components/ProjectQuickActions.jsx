@@ -3,7 +3,7 @@ import { Settings } from "lucide-react";
 import { sidebarQuickActions } from "../navigation/sidebarConfig";
 import { useAppStore } from "../store/appStore.jsx";
 import { PROJECT_CONTEXT } from "../utils/businessContext";
-import { getProjectWorkflow } from "../services/projectService";
+import { getProjectWorkflow, isBudgetSynced } from "../services/projectService";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
@@ -25,7 +25,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const hasProject = Boolean(state.activeProject);
   const workflow = getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state);
   const needsSetup = workflow.steps?.[0]?.state !== "done";
-  const budgetSynced = workflow.steps?.find((step) => step.id === "budget")?.state === "done";
+  const budgetSynced = isBudgetSynced(workflow);
   const scenarioReady = workflow.steps?.find((step) => step.id === "scenarios")?.state === "done";
   const isDisabled = disabled || !hasProject;
 
