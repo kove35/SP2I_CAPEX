@@ -2,7 +2,7 @@ import React from "react";
 import { Building2, FileSpreadsheet, Gauge, Plus, ShieldCheck, Users } from "lucide-react";
 import { useAppStore } from "../../store/appStore.jsx";
 import { getStoredSession } from "../../services/authService";
-import { createProject, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey, listProjects, saveLocalProjects } from "../../services/projectService";
+import { createProject, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey, listProjects, saveLocalProjects, updateProjectSetup } from "../../services/projectService";
 import { formatMoney } from "../../shared/formatters";
 import ProjectSetupWizard from "./ProjectSetupWizard";
 import ProjectWorkflowStepper from "./ProjectWorkflowStepper";
@@ -51,13 +51,14 @@ export default function ProjectHub({ onNavigate }) {
     onNavigate(action.route);
   };
 
-  const saveProjectSetup = (updatedProject) => {
+  const saveProjectSetup = async (updatedProject) => {
+    const persistedProject = await updateProjectSetup(updatedProject.id, updatedProject, projects);
     setProjects((current) => {
-      const next = current.map((project) => project.id === updatedProject.id ? updatedProject : project);
+      const next = current.map((project) => String(project.id) === String(persistedProject.id) ? persistedProject : project);
       saveLocalProjects(next);
       return next;
     });
-    setState((current) => ({ ...current, activeProject: getProjectWorkspaceKey(updatedProject), activeProjectDetails: updatedProject }));
+    setState((current) => ({ ...current, activeProject: getProjectWorkspaceKey(persistedProject), activeProjectDetails: persistedProject }));
     setSetupProject(null);
   };
 

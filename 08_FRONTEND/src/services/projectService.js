@@ -62,6 +62,14 @@ export const projectStatusLabels = {
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
+function normalizeBackendWorkflow(backendWorkflow) {
+  if (!backendWorkflow || !Array.isArray(backendWorkflow.steps)) return null;
+  return {
+    ...backendWorkflow,
+    activeDqe: backendWorkflow.dqe ? { ...backendWorkflow.dqe } : null,
+  };
+}
+
 export function getProjectWorkspaceKey(project) {
   return project?.workspace_key || project?.code || project?.id || project?.name || "Pointe-Noire CAPEX";
 }
@@ -100,6 +108,9 @@ function hasMinimumSetup(project = {}) {
 }
 
 export function getProjectWorkflow(project = {}, appState = {}) {
+  const backendWorkflow = normalizeBackendWorkflow(project.backendWorkflow || project.backend_workflow);
+  if (backendWorkflow) return backendWorkflow;
+
   const configured = project.setup_status === "CONFIGURED" || hasMinimumSetup(project);
   const versions = readDqeVersions(project);
   const activeDqe = versions.find((version) => version.is_active);
@@ -247,4 +258,71 @@ export async function createProject(payload) {
     };
   }
   return request({ url: "/projects", method: "POST", data: payload, headers: authHeaders() });
+}
+
+function normalizeSetupPayload(payload = {}) {
+  const numericFields = [
+    "target_budget",
+    "reference_exchange_rate",
+    "default_transport_rate",
+    "default_customs_rate",
+    "default_insurance_rate",
+    "default_import_margin",
+    "minimum_saving_threshold",
+    "site_storage_capacity",
+  ];
+  const normalized = { ...payload };
+  numericFields.forEach((field) => {
+    if (normalized[field] === "" || normalized[field] == null) {
+      normalized[field] = null;
+    } else {
+      const value = Number(normalized[field]);
+      normalized[field] = Number.isFinite(value) ? value : null;
+    }
+  });
+  ["planned_start_date", "target_delivery_date"].forEach((field) => {
+    if (normalized[field] === "") normalized[field] = null;
+  });
+  return normalized;
+}
+
+export async function updateProjectSetup(projectId, setupPayload, currentProjects = []) {
+  const localProject = {
+    ...setupPayload,
+    setup_status: setupPayload.setup_status || "CONFIG_REQUIRED",
+    setup_completion_percent: setupPayload.setup_completion_percent ?? 0,
+  };
+  const session = getStoredSession();
+  const isLocalProject = String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId));
+
+  if (!session || session.token_type === "demo" || isLocalProject) {
+    const next = currentProjects.map((project) => String(project.id) === String(projectId) ? localProject : project);
+    saveLocalProjects(next.length ? next : [localProject]);
+    return localProject;
+  }
+
+  try {
+    return await request({
+      url: `/projects/${projectId}/setup`,
+      method: "PATCH",
+      data: normalizeSetupPayload(setupPayload),
+      headers: authHeaders(),
+    });
+  } catch {
+    const next = currentProjects.map((project) => String(project.id) === String(projectId) ? localProject : project);
+    saveLocalProjects(next.length ? next : [localProject]);
+    return localProject;
+  }
+}
+
+export async function getBackendProjectWorkflow(projectId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({ url: `/projects/${projectId}/workflow`, headers: authHeaders() });
+  } catch {
+    return null;
+  }
 }
