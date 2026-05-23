@@ -121,7 +121,8 @@ export function getProjectWorkflow(project = {}, appState = {}) {
   const procurementReady = Boolean(project.procurement_ready || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
   const procurementReviewRequired = Boolean(project.procurement_review_required || project.workflow_status === "PROCUREMENT_REVIEW_REQUIRED");
   const procurementRequired = Boolean(scenarioReady && !procurementReady && !procurementReviewRequired);
-  const executionReady = Boolean(project.execution_ready || project.workflow_status === "EXECUTION_READY");
+  const executionStatusOverride = project.execution_status;
+  const executionReady = Boolean(project.execution_ready || project.workflow_status === "EXECUTION_READY" || ["READY", "ACTIVE", "AT_RISK"].includes(executionStatusOverride));
   const executionRequired = Boolean(procurementReady && !executionReady);
 
   const steps = [
@@ -224,7 +225,7 @@ export function getProjectWorkflow(project = {}, appState = {}) {
             : "Lancez un scenario avant de preparer l'approvisionnement.",
     },
     execution: {
-      status: executionReady ? "READY" : executionRequired ? "REQUIRED" : "BLOCKED",
+      status: executionStatusOverride || (executionReady ? "READY" : executionRequired ? "REQUIRED" : "BLOCKED"),
       is_ready: executionReady,
       actions_count: Number(project.execution_actions_count || 0),
       critical_lots_count: Number(project.execution_critical_lots_count || 0),

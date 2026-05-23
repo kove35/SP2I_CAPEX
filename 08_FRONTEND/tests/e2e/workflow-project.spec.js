@@ -345,6 +345,74 @@ test("execution avec approvisionnement pret demande preparation chantier", async
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/preparer l'execution/i);
 });
 
+test("Pilotage with incomplete workflow shows next action", async ({ page }) => {
+  await openUnconfiguredProjectWorkspace(page);
+  await navigateSpa(page, "/app/analytics");
+
+  const summary = page.getByTestId("pilotage-summary");
+  await expect(summary).toBeVisible();
+  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/configurer le projet/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/configuration projet incomplete/i);
+});
+
+test("Pilotage with budget synced but no scenario shows Tester un scenario", async ({ page }) => {
+  const projectName = "Projet pilotage budget pret";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await navigateSpa(page, "/app/analytics");
+
+  const summary = page.getByTestId("pilotage-summary");
+  await expect(summary).toBeVisible();
+  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/tester un scenario/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/aucun scenario actif/i);
+});
+
+test("Pilotage with scenario ready shows Preparer l'approvisionnement", async ({ page }) => {
+  const projectName = "Projet pilotage scenario pret";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "SCENARIO_READY",
+    scenario_ready: true,
+    procurement_ready: false,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/analytics");
+
+  const summary = page.getByTestId("pilotage-summary");
+  await expect(summary).toBeVisible();
+  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/preparer l'approvisionnement/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/approvisionnement a preparer/i);
+});
+
+test("Pilotage with execution at risk shows alert", async ({ page }) => {
+  const projectName = "Projet pilotage execution risque";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "EXECUTION_READY",
+    scenario_ready: true,
+    procurement_ready: true,
+    execution_ready: true,
+    execution_status: "AT_RISK",
+    execution_actions_count: 5,
+    execution_critical_lots_count: 1,
+    execution_deliveries_to_watch_count: 3,
+    execution_eta_to_watch_count: 2,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/analytics");
+
+  const summary = page.getByTestId("pilotage-summary");
+  await expect(summary).toBeVisible();
+  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/ouvrir execution/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/execution a risque/i);
+});
+
 test("responsive project workflow minimal layout", async ({ page }) => {
   const viewports = [
     { name: "desktop", width: 1440, height: 900 },
