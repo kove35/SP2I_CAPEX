@@ -19,6 +19,8 @@ from app.projects.schemas import (
     ProjectResponse,
     ProjectSetupUpdate,
     ProjectWorkflowResponse,
+    ExecutionStatus,
+    ProcurementStatus,
     ScenarioStatus,
     WorkflowAction,
     WorkflowStep,
@@ -310,15 +312,198 @@ def _resolve_project_scenario_status(project_id: int, db: Session | None = None)
     ).model_dump()
 
 
+def _resolve_project_procurement_status(
+    project_id: int,
+    scenario_status: dict[str, Any],
+    db: Session | None = None,
+) -> dict[str, Any]:
+    scenario_ready = bool(scenario_status.get("status") in {"READY", "SIMULATED", "VALIDATED"} and scenario_status.get("is_ready"))
+    if not scenario_ready:
+        return ProcurementStatus(
+            status="BLOCKED",
+            is_ready=False,
+            message="Lancez un scenario avant de preparer l'approvisionnement.",
+        ).model_dump()
+
+    if db is None:
+        return ProcurementStatus(
+            status="REQUIRED",
+            is_ready=False,
+            message="Le scenario est disponible. Preparez les arbitrages achat.",
+        ).model_dump()
+
+    filters = ["fs.projet_id = :project_id"]
+    params: dict[str, Any] = {"project_id": project_id}
+    if scenario_status.get("run_id"):
+        filters.append("fs.run_id = CAST(:run_id AS uuid)")
+        params["run_id"] = scenario_status["run_id"]
+    elif scenario_status.get("scenario_id"):
+        filters.append("fs.scenario_id = CAST(:scenario_id AS uuid)")
+        params["scenario_id"] = scenario_status["scenario_id"]
+
+    try:
+        row = db.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) AS decisions_count,
+                    COUNT(*) FILTER (WHERE UPPER(COALESCE(fs.decision_import, '')) = 'IMPORT') AS import_lines_count,
+                    COUNT(*) FILTER (WHERE UPPER(COALESCE(fs.decision_import, '')) = 'LOCAL') AS local_lines_count,
+                    COUNT(*) FILTER (
+                        WHERE UPPER(COALESCE(fs.decision_import, '')) IN ('HYBRIDE', 'HYBRID', 'MIXTE')
+                           OR UPPER(COALESCE(fs.decision_type, '')) IN ('HYBRIDE', 'HYBRID', 'MIXTE')
+                    ) AS hybrid_lines_count
+                FROM fact_simulation fs
+                WHERE {" OR ".join(filters)}
+                  AND COALESCE(fs.designation, '') <> ''
+                  AND COALESCE(fs.decision_import, '') <> ''
+                """
+            ),
+            params,
+        ).mappings().first()
+    except Exception:
+        return ProcurementStatus(
+            status="REQUIRED",
+            is_ready=False,
+            message="Le scenario est disponible. Preparez les arbitrages achat.",
+        ).model_dump()
+
+    decisions_count = int(row.get("decisions_count") or 0) if row else 0
+    import_lines_count = int(row.get("import_lines_count") or 0) if row else 0
+    local_lines_count = int(row.get("local_lines_count") or 0) if row else 0
+    hybrid_lines_count = int(row.get("hybrid_lines_count") or 0) if row else 0
+
+    if decisions_count <= 0:
+        return ProcurementStatus(
+            status="REQUIRED",
+            is_ready=False,
+            message="Le scenario est disponible. Preparez les arbitrages achat.",
+        ).model_dump()
+
+    if scenario_status.get("status") == "VALIDATED":
+        return ProcurementStatus(
+            status="READY",
+            is_ready=True,
+            decisions_count=decisions_count,
+            import_lines_count=import_lines_count,
+            local_lines_count=local_lines_count,
+            hybrid_lines_count=hybrid_lines_count,
+            validated_decisions_count=decisions_count,
+            export_available=True,
+            message="Approvisionnement pret pour execution.",
+        ).model_dump()
+
+    return ProcurementStatus(
+        status="REVIEW_REQUIRED",
+        is_ready=False,
+        decisions_count=decisions_count,
+        import_lines_count=import_lines_count,
+        local_lines_count=local_lines_count,
+        hybrid_lines_count=hybrid_lines_count,
+        message="Arbitrages achat generes. Validation humaine requise avant execution.",
+    ).model_dump()
+
+
+def _resolve_project_execution_status(
+    project_id: int,
+    procurement_status: dict[str, Any],
+    scenario_status: dict[str, Any],
+    db: Session | None = None,
+) -> dict[str, Any]:
+    procurement_ready = bool(procurement_status.get("status") in {"READY", "EXPORTABLE"} and procurement_status.get("is_ready"))
+    if not procurement_ready:
+        return ExecutionStatus(
+            status="BLOCKED",
+            is_ready=False,
+            message="Preparez l'approvisionnement avant de suivre l'execution chantier.",
+        ).model_dump()
+
+    if db is None:
+        return ExecutionStatus(
+            status="REQUIRED",
+            is_ready=False,
+            message="L'approvisionnement est pret. Preparez les actions chantier.",
+        ).model_dump()
+
+    filters = ["fs.projet_id = :project_id"]
+    params: dict[str, Any] = {"project_id": project_id}
+    if scenario_status.get("run_id"):
+        filters.append("fs.run_id = CAST(:run_id AS uuid)")
+        params["run_id"] = scenario_status["run_id"]
+    elif scenario_status.get("scenario_id"):
+        filters.append("fs.scenario_id = CAST(:scenario_id AS uuid)")
+        params["scenario_id"] = scenario_status["scenario_id"]
+
+    try:
+        row = db.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) FILTER (
+                        WHERE COALESCE(fs.lead_time_total, 0) > 0
+                           OR COALESCE(fs.storage_cost, 0) > 0
+                           OR COALESCE(fs.delivery_risk, '') <> ''
+                           OR COALESCE(fs.shipment_strategy, '') <> ''
+                           OR COALESCE(fs.container_strategy, '') <> ''
+                    ) AS actions_count,
+                    COUNT(DISTINCT fs.lot_id) FILTER (
+                        WHERE UPPER(COALESCE(fs.delivery_risk, '')) IN ('ELEVE', 'HIGH', 'CRITICAL', 'CRITIQUE')
+                           OR COALESCE(fs.criticality_score, 0) >= 70
+                    ) AS critical_lots_count,
+                    COUNT(*) FILTER (
+                        WHERE UPPER(COALESCE(fs.delivery_risk, '')) NOT IN ('', 'FAIBLE', 'LOW')
+                           OR COALESCE(fs.lead_time_total, 0) > 0
+                    ) AS deliveries_to_watch_count,
+                    COUNT(*) FILTER (WHERE COALESCE(fs.lead_time_total, 0) > 0) AS eta_to_watch_count
+                FROM fact_simulation fs
+                WHERE {" OR ".join(filters)}
+                  AND COALESCE(fs.designation, '') <> ''
+                """
+            ),
+            params,
+        ).mappings().first()
+    except Exception:
+        return ExecutionStatus(
+            status="REQUIRED",
+            is_ready=False,
+            message="L'approvisionnement est pret. Preparez les actions chantier.",
+        ).model_dump()
+
+    actions_count = int(row.get("actions_count") or 0) if row else 0
+    critical_lots_count = int(row.get("critical_lots_count") or 0) if row else 0
+    deliveries_to_watch_count = int(row.get("deliveries_to_watch_count") or 0) if row else 0
+    eta_to_watch_count = int(row.get("eta_to_watch_count") or 0) if row else 0
+
+    if actions_count <= 0:
+        return ExecutionStatus(
+            status="REQUIRED",
+            is_ready=False,
+            message="L'approvisionnement est pret. Preparez les actions chantier.",
+        ).model_dump()
+
+    status = "AT_RISK" if critical_lots_count > 0 else "READY"
+    return ExecutionStatus(
+        status=status,
+        is_ready=True,
+        actions_count=actions_count,
+        critical_lots_count=critical_lots_count,
+        deliveries_to_watch_count=deliveries_to_watch_count,
+        eta_to_watch_count=eta_to_watch_count,
+        message="Execution prete pour suivi chantier." if status == "READY" else "Execution prete avec alertes chantier a surveiller.",
+    ).model_dump()
+
+
 def compute_project_workflow_status(project: Project, db: Session | None = None) -> ProjectWorkflowResponse:
     setup_configured = _is_project_configured(project) and project.setup_status == "CONFIGURED"
     dqe_status = _resolve_project_dqe_status(project.id, db)
     budget_status = _resolve_project_budget_status(dqe_status, db)
     scenario_status = _resolve_project_scenario_status(project.id, db)
+    procurement_status = _resolve_project_procurement_status(project.id, scenario_status, db)
+    execution_status = _resolve_project_execution_status(project.id, procurement_status, scenario_status, db)
     budget_synced = bool(budget_status["is_synced"])
     scenario_ready = bool(scenario_status["status"] in {"READY", "SIMULATED", "VALIDATED"} and scenario_status["is_ready"])
-    procurement_ready = scenario_ready
-    execution_ready = False
+    procurement_ready = bool(procurement_status["status"] in {"READY", "EXPORTABLE"} and procurement_status["is_ready"])
+    execution_ready = bool(execution_status["status"] in {"READY", "ACTIVE", "AT_RISK"} and execution_status["is_ready"])
 
     dqe_label = "A importer"
     dqe_state = "todo"
@@ -408,16 +593,38 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
         WorkflowStep(
             id="procurement",
             label="Approvisionnement",
-            status="Pret" if procurement_ready else "Bloque",
-            state="todo" if procurement_ready else "blocked",
+            status=(
+                "Pret"
+                if procurement_ready
+                else "Validation requise"
+                if procurement_status["status"] == "REVIEW_REQUIRED"
+                else "A preparer"
+                if procurement_status["status"] == "REQUIRED"
+                else "Bloque"
+            ),
+            state=(
+                "done"
+                if procurement_ready
+                else "progress"
+                if procurement_status["status"] == "REVIEW_REQUIRED"
+                else "todo"
+                if procurement_status["status"] == "REQUIRED"
+                else "blocked"
+            ),
             action="Preparer",
             route="/app/procurement",
         ),
         WorkflowStep(
             id="execution",
             label="Execution",
-            status="Pret" if execution_ready else "Bloque",
-            state="done" if execution_ready else "blocked",
+            status=(
+                "Pret"
+                if execution_ready
+                else "A preparer"
+                if execution_status["status"] in {"REQUIRED", "PLANNING_REQUIRED"}
+                else "Bloque"
+            ),
+            state="done" if execution_ready else ("todo" if execution_status["status"] in {"REQUIRED", "PLANNING_REQUIRED"} else "blocked"),
             action="Suivre",
             route="/app/site?tab=planning",
         ),
@@ -466,13 +673,42 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
             label="Tester un scenario",
             route="/app/simulation",
         )
-    elif scenario_ready and not execution_ready:
+    elif procurement_status["status"] == "REQUIRED":
         status = "SCENARIO_READY"
         label = "Scenario disponible"
         primary_action = WorkflowAction(
             label="Preparer l'approvisionnement",
             route="/app/procurement",
         )
+    elif procurement_status["status"] == "REVIEW_REQUIRED":
+        status = "PROCUREMENT_REVIEW_REQUIRED"
+        label = "Arbitrages achat a valider"
+        primary_action = WorkflowAction(
+            label="Valider les arbitrages achat",
+            route="/app/procurement",
+        )
+    elif procurement_status["status"] in {"READY", "EXPORTABLE"}:
+        if execution_status["status"] in {"REQUIRED", "PLANNING_REQUIRED"}:
+            status = "PROCUREMENT_READY"
+            label = "Approvisionnement pret"
+            primary_action = WorkflowAction(
+                label="Preparer l'execution",
+                route="/app/site?tab=planning",
+            )
+        elif execution_status["status"] in {"READY", "ACTIVE", "AT_RISK"}:
+            status = "EXECUTION_READY"
+            label = "Execution prete"
+            primary_action = WorkflowAction(
+                label="Ouvrir Execution",
+                route="/app/site?tab=planning",
+            )
+        else:
+            status = "PROCUREMENT_READY"
+            label = "Approvisionnement pret"
+            primary_action = WorkflowAction(
+                label="Preparer l'execution",
+                route="/app/site?tab=planning",
+            )
     else:
         status = "ACTIVE"
         label = "Projet actif"
@@ -490,6 +726,8 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
         dqe=dqe_status,
         budget=budget_status,
         scenario=scenario_status,
+        procurement=procurement_status,
+        execution=execution_status,
     )
 
 

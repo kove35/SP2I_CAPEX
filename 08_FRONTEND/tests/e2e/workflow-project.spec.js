@@ -84,6 +84,19 @@ async function setSyncedDqe(page) {
   });
 }
 
+async function updateLocalProject(page, projectName, patch) {
+  await page.evaluate(({ name, values }) => {
+    const stored = window.localStorage.getItem("sp2i:projects");
+    const projects = stored ? JSON.parse(stored) : [];
+    const next = projects.map((project) => (
+      new RegExp(name, "i").test(project.name || "")
+        ? { ...project, ...values }
+        : project
+    ));
+    window.localStorage.setItem("sp2i:projects", JSON.stringify(next));
+  }, { name: projectName, values: patch });
+}
+
 async function navigateSpa(page, path) {
   await page.evaluate((nextPath) => {
     window.history.pushState({}, "", nextPath);
@@ -236,6 +249,70 @@ test("procurement page without scenario shows guided empty state", async ({ page
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/tester un scenario/i);
 });
 
+test("scenario pret sans approvisionnement affiche CTA Preparer l'approvisionnement", async ({ page }) => {
+  const projectName = "Projet scenario pret sans achat";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "SCENARIO_READY",
+    scenario_ready: true,
+    procurement_ready: false,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await expect(projectCard).toBeVisible();
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/preparer l'approvisionnement/i);
+});
+
+test("approvisionnement pret sans actions chantier affiche CTA Preparer l'execution", async ({ page }) => {
+  const projectName = "Projet achat pret execution a preparer";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "PROCUREMENT_READY",
+    scenario_ready: true,
+    procurement_ready: true,
+    procurement_decisions_count: 303,
+    procurement_validated_decisions_count: 303,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await expect(projectCard).toBeVisible();
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/preparer l'execution/i);
+
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
+  await expect(quickActions.getByRole("button", { name: /execution/i })).toBeVisible();
+});
+
+test("execution prete affiche CTA Ouvrir Execution", async ({ page }) => {
+  const projectName = "Projet execution prete";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "EXECUTION_READY",
+    scenario_ready: true,
+    procurement_ready: true,
+    execution_ready: true,
+    procurement_decisions_count: 303,
+    procurement_validated_decisions_count: 303,
+    execution_actions_count: 5,
+    execution_critical_lots_count: 1,
+    execution_deliveries_to_watch_count: 3,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await expect(projectCard).toBeVisible();
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/ouvrir execution/i);
+
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
+  await expect(quickActions.getByRole("button", { name: /execution/i })).toBeVisible();
+});
+
 test("execution without procurement shows procurement CTA", async ({ page }) => {
   await openConfiguredProjectWorkspace(page, "Projet execution sans achat");
   await navigateSpa(page, "/app/site?tab=planning");
@@ -244,6 +321,28 @@ test("execution without procurement shows procurement CTA", async ({ page }) => 
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/preparez les arbitrages achat/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/ouvrir approvisionnement/i);
+});
+
+test("execution avec approvisionnement pret demande preparation chantier", async ({ page }) => {
+  const projectName = "Projet execution a preparer";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "PROCUREMENT_READY",
+    scenario_ready: true,
+    procurement_ready: true,
+    execution_ready: false,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/site?tab=planning");
+
+  const emptyState = page.getByTestId("execution-empty-state").first();
+  await expect(emptyState).toBeVisible();
+  await expect(emptyState).toContainText(/approvisionnement est pret|preparez les actions chantier/i);
+  await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/preparer l'execution/i);
 });
 
 test("responsive project workflow minimal layout", async ({ page }) => {
