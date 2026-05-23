@@ -19,6 +19,7 @@ from app.projects.schemas import (
     ProjectResponse,
     ProjectSetupUpdate,
     ProjectWorkflowResponse,
+    ScenarioStatus,
     WorkflowAction,
     WorkflowStep,
 )
@@ -234,13 +235,89 @@ def _resolve_project_budget_status(dqe_status: dict[str, Any], db: Session | Non
     }
 
 
+def _resolve_project_scenario_status(project_id: int, db: Session | None = None) -> dict[str, Any]:
+    if db is None:
+        return ScenarioStatus(
+            status="NOT_STARTED",
+            is_ready=False,
+            message="Aucun acces base pour verifier les scenarios.",
+        ).model_dump()
+
+    try:
+        row = db.execute(
+            text(
+                """
+                SELECT
+                    ds.scenario_id::text AS scenario_id,
+                    ds.scenario_nom,
+                    ds.scenario_type,
+                    sr.run_id::text AS run_id,
+                    sr.status AS run_status,
+                    COALESCE(sr.ended_at, sr.started_at, ds.updated_at, ds.created_at) AS simulated_at,
+                    COALESCE(sr.rows_out, 0) AS rows_out,
+                    COUNT(fs.simulation_line_id) AS line_count
+                FROM simulation_run sr
+                JOIN dim_scenario ds ON ds.scenario_id = sr.scenario_id
+                LEFT JOIN fact_simulation fs ON fs.run_id = sr.run_id
+                WHERE sr.projet_id = :project_id
+                  AND sr.status IN ('SUCCESS', 'READY', 'SIMULATED', 'VALIDATED')
+                GROUP BY
+                    ds.scenario_id,
+                    ds.scenario_nom,
+                    ds.scenario_type,
+                    ds.created_at,
+                    ds.updated_at,
+                    sr.run_id,
+                    sr.status,
+                    sr.started_at,
+                    sr.ended_at,
+                    sr.rows_out
+                HAVING COALESCE(sr.rows_out, 0) > 0 OR COUNT(fs.simulation_line_id) > 0
+                ORDER BY COALESCE(sr.ended_at, sr.started_at, ds.updated_at, ds.created_at) DESC
+                LIMIT 1
+                """
+            ),
+            {"project_id": project_id},
+        ).mappings().first()
+    except Exception:
+        return ScenarioStatus(
+            status="UNKNOWN",
+            is_ready=False,
+            message="Impossible de determiner le statut scenario.",
+        ).model_dump()
+
+    if not row:
+        return ScenarioStatus(
+            status="NOT_STARTED",
+            is_ready=False,
+            message="Aucun scenario simule pour ce projet.",
+        ).model_dump()
+
+    line_count = int(row.get("line_count") or row.get("rows_out") or 0)
+    run_status = str(row.get("run_status") or "").upper()
+    status = "VALIDATED" if run_status == "VALIDATED" else "READY" if run_status == "READY" else "SIMULATED"
+    return ScenarioStatus(
+        status=status,
+        is_ready=status in {"READY", "SIMULATED", "VALIDATED"} and line_count > 0,
+        scenario_id=row.get("scenario_id"),
+        scenario_name=row.get("scenario_nom"),
+        scenario_type=row.get("scenario_type"),
+        run_id=row.get("run_id"),
+        run_status=run_status,
+        simulated_at=row.get("simulated_at"),
+        line_count=line_count,
+        message="Scenario actif determine depuis simulation_run.",
+    ).model_dump()
+
+
 def compute_project_workflow_status(project: Project, db: Session | None = None) -> ProjectWorkflowResponse:
     setup_configured = _is_project_configured(project) and project.setup_status == "CONFIGURED"
     dqe_status = _resolve_project_dqe_status(project.id, db)
     budget_status = _resolve_project_budget_status(dqe_status, db)
+    scenario_status = _resolve_project_scenario_status(project.id, db)
     budget_synced = bool(budget_status["is_synced"])
-    scenario_ready = budget_synced
-    procurement_ready = False
+    scenario_ready = bool(scenario_status["status"] in {"READY", "SIMULATED", "VALIDATED"} and scenario_status["is_ready"])
+    procurement_ready = scenario_ready
     execution_ready = False
 
     dqe_label = "A importer"
@@ -323,8 +400,8 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
         WorkflowStep(
             id="scenarios",
             label="Scenarios",
-            status="Simule" if scenario_ready else "Bloque",
-            state="done" if scenario_ready else "blocked",
+            status="Simule" if scenario_ready else ("Pret" if budget_synced else "Bloque"),
+            state="done" if scenario_ready else ("todo" if budget_synced else "blocked"),
             action="Tester",
             route="/app/simulation",
         ),
@@ -332,7 +409,7 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
             id="procurement",
             label="Approvisionnement",
             status="Pret" if procurement_ready else "Bloque",
-            state="done" if procurement_ready else "blocked",
+            state="todo" if procurement_ready else "blocked",
             action="Preparer",
             route="/app/procurement",
         ),
@@ -382,12 +459,19 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
             label="Synchroniser le budget",
             route="/app/dqe?tab=sync",
         )
-    elif budget_synced:
+    elif budget_synced and not scenario_ready:
         status = "BUDGET_SYNCED"
         label = "Budget synchronise"
         primary_action = WorkflowAction(
             label="Tester un scenario",
             route="/app/simulation",
+        )
+    elif scenario_ready and not execution_ready:
+        status = "SCENARIO_READY"
+        label = "Scenario disponible"
+        primary_action = WorkflowAction(
+            label="Preparer l'approvisionnement",
+            route="/app/procurement",
         )
     else:
         status = "ACTIVE"
@@ -405,6 +489,7 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
         primary_action=primary_action,
         dqe=dqe_status,
         budget=budget_status,
+        scenario=scenario_status,
     )
 
 

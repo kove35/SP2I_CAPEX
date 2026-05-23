@@ -113,6 +113,20 @@ class BudgetStatus(BaseModel):
     message: str = ""
 
 
+class ScenarioStatus(BaseModel):
+    status: str = "NOT_STARTED"
+    is_ready: bool = False
+    scenario_id: str | None = None
+    scenario_name: str | None = None
+    scenario_type: str | None = None
+    run_id: str | None = None
+    run_status: str | None = None
+    simulated_at: datetime | None = None
+    line_count: int = 0
+    source: str = "simulation_run"
+    message: str = ""
+
+
 class ProjectWorkflowResponse(BaseModel):
     status: str
     label: str
@@ -121,3 +135,4 @@ class ProjectWorkflowResponse(BaseModel):
     primary_action: WorkflowAction
     dqe: DqeStatus = Field(default_factory=DqeStatus)
     budget: BudgetStatus = Field(default_factory=BudgetStatus)
+    scenario: ScenarioStatus = Field(default_factory=ScenarioStatus)
