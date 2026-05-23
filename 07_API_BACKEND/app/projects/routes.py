@@ -1,17 +1,42 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.auth.models import User, WorkspaceMembership
 from app.auth.routes import get_current_user
 from app.database import get_db
 from app.projects.models import Project
-from app.projects.schemas import ProjectCreate, ProjectListResponse, ProjectResponse
+from app.projects.schemas import (
+    ProjectCreate,
+    ProjectListResponse,
+    ProjectResponse,
+    ProjectSetupUpdate,
+    ProjectWorkflowResponse,
+    WorkflowAction,
+    WorkflowStep,
+)
+from app.services.service_pipeline import ServicePipeline
 
 
 router = APIRouter()
+
+
+REQUIRED_SETUP_FIELDS = ("name", "client_name", "city", "country", "currency", "project_manager")
+
+
+def _is_project_configured(project: Project) -> bool:
+    return all(str(getattr(project, field, "") or "").strip() for field in REQUIRED_SETUP_FIELDS)
+
+
+def _compute_setup_status(project: Project) -> str:
+    return "CONFIGURED" if _is_project_configured(project) else "CONFIG_REQUIRED"
 
 
 def serialize_project(project: Project) -> ProjectResponse:
@@ -22,10 +47,327 @@ def serialize_project(project: Project) -> ProjectResponse:
         city=project.city,
         country=project.country,
         currency=project.currency,
+        project_type=project.project_type,
+        project_manager=project.project_manager,
+        target_budget=project.target_budget,
+        vat_mode=project.vat_mode,
+        reference_exchange_rate=project.reference_exchange_rate,
+        default_transport_rate=project.default_transport_rate,
+        default_customs_rate=project.default_customs_rate,
+        default_insurance_rate=project.default_insurance_rate,
+        default_import_margin=project.default_import_margin,
+        minimum_saving_threshold=project.minimum_saving_threshold,
+        planned_start_date=project.planned_start_date,
+        target_delivery_date=project.target_delivery_date,
+        site_storage_capacity=project.site_storage_capacity,
+        setup_status=project.setup_status,
+        setup_completed_at=project.setup_completed_at,
         owner_id=project.owner_id,
         status=project.status,
         created_at=project.created_at,
+        budget=project.target_budget or 0,
     )
+
+
+def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> dict[str, Any]:
+    path = Path(__file__).resolve().parents[3] / "03_DONNEES_ENTREE" / "dqe"
+    source_file = path / "dqe_source_brut.json"
+    normalized_file = path / "dqe_normalise.json"
+    powerbi_file = Path(__file__).resolve().parents[3] / "05_RESULTATS" / "dqe_pret_powerbi.csv"
+
+    source_present = source_file.exists()
+    normalized_present = normalized_file.exists()
+    powerbi_present = powerbi_file.exists()
+    latest_audit = None
+    synced = False
+    uploaded_at = None
+    analyzed_at = None
+    governance_status = None
+
+    if source_present:
+        try:
+            uploaded_at = datetime.fromtimestamp(source_file.stat().st_mtime, timezone.utc)
+        except Exception:
+            uploaded_at = None
+
+    if normalized_present:
+        try:
+            analyzed_at = datetime.fromtimestamp(normalized_file.stat().st_mtime, timezone.utc)
+        except Exception:
+            analyzed_at = None
+
+    if db is not None:
+        try:
+            latest_audit = db.execute(
+                text(
+                    """
+                    SELECT fichier,
+                           score_qualite,
+                           lignes_parsees,
+                           lignes_fact_metre,
+                           lignes_review_required,
+                           lignes_warning,
+                           lignes_ignorees,
+                           lignes_rejetees,
+                           governance_quality,
+                           created_at
+                    FROM dqe_import_audit
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """
+                )
+            ).mappings().first()
+            total_rows = db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one()
+            synced = bool(total_rows and int(total_rows) > 0)
+        except Exception:
+            latest_audit = None
+            synced = False
+
+    file_name = ""
+    trust_score = 0
+    normalized_lines_count = 0
+    ignored_lines_count = 0
+    data_loss_count = 0
+    review_required_count = 0
+    certification_status = "UNKNOWN"
+    synced_at = None
+
+    if latest_audit:
+        file_name = latest_audit.get("fichier") or ""
+        trust_score = int(latest_audit.get("score_qualite") or 0)
+        normalized_lines_count = int(latest_audit.get("lignes_parsees") or 0)
+        ignored_lines_count = int(latest_audit.get("lignes_ignorees") or 0)
+        review_required_count = int(latest_audit.get("lignes_review_required") or 0)
+        data_loss_count = int(latest_audit.get("lignes_rejetees") or 0)
+        governance_quality = latest_audit.get("governance_quality") or {}
+        governance_status = "DATA_QUALITY_GOVERNANCE" if governance_quality else "UNKNOWN"
+        if review_required_count > 0:
+            certification_status = "REVIEW_REQUIRED"
+        elif int(latest_audit.get("lignes_warning") or 0) > 0:
+            certification_status = "CERTIFIED_WITH_WARNINGS"
+        else:
+            certification_status = "CERTIFIED"
+        if synced:
+            synced_at = latest_audit.get("created_at")
+
+    elif source_present:
+        try:
+            content = json.loads(source_file.read_text(encoding="utf-8-sig"))
+            file_name = content.get("source", "") if isinstance(content, dict) else ""
+        except Exception:
+            file_name = ""
+
+    if not source_present and not latest_audit:
+        status = "NOT_IMPORTED"
+    elif source_present and not normalized_present:
+        status = "UPLOADED"
+    elif normalized_present and not latest_audit:
+        status = "ANALYZED"
+    elif latest_audit and synced:
+        status = "SYNCED"
+    elif latest_audit:
+        status = certification_status
+    else:
+        status = "ANALYZED"
+
+    is_active = status not in {"NOT_IMPORTED"}
+
+    return {
+        "status": status,
+        "version_number": 1 if is_active else 0,
+        "file_name": file_name,
+        "certification_status": certification_status,
+        "governance_status": governance_status,
+        "trust_score": trust_score,
+        "normalized_lines_count": normalized_lines_count,
+        "ignored_lines_count": ignored_lines_count,
+        "data_loss_count": data_loss_count,
+        "review_required_count": review_required_count,
+        "is_active": is_active,
+        "uploaded_at": uploaded_at,
+        "analyzed_at": analyzed_at,
+        "synced_at": synced_at,
+    }
+
+
+def compute_project_workflow_status(project: Project, db: Session | None = None) -> ProjectWorkflowResponse:
+    setup_configured = _is_project_configured(project) and project.setup_status == "CONFIGURED"
+    dqe_status = _resolve_project_dqe_status(project.id, db)
+    budget_synced = dqe_status["status"] == "SYNCED"
+    scenario_ready = budget_synced
+    procurement_ready = False
+    execution_ready = False
+
+    dqe_label = "A importer"
+    dqe_state = "todo"
+    dqe_action = "Importer"
+    dqe_route = "/app/dqe?tab=import"
+
+    if setup_configured:
+        if dqe_status["status"] == "NOT_IMPORTED":
+            dqe_label = "A importer"
+            dqe_state = "todo"
+            dqe_action = "Importer"
+            dqe_route = "/app/dqe?tab=import"
+        elif dqe_status["status"] == "UPLOADED":
+            dqe_label = "Importe"
+            dqe_state = "progress"
+            dqe_action = "Analyser"
+            dqe_route = "/app/dqe?tab=analysis"
+        elif dqe_status["status"] == "ANALYZED":
+            dqe_label = "Analyse"
+            dqe_state = "progress"
+            dqe_action = "Verifier"
+            dqe_route = "/app/dqe?tab=quality"
+        elif dqe_status["status"] == "REVIEW_REQUIRED":
+            dqe_label = "Validation requise"
+            dqe_state = "progress"
+            dqe_action = "Verifier"
+            dqe_route = "/app/dqe?tab=quality"
+        elif dqe_status["status"] == "CERTIFIED_WITH_WARNINGS":
+            dqe_label = "Certifie avec points a verifier"
+            dqe_state = "progress"
+            dqe_action = "Verifier"
+            dqe_route = "/app/dqe?tab=quality"
+        elif dqe_status["status"] == "CERTIFIED":
+            dqe_label = "Certifie"
+            dqe_state = "done"
+            dqe_action = "Synchroniser"
+            dqe_route = "/app/dqe?tab=sync"
+        elif dqe_status["status"] == "REJECTED":
+            dqe_label = "Rejete"
+            dqe_state = "blocked"
+            dqe_action = "Verifier"
+            dqe_route = "/app/dqe?tab=quality"
+        elif dqe_status["status"] == "SYNCED":
+            dqe_label = "Synchronise"
+            dqe_state = "done"
+            dqe_action = "Tester"
+            dqe_route = "/app/simulation"
+    else:
+        dqe_label = "Bloque"
+        dqe_state = "blocked"
+        dqe_action = "Importer"
+        dqe_route = "/app/dqe?tab=import"
+
+    steps = [
+        WorkflowStep(
+            id="configuration",
+            label="Configuration",
+            status="Termine" if setup_configured else "A completer",
+            state="done" if setup_configured else "blocking",
+            action="Modifier" if setup_configured else "Configurer",
+            route="/app/projects",
+        ),
+        WorkflowStep(
+            id="dqe",
+            label="DQE",
+            status=dqe_label,
+            state=dqe_state,
+            action=dqe_action,
+            route=dqe_route,
+        ),
+        WorkflowStep(
+            id="budget",
+            label="Budget",
+            status="Synchronise" if budget_synced else "A synchroniser",
+            state="done" if budget_synced else ("todo" if dqe_status["status"] == "CERTIFIED" else "blocked"),
+            action="Synchroniser",
+            route="/app/dqe?tab=sync",
+        ),
+        WorkflowStep(
+            id="scenarios",
+            label="Scenarios",
+            status="Simule" if scenario_ready else "Bloque",
+            state="done" if scenario_ready else "blocked",
+            action="Tester",
+            route="/app/simulation",
+        ),
+        WorkflowStep(
+            id="procurement",
+            label="Approvisionnement",
+            status="Pret" if procurement_ready else "Bloque",
+            state="done" if procurement_ready else "blocked",
+            action="Preparer",
+            route="/app/procurement",
+        ),
+        WorkflowStep(
+            id="execution",
+            label="Execution",
+            status="Pret" if execution_ready else "Bloque",
+            state="done" if execution_ready else "blocked",
+            action="Suivre",
+            route="/app/site?tab=planning",
+        ),
+    ]
+
+    if not setup_configured:
+        status = "CONFIG_REQUIRED"
+        label = "Configuration requise"
+        primary_action = WorkflowAction(
+            label="Configurer le projet",
+            route="/app/projects",
+            mode="setup",
+        )
+    elif dqe_status["status"] == "NOT_IMPORTED":
+        status = "DQE_REQUIRED"
+        label = "DQE a importer"
+        primary_action = WorkflowAction(
+            label="Importer le DQE",
+            route="/app/dqe?tab=import",
+        )
+    elif dqe_status["status"] == "UPLOADED":
+        status = "DQE_UPLOADED"
+        label = "DQE importe"
+        primary_action = WorkflowAction(
+            label="Analyser le DQE",
+            route="/app/dqe?tab=analysis",
+        )
+    elif dqe_status["status"] in {"ANALYZED", "REVIEW_REQUIRED", "CERTIFIED_WITH_WARNINGS", "REJECTED"}:
+        status = "DQE_ANALYZED"
+        label = "DQE a verifier"
+        primary_action = WorkflowAction(
+            label="Verifier le DQE",
+            route="/app/dqe?tab=quality",
+        )
+    elif dqe_status["status"] == "CERTIFIED":
+        status = "DQE_CERTIFIED"
+        label = "DQE certifie"
+        primary_action = WorkflowAction(
+            label="Synchroniser le budget",
+            route="/app/dqe?tab=sync",
+        )
+    elif budget_synced:
+        status = "BUDGET_SYNCED"
+        label = "Budget synchronise"
+        primary_action = WorkflowAction(
+            label="Tester un scenario",
+            route="/app/simulation",
+        )
+    else:
+        status = "ACTIVE"
+        label = "Projet actif"
+        primary_action = WorkflowAction(
+            label="Ouvrir le workspace",
+            route="/app",
+        )
+
+    return ProjectWorkflowResponse(
+        status=status,
+        label=label,
+        completion=round((sum(1 for step in steps if step.state == "done") / len(steps)) * 100),
+        steps=steps,
+        primary_action=primary_action,
+        dqe=dqe_status,
+        budget={"status": "SYNCED" if budget_synced else "SYNC_REQUIRED"},
+    )
+
+
+def _get_owned_project(db: Session, current_user: User, project_id: int) -> Project:
+    project = db.scalar(select(Project).where(Project.id == project_id, Project.owner_id == current_user.id))
+    if not project:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+    return project
 
 
 def _ensure_demo_project(db: Session, user: User) -> None:
@@ -38,6 +380,10 @@ def _ensure_demo_project(db: Session, user: User) -> None:
         city="Pointe-Noire",
         country="Congo-Brazzaville",
         currency="FCFA",
+        project_type="Etablissement de sante",
+        project_manager="Direction SP2I",
+        setup_status="CONFIGURED",
+        setup_completed_at=datetime.now(timezone.utc),
         owner_id=user.id,
         status="ACTIVE",
     )
@@ -69,12 +415,60 @@ def create_project(
         city=payload.city,
         country=payload.country,
         currency=payload.currency,
+        project_type=payload.project_type,
+        project_manager=payload.project_manager,
+        setup_status="CONFIG_REQUIRED",
         status=payload.status.upper(),
         owner_id=current_user.id,
     )
+    project.setup_status = _compute_setup_status(project)
+    if project.setup_status == "CONFIGURED":
+        project.setup_completed_at = datetime.now(timezone.utc)
     db.add(project)
     db.flush()
     db.add(WorkspaceMembership(user_id=current_user.id, project_id=project.id, role=current_user.role))
     db.commit()
     db.refresh(project)
     return serialize_project(project)
+
+
+@router.get("/{project_id}", response_model=ProjectResponse)
+def get_project(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectResponse:
+    return serialize_project(_get_owned_project(db, current_user, project_id))
+
+
+@router.patch("/{project_id}/setup", response_model=ProjectResponse)
+def update_project_setup(
+    project_id: int,
+    payload: ProjectSetupUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectResponse:
+    project = _get_owned_project(db, current_user, project_id)
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if hasattr(project, field):
+            setattr(project, field, value)
+
+    project.setup_status = _compute_setup_status(project)
+    if project.setup_status == "CONFIGURED" and project.setup_completed_at is None:
+        project.setup_completed_at = datetime.now(timezone.utc)
+    elif project.setup_status != "CONFIGURED":
+        project.setup_completed_at = None
+
+    db.add(project)
+    db.commit()
+    db.refresh(project)
+    return serialize_project(project)
+
+
+@router.get("/{project_id}/workflow", response_model=ProjectWorkflowResponse)
+def get_project_workflow(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectWorkflowResponse:
+    return compute_project_workflow_status(_get_owned_project(db, current_user, project_id), db)
