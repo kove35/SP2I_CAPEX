@@ -164,6 +164,7 @@ test("workspace summary shows next recommended action", async ({ page }) => {
   await expect(summary.getByText(/prochaine action recommandee/i)).toBeVisible();
   await expect(summary.getByTestId("workspace-next-action")).toHaveText(/importer le dqe/i);
   await expect(summary.getByTestId("project-quick-actions")).toBeVisible();
+  await expect(page.getByTestId("project-workflow-breadcrumb")).toHaveCount(0);
 
   await page.screenshot({
     path: "test-results/screenshots/workspace-summary.png",
@@ -285,6 +286,31 @@ test("approvisionnement pret sans actions chantier affiche CTA Preparer l'execut
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
   await expect(quickActions.getByRole("button", { name: /execution/i })).toBeVisible();
+});
+
+test("page Scenarios affiche le fil d'Ariane workflow compact", async ({ page }) => {
+  const projectName = "Projet breadcrumb scenarios";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "PROCUREMENT_READY",
+    scenario_ready: true,
+    procurement_ready: true,
+    procurement_decisions_count: 303,
+    procurement_validated_decisions_count: 303,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/simulation");
+
+  const breadcrumb = page.getByTestId("project-workflow-breadcrumb");
+  await expect(breadcrumb).toBeVisible();
+  await expect(breadcrumb).toContainText(/scenario simule/i);
+  await expect(breadcrumb).toContainText(/approvisionnement pret/i);
+  await expect(breadcrumb).toContainText(/execution a preparer/i);
+  await expect(breadcrumb.getByTestId("workflow-breadcrumb-action")).toHaveText(/preparer l'execution/i);
 });
 
 test("execution prete affiche CTA Ouvrir Execution", async ({ page }) => {

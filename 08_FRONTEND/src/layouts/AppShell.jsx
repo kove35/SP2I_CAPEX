@@ -7,7 +7,7 @@ import { getScenarioContext } from "../utils/businessContext";
 import AlertCenter from "../ui/AlertCenter";
 import ProjectSelector from "../ui/ProjectSelector";
 import ProjectQuickActions from "../components/ProjectQuickActions";
-import ProjectWorkflowStepper from "../modules/projects/ProjectWorkflowStepper";
+import ProjectWorkflowBreadcrumb, { moduleFromPath } from "../modules/projects/ProjectWorkflowBreadcrumb";
 import { getBackendProjectWorkflow, getProjectWorkflow } from "../services/projectService";
 
 export default function AppShell({ activePath, onNavigate, children }) {
@@ -18,7 +18,7 @@ export default function AppShell({ activePath, onNavigate, children }) {
     () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
     [state]
   );
-  const showWorkspaceWorkflow = !String(activePath || "").startsWith("/app/projects");
+  const showWorkspaceWorkflow = !["/app", "/app/"].includes(String(activePath || "")) && !String(activePath || "").startsWith("/app/projects");
 
   React.useEffect(() => {
     setProjectContext({
@@ -71,9 +71,10 @@ export default function AppShell({ activePath, onNavigate, children }) {
         </header>
         <section className="content-area">
           {showWorkspaceWorkflow ? (
-            <ProjectWorkflowStepper
+            <ProjectWorkflowBreadcrumb
               workflow={workflow}
-              compact
+              currentModule={moduleFromPath(activePath)}
+              showAction
               onNavigate={onNavigate}
               onSetup={() => onNavigate("/app/projects")}
             />
