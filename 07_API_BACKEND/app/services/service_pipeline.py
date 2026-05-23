@@ -341,6 +341,9 @@ class ServicePipeline:
                         lignes_excel,
                         lignes_parsees,
                         lignes_fact_metre,
+                        lignes_review_required,
+                        lignes_warning,
+                        lignes_ignorees,
                         capex_source,
                         capex_fact_metre,
                         ecart_capex,
@@ -348,6 +351,7 @@ class ServicePipeline:
                         lots_detectes,
                         colonnes_reconnues,
                         anomalies_json,
+                        governance_quality,
                         metadata_json
                     )
                     VALUES (
@@ -357,6 +361,9 @@ class ServicePipeline:
                         :lignes_excel,
                         :lignes_parsees,
                         :lignes_fact_metre,
+                        :lignes_review_required,
+                        :lignes_warning,
+                        :lignes_ignorees,
                         :capex_source,
                         :capex_fact_metre,
                         :ecart_capex,
@@ -364,6 +371,7 @@ class ServicePipeline:
                         :lots_detectes,
                         :colonnes_reconnues,
                         CAST(:anomalies_json AS jsonb),
+                        CAST(:governance_quality AS jsonb),
                         CAST(:metadata_json AS jsonb)
                     )
                     """
@@ -374,6 +382,9 @@ class ServicePipeline:
                     "lignes_excel": quality.get("lignes_excel", 0),
                     "lignes_parsees": quality.get("lignes_parsees", 0),
                     "lignes_fact_metre": quality.get("lignes_fact_metre", 0),
+                    "lignes_review_required": quality.get("lignes_review_required", 0),
+                    "lignes_warning": quality.get("lignes_warning", 0),
+                    "lignes_ignorees": quality.get("lignes_ignorees", 0),
                     "capex_source": quality.get("capex_source", 0),
                     "capex_fact_metre": quality.get("capex_fact_metre", 0),
                     "ecart_capex": quality.get("ecart_capex", 0),
@@ -381,6 +392,7 @@ class ServicePipeline:
                     "lots_detectes": quality.get("lots_detectes", 0),
                     "colonnes_reconnues": quality.get("colonnes_reconnues", 0),
                     "anomalies_json": json.dumps(quality.get("anomalies", []), ensure_ascii=False, default=str),
+                    "governance_quality": json.dumps(quality.get("governance_quality", {}), ensure_ascii=False, default=str),
                     "metadata_json": json.dumps({"sheet_selection": quality.get("sheet_selection", {})}, ensure_ascii=False, default=str),
                 },
             )
