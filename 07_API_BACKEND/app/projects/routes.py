@@ -32,6 +32,8 @@ from app.projects.schemas import (
     SiteExecutionActionOut,
     SiteExecutionActionStatus,
     SiteExecutionActionUpdate,
+    WorkflowEventListResponse,
+    WorkflowEventOut,
     WorkflowAction,
     WorkflowStep,
 )
@@ -47,6 +49,7 @@ from app.services.site_execution_actions import (
     list_site_execution_actions,
     update_site_execution_action,
 )
+from app.services.workflow_events import list_workflow_events, log_workflow_event
 from app.services.service_pipeline import ServicePipeline
 
 
@@ -857,6 +860,7 @@ def update_project_setup(
     db: Session = Depends(get_db),
 ) -> ProjectResponse:
     project = _get_owned_project(db, current_user, project_id)
+    previous_status = project.setup_status
     for field, value in payload.model_dump(exclude_unset=True).items():
         if hasattr(project, field):
             setattr(project, field, value)
@@ -870,6 +874,18 @@ def update_project_setup(
     db.add(project)
     db.commit()
     db.refresh(project)
+    log_workflow_event(
+        db,
+        project_id=project.id,
+        user_id=current_user.id,
+        event_type="PROJECT_SETUP_UPDATED",
+        entity_type="project",
+        entity_id=project.id,
+        previous_status=previous_status,
+        new_status=project.setup_status,
+        message="Configuration projet mise a jour.",
+        metadata={"setup_completion_percent": project.setup_completion_percent},
+    )
     return serialize_project(project)
 
 
@@ -880,6 +896,19 @@ def get_project_workflow(
     db: Session = Depends(get_db),
 ) -> ProjectWorkflowResponse:
     return compute_project_workflow_status(_get_owned_project(db, current_user, project_id), db)
+
+
+@router.get("/{project_id}/workflow/events", response_model=WorkflowEventListResponse)
+def get_project_workflow_events(
+    project_id: int,
+    limit: int = Query(default=30, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> WorkflowEventListResponse:
+    _get_owned_project(db, current_user, project_id)
+    rows = list_workflow_events(db, project_id, limit=limit, offset=offset)
+    return WorkflowEventListResponse(events=[WorkflowEventOut(**row) for row in rows])
 
 
 @router.get("/{project_id}/procurement/decisions", response_model=ProcurementDecisionListResponse)
@@ -906,6 +935,17 @@ def bootstrap_project_procurement_decisions(
 ) -> ProcurementDecisionBootstrapResponse:
     _get_owned_project(db, current_user, project_id)
     payload = bootstrap_procurement_decisions_from_simulation(db, project_id, scenario_id=scenario_id, run_id=run_id)
+    log_workflow_event(
+        db,
+        project_id=project_id,
+        user_id=current_user.id,
+        event_type="PROCUREMENT_DECISIONS_BOOTSTRAPPED",
+        entity_type="procurement_decisions",
+        previous_status="REQUIRED",
+        new_status=payload.get("status", {}).get("status", ""),
+        message="Decisions achat generees depuis la simulation.",
+        metadata={"inserted_count": payload.get("inserted_count", 0), "scenario_id": scenario_id, "run_id": run_id},
+    )
     return ProcurementDecisionBootstrapResponse(**payload)
 
 
@@ -918,9 +958,31 @@ def patch_project_procurement_decision(
     db: Session = Depends(get_db),
 ) -> ProcurementDecisionOut:
     _get_owned_project(db, current_user, project_id)
+    previous_row = db.execute(
+        text(
+            """
+            SELECT validation_status
+            FROM procurement_decisions
+            WHERE id = :decision_id AND project_id = :project_id
+            """
+        ),
+        {"decision_id": decision_id, "project_id": project_id},
+    ).mappings().first()
     row = update_procurement_decision(db, project_id, decision_id, payload.model_dump(exclude_unset=True))
     if not row:
         raise HTTPException(status_code=404, detail="Decision achat introuvable.")
+    log_workflow_event(
+        db,
+        project_id=project_id,
+        user_id=current_user.id,
+        event_type="PROCUREMENT_DECISION_UPDATED",
+        entity_type="procurement_decision",
+        entity_id=decision_id,
+        previous_status=(previous_row or {}).get("validation_status", ""),
+        new_status=row.get("validation_status", ""),
+        message="Decision achat mise a jour.",
+        metadata={"validated_decision": row.get("validated_decision"), "supplier_selected": row.get("supplier_selected")},
+    )
     return ProcurementDecisionOut(**row)
 
 
@@ -964,6 +1026,17 @@ def generate_project_execution_actions(
     _get_owned_project(db, current_user, project_id)
     scenario = _resolve_project_scenario_status(project_id, db)
     payload = generate_site_execution_actions(db, project_id, scenario_id=scenario_id or scenario.get("scenario_id"))
+    log_workflow_event(
+        db,
+        project_id=project_id,
+        user_id=current_user.id,
+        event_type="SITE_EXECUTION_ACTIONS_GENERATED",
+        entity_type="site_execution_actions",
+        previous_status="REQUIRED",
+        new_status=payload.get("status", {}).get("status", ""),
+        message="Actions chantier generees depuis les arbitrages achat.",
+        metadata={"inserted_count": payload.get("inserted_count", 0), "scenario_id": scenario_id or scenario.get("scenario_id")},
+    )
     return SiteExecutionActionGenerateResponse(**payload)
 
 
@@ -976,9 +1049,31 @@ def patch_project_execution_action(
     db: Session = Depends(get_db),
 ) -> SiteExecutionActionOut:
     _get_owned_project(db, current_user, project_id)
+    previous_row = db.execute(
+        text(
+            """
+            SELECT status
+            FROM site_execution_actions
+            WHERE id = :action_id AND project_id = :project_id
+            """
+        ),
+        {"action_id": action_id, "project_id": project_id},
+    ).mappings().first()
     row = update_site_execution_action(db, project_id, action_id, payload.model_dump(exclude_unset=True))
     if not row:
         raise HTTPException(status_code=404, detail="Action chantier introuvable.")
+    log_workflow_event(
+        db,
+        project_id=project_id,
+        user_id=current_user.id,
+        event_type="SITE_EXECUTION_ACTION_UPDATED",
+        entity_type="site_execution_action",
+        entity_id=action_id,
+        previous_status=(previous_row or {}).get("status", ""),
+        new_status=row.get("status", ""),
+        message="Statut action chantier mis a jour.",
+        metadata={"responsible_name": row.get("responsible_name"), "responsible_role": row.get("responsible_role")},
+    )
     return SiteExecutionActionOut(**row)
 
 

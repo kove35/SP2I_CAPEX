@@ -12,7 +12,7 @@ import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import { useAppStore } from "../../store/appStore.jsx";
 import ProjectQuickActions from "../../components/ProjectQuickActions";
-import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey } from "../../services/projectService";
+import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey, listProjectWorkflowEvents } from "../../services/projectService";
 import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import AnalyticsCard from "../../ui/AnalyticsCard";
@@ -123,7 +123,7 @@ function ModuleStatusCard({ title, step, message, actionLabel, actionRoute, deta
   );
 }
 
-function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state }) {
+function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state, workflowEvents = [] }) {
   const dqeStep = getStep(workflow, "dqe");
   const budgetStep = getStep(workflow, "budget");
   const scenarioStep = getStep(workflow, "scenarios");
@@ -203,6 +203,15 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
           <span>Actions rapides</span>
           <ProjectQuickActions onNavigate={navigateTo} />
         </div>
+      </section>
+
+      <section className="workspace-alerts" data-testid="workflow-events">
+        <span>Historique workflow</span>
+        {workflowEvents.length ? workflowEvents.slice(0, 6).map((event) => (
+          <p key={event.id || `${event.event_type}-${event.created_at}`}>
+            <strong>{event.event_type}</strong> · {event.message || "Evenement workflow"} · {event.created_at ? new Date(event.created_at).toLocaleString("fr-FR") : "-"}
+          </p>
+        )) : <p>Aucun evenement workflow disponible pour le moment.</p>}
       </section>
     </section>
   );
@@ -322,6 +331,7 @@ function useDashboardFromUrl() {
 
 export default function AnalyticsPage() {
   const [dashboard, setDashboard] = useDashboardFromUrl();
+  const [workflowEvents, setWorkflowEvents] = React.useState([]);
   const { state } = useAppStore();
   const project = getWorkspaceProject(state);
   const workflow = React.useMemo(
@@ -340,6 +350,18 @@ export default function AnalyticsPage() {
   const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
   const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || [];
+
+  React.useEffect(() => {
+    let cancelled = false;
+    listProjectWorkflowEvents(project?.id).then((payload) => {
+      if (!cancelled && Array.isArray(payload?.events)) {
+        setWorkflowEvents(payload.events);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
 
   const refreshAll = () => {
     engine.dashboard.refetch();
@@ -405,7 +427,7 @@ export default function AnalyticsPage() {
 
       {engine.error ? <div className="analytics-error">{engine.error.message}</div> : null}
       {engine.isFetching ? <div className="live-refresh">Mise a jour des indicateurs en cours...</div> : null}
-      <PilotageDecisionSummary project={project} workflow={workflow} primaryAction={primaryAction} kpis={kpis} state={state} />
+      <PilotageDecisionSummary project={project} workflow={workflow} primaryAction={primaryAction} kpis={kpis} state={state} workflowEvents={workflowEvents} />
       {workflow.status !== "ACTIVE" ? (
         <WorkflowGuardEmptyState
           title="Donnees de pilotage partielles"
