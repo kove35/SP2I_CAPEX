@@ -58,7 +58,7 @@ export function buildHeatmapOption(rows = []) {
       formatter: ({ data }) => {
         const metric = ["Anomalie", "Risque", "Confiance"][data?.value?.[0]] || "Signal";
         const value = data?.value?.[2] || 0;
-        const level = value >= 75 ? "CRITICAL" : value >= 50 ? "WARNING" : value >= 25 ? "A surveiller" : "Stable";
+        const level = value >= 75 ? "CRITICAL" : value >= 50 ? "WARNING" : value >= 25 ? "À surveiller" : "Stable";
         return `<b>${data?.context || ""}</b><br/>${metric}: ${value}/100<br/>Niveau: ${level}`;
       },
     },

@@ -14,7 +14,7 @@ const decisionPillars = [
   ["Budget travaux", "Pilotage financier", CircleDollarSign],
   ["DQE", "Donnees structurees", FileSpreadsheet],
   ["Decision", "Arbitrages strategiques", ShieldCheck],
-  ["Chantier", "Suivi execution", Building2],
+  ["Chantier", "Suivi exécution", Building2],
   ["Pilotage", "Tableaux direction", BarChart3],
 ];
 

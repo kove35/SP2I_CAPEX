@@ -904,7 +904,7 @@ export default function ProcurementPage() {
       <section className={`procurement-context-strip ${sourceContext.hasActiveDqe ? "ready" : "blocked"}`}>
         <div>
           <strong>Source DQE : {sourceContext.dqeLabel}</strong>
-          <span>{sourceContext.hasActiveDqe ? `${sourceContext.dqeStatus} · Trust score ${sourceContext.trustScore ?? "-"}/100 · ${sourceContext.lines ?? "-"} lignes exploitables` : "Importez et validez un DQE avant de preparer l'approvisionnement."}</span>
+          <span>{sourceContext.hasActiveDqe ? `${sourceContext.dqeStatus} · Trust score ${sourceContext.trustScore ?? "-"}/100 · ${sourceContext.lines ?? "-"} lignes exploitables` : "Importez et validez un DQE avant de préparer l’approvisionnement."}</span>
         </div>
         <div>
           <strong>Scenario actif : {sourceContext.scenarioLabel}</strong>
@@ -922,8 +922,8 @@ export default function ProcurementPage() {
       {setupDone && !scenarioReady ? (
         <WorkflowGuardEmptyState
           title="Aucun scenario actif"
-          message="Aucun scenario actif. Lancez une simulation avant de preparer l'approvisionnement."
-          actionLabel="Tester un scenario"
+          message="Aucun scénario actif. Lancez une simulation avant de préparer l’approvisionnement."
+          actionLabel="Tester un scénario"
           actionRoute="/app/simulation"
           currentStep={workflow.steps.find((step) => step.id === "scenarios")?.status}
           requiredStep="Scenario CAPEX"
@@ -934,10 +934,10 @@ export default function ProcurementPage() {
         <div className="app-warning">Le scenario est disponible. Preparez les arbitrages achat pour generer les decisions import/local.</div>
       ) : null}
       {setupDone && scenarioReady && procurementStatus === "REVIEW_REQUIRED" ? (
-        <div className="app-warning">Arbitrages achat generes. Validation humaine requise avant execution chantier.</div>
+        <div className="app-warning">Arbitrages achat générés. Validation humaine requise avant exécution chantier.</div>
       ) : null}
       {setupDone && scenarioReady && ["READY", "EXPORTABLE"].includes(procurementStatus) ? (
-        <div className="app-success">Approvisionnement pret pour execution. Le dossier achat peut etre exploite.</div>
+        <div className="app-success">Approvisionnement prêt pour exécution. Le dossier achat peut être exploité.</div>
       ) : null}
 
       {hasActiveAnalysis ? (

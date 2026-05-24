@@ -53,7 +53,7 @@ function buildProjectAlerts(workflow) {
     }
   }
   if (budget.state === "done" && scenarios.state !== "done") alerts.push("Le budget est pret. Lancez une simulation pour comparer les strategies CAPEX.");
-  if (scenarios.state === "done" && procurement.state !== "done") alerts.push("Un scenario est disponible. Preparez l'approvisionnement.");
+  if (scenarios.state === "done" && procurement.state !== "done") alerts.push("Un scénario est disponible. Préparez l’approvisionnement.");
   return alerts.length ? alerts : ["Projet actif. Les principaux modules sont disponibles pour pilotage."];
 }
 
@@ -133,9 +133,9 @@ export default function CockpitPage() {
           <article className={`workspace-module-card ${moduleTone(scenarioStep.state)}`}>
             <span>Scenarios</span>
             <strong>{scenarioStep.status || "Bloque"}</strong>
-            <p>{state.lastSimulation ? `${scenario.label} · economie estimee ${formatMoney(estimatedSavings)}` : "Lancez une simulation pour comparer les strategies CAPEX."}</p>
+            <p>{state.lastSimulation ? `${scenario.label} · économie estimée ${formatMoney(estimatedSavings)}` : "Lancez une simulation pour comparer les stratégies CAPEX."}</p>
             <small>Budget : {budgetStep.status || "Bloque"}</small>
-            <button type="button" onClick={() => navigateTo("/app/simulation")}>Tester un scenario</button>
+            <button type="button" onClick={() => navigateTo("/app/simulation")}>Tester un scénario</button>
           </article>
 
           <article className={`workspace-module-card ${moduleTone(procurementStep.state)}`}>
@@ -147,11 +147,11 @@ export default function CockpitPage() {
           </article>
 
           <article className={`workspace-module-card ${moduleTone(executionStep.state)}`}>
-            <span>Execution</span>
-            <strong>{executionStep.status || "Bloque"}</strong>
-            <p>{executionStep.state === "done" ? "Le suivi chantier peut demarrer." : "En attente des arbitrages achat et logistique."}</p>
-            <small>Lots critiques : {executionStep.state === "done" ? "a surveiller" : "-"}</small>
-            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Ouvrir execution</button>
+            <span>Exécution</span>
+            <strong>{executionStep.status || "Bloqué"}</strong>
+            <p>{executionStep.state === "done" ? "Le suivi chantier peut démarrer." : "En attente des arbitrages achat et logistique."}</p>
+            <small>Lots critiques : {executionStep.state === "done" ? "à surveiller" : "-"}</small>
+            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Ouvrir Exécution</button>
           </article>
         </section>
 

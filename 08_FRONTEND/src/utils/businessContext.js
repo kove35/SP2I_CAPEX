@@ -72,7 +72,7 @@ export function getScenarioContext(scenarioCode) {
     label: toBusinessScenarioLabel(normalizedCode),
     description: "Simulation budgetaire personnalisee.",
     gain: "Gain a confirmer",
-    risk: "Risque a evaluer",
+    risk: "Risque à évaluer",
     tone: "neutral",
   };
 }

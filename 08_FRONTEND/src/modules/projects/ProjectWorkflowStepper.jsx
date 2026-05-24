@@ -12,20 +12,20 @@ const stateIcon = {
 function compactActionLabel(workflow, nextStep) {
   if (nextStep?.id !== "execution") return nextStep?.action || workflow?.primary_action?.label || "Ouvrir";
   const status = workflow?.execution?.status;
-  if (status === "REQUIRED") return "Preparer l'execution";
-  if (status === "ACTIVE") return "Suivre l'execution";
-  if (status === "AT_RISK") return "Suivre l'execution a risque";
-  if (status === "READY") return "Ouvrir Execution";
+  if (status === "REQUIRED") return "Préparer l’exécution";
+  if (status === "ACTIVE") return "Suivre l’exécution";
+  if (status === "AT_RISK") return "Suivre l’exécution à risque";
+  if (status === "READY") return "Ouvrir Exécution";
   return workflow?.primary_action?.label || nextStep?.action || "Ouvrir";
 }
 
 function compactStepStatus(workflow, step) {
   if (step?.id !== "execution") return step?.status || "";
   const status = workflow?.execution?.status;
-  if (status === "REQUIRED") return "a preparer";
-  if (status === "READY") return "prete";
+  if (status === "REQUIRED") return "à préparer";
+  if (status === "READY") return "prête";
   if (status === "ACTIVE") return "active";
-  if (status === "AT_RISK") return "a risque";
+  if (status === "AT_RISK") return "à risque";
   return step?.status || "";
 }
 
@@ -66,7 +66,7 @@ export default function ProjectWorkflowStepper({ workflow, compact = false, vari
             <strong>{workflow?.completion || 0}%</strong>
           </div>
           <div>
-            <span>Etapes terminees</span>
+            <span>Étapes terminées</span>
             <strong>{doneCount}/{steps.length || 0}</strong>
           </div>
         </header>

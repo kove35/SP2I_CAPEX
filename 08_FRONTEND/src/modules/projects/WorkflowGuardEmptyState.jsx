@@ -22,7 +22,7 @@ export default function WorkflowGuardEmptyState({
         <span>{requiredStep || "Parcours projet"}</span>
         <strong>{title}</strong>
         <p>{message}</p>
-        {currentStep ? <small>Etape actuelle : {currentStep}</small> : null}
+        {currentStep ? <small>Étape actuelle : {currentStep}</small> : null}
       </div>
       {actionLabel && actionRoute ? (
         <button type="button" data-testid="workflow-empty-action" onClick={navigate}>

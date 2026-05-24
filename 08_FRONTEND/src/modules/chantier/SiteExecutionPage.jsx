@@ -16,7 +16,7 @@ const siteActions = [
     impact: "Chemin critique",
     owner: "Responsable chantier + achat",
     due: "Cette semaine",
-    status: "A traiter",
+    status: "À traiter",
   },
   {
     priority: "Moyenne",
@@ -25,7 +25,7 @@ const siteActions = [
     impact: "Risque planning moyen",
     owner: "Responsable achat",
     due: "7 jours",
-    status: "A surveiller",
+    status: "À surveiller",
   },
   {
     priority: "Moyenne",
@@ -34,7 +34,7 @@ const siteActions = [
     impact: "Risque de saturation site",
     owner: "Conducteur travaux",
     due: "Prochaine reunion chantier",
-    status: "A planifier",
+    status: "À planifier",
   },
 ];
 
@@ -51,8 +51,8 @@ const dependencies = [
 ];
 
 const planningRows = [
-  { lot: "L01 - Gros oeuvre", start: "-", required: "-", eta: "-", gap: "-", status: "A completer" },
-  { lot: "L07 - Electricite", start: "-", required: "10 j", eta: "14 j", gap: "+4 j", status: "A surveiller" },
+  { lot: "L01 - Gros oeuvre", start: "-", required: "-", eta: "-", gap: "-", status: "À compléter" },
+  { lot: "L07 - Electricite", start: "-", required: "10 j", eta: "14 j", gap: "+4 j", status: "À surveiller" },
   { lot: "Menuiserie aluminium", start: "-", required: "25 j", eta: "35 j", gap: "+10 j", status: "Critique" },
 ];
 
@@ -93,14 +93,14 @@ function getExecutionContext(projectId, scenarioCode, lastSimulation) {
   return {
     hasActiveDqe: Boolean(activeDqe),
     dqeLabel: activeDqe ? `DQE v${activeDqe.version_number}` : "Aucun DQE actif",
-    dqeStatus: activeDqe?.status === "CERTIFIED" ? "Certifie" : activeDqe?.status === "CERTIFIED_WITH_WARNINGS" ? "Certifie avec points a verifier" : activeDqe?.status === "SYNCED" ? "Synchronise" : "Non disponible",
+    dqeStatus: activeDqe?.status === "CERTIFIED" ? "Certifié" : activeDqe?.status === "CERTIFIED_WITH_WARNINGS" ? "Certifié avec points à vérifier" : activeDqe?.status === "SYNCED" ? "Synchronisé" : "Non disponible",
     trustScore: activeDqe?.trust_score,
     lines: activeDqe?.normalized_lines_count,
     dataLoss: activeDqe?.data_loss_count,
     reviewRequired: activeDqe?.review_required_count,
     scenarioLabel: scenario.label,
     scenarioStatus: lastSimulation ? "Simule" : "A lancer",
-    globalRisk: lastSimulation ? "Moyen" : "A evaluer",
+    globalRisk: lastSimulation ? "Moyen" : "À évaluer",
   };
 }
 
@@ -220,17 +220,17 @@ export default function SiteExecutionPage() {
       <section className="page-hero compact">
         <p className="eyebrow">Pilotage chantier</p>
         <h1>Planning, dependances, livraisons et stockage chantier</h1>
-        <p>Piloter les priorites chantier liees aux decisions CAPEX, aux livraisons et aux risques d'execution.</p>
+        <p>Piloter les priorités chantier liées aux décisions CAPEX, aux livraisons et aux risques d’exécution.</p>
       </section>
 
       <section className={`execution-context-strip ${context.hasActiveDqe ? "ready" : "blocked"}`}>
         <div>
           <strong>{context.dqeLabel}</strong>
-          <span>{context.hasActiveDqe ? `${context.dqeStatus} · Trust score ${context.trustScore ?? "-"}/100 · ${context.lines ?? "-"} lignes` : "Importez et validez un DQE avant de piloter l'execution chantier."}</span>
+          <span>{context.hasActiveDqe ? `${context.dqeStatus} · Trust score ${context.trustScore ?? "-"}/100 · ${context.lines ?? "-"} lignes` : "Importez et validez un DQE avant de piloter l’exécution chantier."}</span>
         </div>
         <div>
-          <strong>Scenario actif : {context.scenarioLabel}</strong>
-          <span>{context.scenarioStatus} · impact planning {context.scenarioStatus === "Simule" ? "a surveiller" : "non calcule"}</span>
+          <strong>Scénario actif : {context.scenarioLabel}</strong>
+          <span>{context.scenarioStatus} · impact planning {context.scenarioStatus === "Simule" ? "à surveiller" : "non calculé"}</span>
         </div>
         <div>
           <strong>Gouvernance</strong>
@@ -255,8 +255,8 @@ export default function SiteExecutionPage() {
         />
       ) : !procurementReady ? (
         <WorkflowGuardEmptyState
-          title="Approvisionnement a preparer"
-          message="Preparez les arbitrages achat avant de suivre l'execution chantier."
+          title="Approvisionnement à préparer"
+          message="Préparez les arbitrages achat avant de suivre l’exécution chantier."
           actionLabel="Ouvrir Approvisionnement"
           actionRoute="/app/procurement"
           currentStep={workflow.steps.find((step) => step.id === "procurement")?.status}
@@ -265,9 +265,9 @@ export default function SiteExecutionPage() {
         />
       ) : !executionReady && executionStatus === "REQUIRED" ? (
         <WorkflowGuardEmptyState
-          title="Execution a preparer"
-          message="L'approvisionnement est pret. Preparez les actions chantier avant le suivi operationnel."
-          actionLabel="Preparer l'execution"
+          title="Exécution à préparer"
+          message="L’approvisionnement est prêt. Préparez les actions chantier avant le suivi opérationnel."
+          actionLabel="Préparer l’exécution"
           actionRoute="/app/site?tab=planning"
           currentStep={workflow.steps.find((step) => step.id === "execution")?.status}
           requiredStep="Actions chantier"
@@ -277,14 +277,14 @@ export default function SiteExecutionPage() {
 
       {setupDone && !context.hasActiveDqe ? (
         <div className="app-warning">
-          Aucun DQE actif. Importez et validez un DQE avant de piloter l'execution chantier.
+          Aucun DQE actif. Importez et validez un DQE avant de piloter l’exécution chantier.
           <button type="button" className="link-button" onClick={() => navigate("/app/dqe?tab=import")}> Importer un DQE</button>
         </div>
       ) : null}
       {setupDone && !state.lastSimulation ? (
         <div className="app-warning">
-          Aucun scenario actif. Lancez une simulation pour estimer l'impact planning.
-          <button type="button" className="link-button" onClick={() => navigate("/app/simulation")}> Tester un scenario</button>
+          Aucun scénario actif. Lancez une simulation pour estimer l’impact planning.
+          <button type="button" className="link-button" onClick={() => navigate("/app/simulation")}> Tester un scénario</button>
         </div>
       ) : null}
 
@@ -297,9 +297,9 @@ export default function SiteExecutionPage() {
 
       <section className="metric-grid">
         <KpiCard label="Lots critiques" value={blockedLots} tone="warning" />
-        <KpiCard label="Livraisons a risque" value={criticalDeliveries} tone="warning" />
+        <KpiCard label="Livraisons à risque" value={criticalDeliveries} tone="warning" />
         <KpiCard label="Stockage utilise" value={`${storageUsed}%`} />
-        <KpiCard label="ETA a surveiller" value={watchedEta} />
+        <KpiCard label="ETA à surveiller" value={watchedEta} />
         <KpiCard label="Budget expose" value="A consolider" />
         <KpiCard label="Actions requises" value={siteActions.length} tone="warning" />
       </section>
@@ -343,7 +343,7 @@ export default function SiteExecutionPage() {
         <aside className="context-panel">
           <AnalyticsCard title="Impact approvisionnement" eyebrow="Lien achat / chantier">
             <ul className="signal-list">
-              <li>Source approvisionnement : scenario {context.scenarioLabel}.</li>
+              <li>Source approvisionnement : scénario {context.scenarioLabel}.</li>
               <li>Lignes import : a consolider depuis le workbench achat.</li>
               <li>Lignes hybrides : a arbitrer avec le responsable chantier.</li>
               <li>ETA moyen import : a confirmer par fournisseur.</li>
@@ -353,7 +353,7 @@ export default function SiteExecutionPage() {
               Ouvrir Approvisionnement
             </button>
           </AnalyticsCard>
-          <AnalyticsCard title="Alertes chantier a remonter" eyebrow="Execution risk">
+          <AnalyticsCard title="Alertes chantier à remonter" eyebrow="Risque exécution">
             <ul className="signal-list">
               <li>Lot bloque : L01 - Gros oeuvre et demolition, cause arbitrage achat a securiser.</li>
               <li>Livraison critique : Menuiserie aluminium, ecart ETA +10 jours.</li>

@@ -548,7 +548,7 @@ export default function DqePage() {
               <ul className="signal-list">
                 <li>Controle financier : tolerance maximale 0,5 % entre le fichier source et FACT_METRE.</li>
                 <li>Lignes fichier : {qualityKpis.lignes_excel ?? lineCount} | lignes en base : {qualityKpis.lignes_fact_metre ?? "-"}.</li>
-                <li>Classification metier a completer : {qualityKpis.lignes_famille_a_classer ?? "-"} ligne(s).</li>
+                <li>Classification métier à compléter : {qualityKpis.lignes_famille_a_classer ?? "-"} ligne(s).</li>
                 <li>Source retenue : {(qualityMeta.source?.source_fact_metre || [recommendedSheet]).join(", ") || "-"}.</li>
                 <li>Statut QA : {qualityMeta.qa_status || (qualityWarnings.length ? "WARN" : "PASS")}.</li>
               </ul>
