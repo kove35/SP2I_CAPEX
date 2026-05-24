@@ -174,3 +174,31 @@ class SiteExecutionAction(Base):
         ),
         Index("ix_site_execution_actions_project_status", "project_id", "status"),
     )
+
+
+class WorkflowEvent(Base):
+    """
+    Audit trail metier du workflow projet.
+
+    Les evenements sont ecrits en best effort pour ne jamais bloquer les actions
+    principales si l'audit est momentanement indisponible.
+    """
+
+    __tablename__ = "workflow_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    entity_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    entity_id: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    previous_status: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    new_status: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    metadata_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_workflow_events_project_created", "project_id", "created_at"),
+        Index("ix_workflow_events_project_type", "project_id", "event_type"),
+    )

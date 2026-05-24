@@ -313,3 +313,21 @@ class SiteExecutionActionStatus(BaseModel):
 class SiteExecutionActionGenerateResponse(BaseModel):
     inserted_count: int = 0
     status: SiteExecutionActionStatus = Field(default_factory=SiteExecutionActionStatus)
+
+
+class WorkflowEventOut(BaseModel):
+    id: int
+    project_id: int
+    user_id: int | None = None
+    event_type: str = ""
+    entity_type: str = ""
+    entity_id: str = ""
+    previous_status: str = ""
+    new_status: str = ""
+    message: str = ""
+    metadata_json: str = "{}"
+    created_at: datetime | None = None
+
+
+class WorkflowEventListResponse(BaseModel):
+    events: list[WorkflowEventOut]

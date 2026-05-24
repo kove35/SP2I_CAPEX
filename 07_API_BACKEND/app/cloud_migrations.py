@@ -510,6 +510,38 @@ def ensure_powerbi_schema(engine: Engine) -> None:
 
     CREATE INDEX IF NOT EXISTS ix_site_execution_actions_scenario
         ON site_execution_actions (scenario_id);
+
+    CREATE TABLE IF NOT EXISTS workflow_events (
+        id BIGSERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        user_id INTEGER NULL,
+        event_type VARCHAR(100) NOT NULL DEFAULT '',
+        entity_type VARCHAR(100) NOT NULL DEFAULT '',
+        entity_id VARCHAR(100) NOT NULL DEFAULT '',
+        previous_status VARCHAR(100) NOT NULL DEFAULT '',
+        new_status VARCHAR(100) NOT NULL DEFAULT '',
+        message TEXT NOT NULL DEFAULT '',
+        metadata_json TEXT NOT NULL DEFAULT '{}'::text,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE workflow_events
+        ADD COLUMN IF NOT EXISTS project_id INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS user_id INTEGER NULL,
+        ADD COLUMN IF NOT EXISTS event_type VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS entity_type VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS entity_id VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS previous_status VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS new_status VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS message TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS metadata_json TEXT NOT NULL DEFAULT '{}'::text,
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+    CREATE INDEX IF NOT EXISTS ix_workflow_events_project_created
+        ON workflow_events (project_id, created_at DESC);
+
+    CREATE INDEX IF NOT EXISTS ix_workflow_events_project_type
+        ON workflow_events (project_id, event_type);
     """
 
     with engine.begin() as connection:

@@ -522,3 +522,18 @@ export async function listProjectExecutionActions(projectId, scenarioId) {
     return null;
   }
 }
+
+export async function listProjectWorkflowEvents(projectId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({
+      url: `/projects/${projectId}/workflow/events`,
+      headers: authHeaders(),
+    });
+  } catch {
+    return null;
+  }
+}
