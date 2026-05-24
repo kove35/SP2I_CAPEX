@@ -1,5 +1,5 @@
 import React from "react";
-import { RefreshCcw } from "lucide-react";
+import { Download, RefreshCcw } from "lucide-react";
 import CapexHeatmap from "../../components/charts/CapexHeatmap";
 import CapexTimeline from "../../components/charts/CapexTimeline";
 import CapexWaterfall from "../../components/charts/CapexWaterfall";
@@ -12,7 +12,7 @@ import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import { useAppStore } from "../../store/appStore.jsx";
 import ProjectQuickActions from "../../components/ProjectQuickActions";
-import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey, listProjectWorkflowEvents } from "../../services/projectService";
+import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey, listProjectWorkflowEvents, exportProjectReportPdf } from "../../services/projectService";
 import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import AnalyticsCard from "../../ui/AnalyticsCard";
@@ -334,6 +334,8 @@ export default function AnalyticsPage() {
   const [workflowEvents, setWorkflowEvents] = React.useState([]);
   const { state } = useAppStore();
   const project = getWorkspaceProject(state);
+  const [isExportingReport, setIsExportingReport] = React.useState(false);
+  const [exportReportError, setExportReportError] = React.useState("");
   const workflow = React.useMemo(
     () => getProjectWorkflow(project, state),
     [project, state]
@@ -374,6 +376,18 @@ export default function AnalyticsPage() {
     engine.qa.refetch();
   };
 
+  const handleExportReport = async () => {
+    setExportReportError("");
+    setIsExportingReport(true);
+    try {
+      await exportProjectReportPdf(project?.id, project?.name || "Projet");
+    } catch (error) {
+      setExportReportError(error?.message || "Export rapport indisponible pour le moment.");
+    } finally {
+      setIsExportingReport(false);
+    }
+  };
+
   const renderDashboard = () => {
     if (dashboard === "monitoring") return <AnalyticsHealthPage qa={engine.qa} />;
     if (dashboard === "direction") {
@@ -412,6 +426,10 @@ export default function AnalyticsPage() {
         <button type="button" className="icon-text-button" onClick={refreshAll}>
           <RefreshCcw size={15} />
           Rafraichir
+        </button>
+        <button type="button" className="icon-text-button" onClick={handleExportReport} disabled={isExportingReport} data-testid="export-report-button">
+          <Download size={15} />
+          {isExportingReport ? "Export en cours..." : "Exporter rapport projet"}
         </button>
       </section>
 

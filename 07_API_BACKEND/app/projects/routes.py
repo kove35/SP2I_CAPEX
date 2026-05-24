@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.auth.models import User, WorkspaceMembership
 from app.auth.routes import get_current_user
+from app.services.project_report_export import build_project_report_pdf, generate_project_report_filename
 from app.database import get_db
 from app.projects.models import Project
 from app.projects.schemas import (
@@ -43,6 +45,7 @@ from app.services.procurement_decisions import (
     procurement_decision_status,
     update_procurement_decision,
 )
+from app.services.procurement_export import build_procurement_export_workbook, generate_procurement_export_filename
 from app.services.site_execution_actions import (
     execution_action_status,
     generate_site_execution_actions,
@@ -898,6 +901,19 @@ def get_project_workflow(
     return compute_project_workflow_status(_get_owned_project(db, current_user, project_id), db)
 
 
+@router.get("/{project_id}/report.pdf")
+def get_project_report_pdf(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = _get_owned_project(db, current_user, project_id)
+    pdf_stream = build_project_report_pdf(project.id, db)
+    filename = generate_project_report_filename(project)
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(pdf_stream, media_type="application/pdf", headers=headers)
+
+
 @router.get("/{project_id}/workflow/events", response_model=WorkflowEventListResponse)
 def get_project_workflow_events(
     project_id: int,
@@ -1000,6 +1016,23 @@ def get_project_procurement_status(
     if status is None:
         status = _resolve_project_procurement_status(project_id, scenario, db)
     return ProcurementDecisionStatus(**status)
+
+
+@router.get("/{project_id}/procurement/export.xlsx")
+def export_project_procurement_workbook(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = _get_owned_project(db, current_user, project_id)
+    workflow = compute_project_workflow_status(project, db).model_dump()
+    buffer = build_procurement_export_workbook(project_id, db, workflow=workflow)
+    filename = generate_procurement_export_filename(project)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{project_id}/execution/actions", response_model=SiteExecutionActionListResponse)

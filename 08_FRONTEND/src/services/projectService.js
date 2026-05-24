@@ -1,5 +1,5 @@
 import { getStoredSession } from "./authService";
-import { request } from "./apiClient";
+import { apiClient, request } from "./apiClient";
 
 const LOCAL_PROJECTS_KEY = "sp2i:projects";
 
@@ -536,4 +536,54 @@ export async function listProjectWorkflowEvents(projectId) {
   } catch {
     return null;
   }
+}
+
+export async function exportProcurementWorkbook(projectId, projectName = "SP2I") {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    throw new Error("Export backend indisponible en mode demo/local.");
+  }
+  const response = await apiClient({
+    url: `/projects/${projectId}/procurement/export.xlsx`,
+    responseType: "blob",
+    headers: authHeaders(),
+  });
+  const contentDisposition = response.headers?.["content-disposition"] || "";
+  const match = contentDisposition.match(/filename="?([^"]+)"?/i);
+  const fallbackName = `Dossier_Achat_SP2I_${String(projectName || "Projet").replace(/[^A-Za-z0-9]+/g, "_")}.xlsx`;
+  const filename = match?.[1] || fallbackName;
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  return filename;
+}
+
+export async function exportProjectReportPdf(projectId, projectName = "SP2I") {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    throw new Error("Export backend indisponible en mode demo/local.");
+  }
+  const response = await apiClient({
+    url: `/projects/${projectId}/report.pdf`,
+    responseType: "blob",
+    headers: authHeaders(),
+  });
+  const contentDisposition = response.headers?.["content-disposition"] || "";
+  const match = contentDisposition.match(/filename="?([^"]+)"?/i);
+  const fallbackName = `Rapport_Projet_SP2I_${String(projectName || "Projet").replace(/[^A-Za-z0-9]+/g, "_")}.pdf`;
+  const filename = match?.[1] || fallbackName;
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  return filename;
 }

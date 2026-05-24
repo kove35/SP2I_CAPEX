@@ -172,6 +172,14 @@ test("workspace summary shows next recommended action", async ({ page }) => {
   });
 });
 
+test("pilotage analytics page shows export rapport projet button", async ({ page }) => {
+  const configuredCard = await configureFirstUnconfiguredProject(page, "Projet export rapport");
+  await configuredCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await page.goto("/app/analytics", { waitUntil: "domcontentloaded" });
+
+  await expect(page.getByTestId("export-report-button")).toBeVisible();
+});
+
 test("unconfigured project limits quick actions", async ({ page }) => {
   await openUnconfiguredProjectWorkspace(page);
 
@@ -248,6 +256,7 @@ test("procurement page without scenario shows guided empty state", async ({ page
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/aucun sc[eé]nario actif|lancez une simulation/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/tester un sc[eé]nario/i);
+  await expect(page.getByRole("button", { name: /exporter dossier achat/i })).toBeVisible();
   await expect(page.getByTestId("procurement-validation-summary")).toContainText(/d[eé]cisions achat/i);
 });
 

@@ -12,7 +12,7 @@ import { formatCurrency, formatMoney, formatPercent } from "../../shared/formatt
 import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
 import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getProjectWorkflow } from "../../services/projectService";
+import { exportProcurementWorkbook, getProjectWorkflow } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const LANDED_COST_RATES = [
@@ -772,6 +772,7 @@ export default function ProcurementPage() {
   const [analysisPanelClosed, setAnalysisPanelClosed] = React.useState(false);
   const [gainDrawerOpen, setGainDrawerOpen] = React.useState(false);
   const [exportNotice, setExportNotice] = React.useState("");
+  const [exportingWorkbook, setExportingWorkbook] = React.useState(false);
   const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilter, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
   const { state } = useAppStore();
@@ -837,18 +838,30 @@ export default function ProcurementPage() {
   };
 
   const handleProcurementExport = async () => {
+    setExportingWorkbook(true);
     if (!sourceContext.hasActiveDqe || !state.lastSimulation) {
       setExportNotice("Dossier exportable en version provisoire. Certaines references necessitent encore validation DQE ou scenario.");
     } else {
       setExportNotice("Dossier achat exporte avec source DQE, scenario actif, hypotheses et validations en attente.");
     }
-    const blob = await exportAnalyticsProcurementFile(filters);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "SP2I_dossier_achat_chine.xlsx";
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      await exportProcurementWorkbook(state.activeProject, state.activeProjectDetails?.name || sourceContext.scenarioLabel);
+    } catch (error) {
+      try {
+        const blob = await exportAnalyticsProcurementFile(filters);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "SP2I_dossier_achat_chine.xlsx";
+        link.click();
+        URL.revokeObjectURL(url);
+        setExportNotice("Export backend indisponible. Dossier achat analytique exporte en fallback.");
+      } catch {
+        setExportNotice(error?.message || "Export indisponible pour le moment.");
+      }
+    } finally {
+      setExportingWorkbook(false);
+    }
   };
 
   const handleLotClick = (lot) => {
@@ -875,7 +888,9 @@ export default function ProcurementPage() {
               ))}
             </select>
           </label>
-          <button type="button" onClick={handleProcurementExport}>Exporter dossier achat</button>
+          <button type="button" onClick={handleProcurementExport} disabled={exportingWorkbook}>
+            {exportingWorkbook ? "Export en cours..." : "Exporter dossier achat"}
+          </button>
         </div>
       </section>
 
