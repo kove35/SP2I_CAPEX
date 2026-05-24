@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -20,10 +20,21 @@ from app.projects.schemas import (
     ProjectSetupUpdate,
     ProjectWorkflowResponse,
     ExecutionStatus,
+    ProcurementDecisionBootstrapResponse,
+    ProcurementDecisionListResponse,
+    ProcurementDecisionOut,
+    ProcurementDecisionStatus,
+    ProcurementDecisionUpdate,
     ProcurementStatus,
     ScenarioStatus,
     WorkflowAction,
     WorkflowStep,
+)
+from app.services.procurement_decisions import (
+    bootstrap_procurement_decisions_from_simulation,
+    list_procurement_decisions,
+    procurement_decision_status,
+    update_procurement_decision,
 )
 from app.services.service_pipeline import ServicePipeline
 
@@ -332,6 +343,15 @@ def _resolve_project_procurement_status(
             message="Le scenario est disponible. Preparez les arbitrages achat.",
         ).model_dump()
 
+    decision_status = procurement_decision_status(
+        db,
+        project_id,
+        scenario_id=scenario_status.get("scenario_id"),
+        scenario_ready=True,
+    )
+    if decision_status is not None:
+        return ProcurementStatus(**decision_status).model_dump()
+
     filters = ["fs.projet_id = :project_id"]
     params: dict[str, Any] = {"project_id": project_id}
     if scenario_status.get("run_id"):
@@ -354,7 +374,7 @@ def _resolve_project_procurement_status(
                            OR UPPER(COALESCE(fs.decision_type, '')) IN ('HYBRIDE', 'HYBRID', 'MIXTE')
                     ) AS hybrid_lines_count
                 FROM fact_simulation fs
-                WHERE {" OR ".join(filters)}
+                WHERE {" AND ".join(filters)}
                   AND COALESCE(fs.designation, '') <> ''
                   AND COALESCE(fs.decision_import, '') <> ''
                 """
@@ -840,3 +860,61 @@ def get_project_workflow(
     db: Session = Depends(get_db),
 ) -> ProjectWorkflowResponse:
     return compute_project_workflow_status(_get_owned_project(db, current_user, project_id), db)
+
+
+@router.get("/{project_id}/procurement/decisions", response_model=ProcurementDecisionListResponse)
+def get_project_procurement_decisions(
+    project_id: int,
+    scenario_id: str | None = Query(default=None),
+    limit: int = Query(default=500, ge=1, le=2000),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProcurementDecisionListResponse:
+    _get_owned_project(db, current_user, project_id)
+    rows = list_procurement_decisions(db, project_id, scenario_id=scenario_id, limit=limit, offset=offset)
+    return ProcurementDecisionListResponse(decisions=[ProcurementDecisionOut(**row) for row in rows])
+
+
+@router.post("/{project_id}/procurement/decisions/bootstrap", response_model=ProcurementDecisionBootstrapResponse)
+def bootstrap_project_procurement_decisions(
+    project_id: int,
+    scenario_id: str | None = Query(default=None),
+    run_id: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProcurementDecisionBootstrapResponse:
+    _get_owned_project(db, current_user, project_id)
+    payload = bootstrap_procurement_decisions_from_simulation(db, project_id, scenario_id=scenario_id, run_id=run_id)
+    return ProcurementDecisionBootstrapResponse(**payload)
+
+
+@router.patch("/{project_id}/procurement/decisions/{decision_id}", response_model=ProcurementDecisionOut)
+def patch_project_procurement_decision(
+    project_id: int,
+    decision_id: int,
+    payload: ProcurementDecisionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProcurementDecisionOut:
+    _get_owned_project(db, current_user, project_id)
+    row = update_procurement_decision(db, project_id, decision_id, payload.model_dump(exclude_unset=True))
+    if not row:
+        raise HTTPException(status_code=404, detail="Decision achat introuvable.")
+    return ProcurementDecisionOut(**row)
+
+
+@router.get("/{project_id}/procurement/status", response_model=ProcurementDecisionStatus)
+def get_project_procurement_status(
+    project_id: int,
+    scenario_id: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProcurementDecisionStatus:
+    _get_owned_project(db, current_user, project_id)
+    scenario = _resolve_project_scenario_status(project_id, db)
+    scenario_ready = bool(scenario.get("status") in {"READY", "SIMULATED", "VALIDATED"} and scenario.get("is_ready"))
+    status = procurement_decision_status(db, project_id, scenario_id=scenario_id or scenario.get("scenario_id"), scenario_ready=scenario_ready)
+    if status is None:
+        status = _resolve_project_procurement_status(project_id, scenario, db)
+    return ProcurementDecisionStatus(**status)

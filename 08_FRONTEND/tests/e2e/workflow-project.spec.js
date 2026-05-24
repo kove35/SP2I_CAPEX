@@ -248,6 +248,7 @@ test("procurement page without scenario shows guided empty state", async ({ page
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/aucun sc[eé]nario actif|lancez une simulation/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/tester un sc[eé]nario/i);
+  await expect(page.getByTestId("procurement-validation-summary")).toContainText(/d[eé]cisions achat/i);
 });
 
 test("scenario pret sans approvisionnement affiche CTA Preparer l'approvisionnement", async ({ page }) => {

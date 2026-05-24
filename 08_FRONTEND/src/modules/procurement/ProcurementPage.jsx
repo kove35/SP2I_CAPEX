@@ -782,6 +782,7 @@ export default function ProcurementPage() {
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const scenarioReady = workflow.scenario?.is_ready || workflow.steps.find((step) => step.id === "scenarios")?.state === "done";
   const procurementStatus = workflow.procurement?.status || workflow.steps.find((step) => step.id === "procurement")?.status;
+  const procurementValidation = workflow.procurement || {};
 
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
@@ -939,6 +940,15 @@ export default function ProcurementPage() {
       {setupDone && scenarioReady && ["READY", "EXPORTABLE"].includes(procurementStatus) ? (
         <div className="app-success">Approvisionnement prêt pour exécution. Le dossier achat peut être exploité.</div>
       ) : null}
+
+      <section className="procurement-scope-note" data-testid="procurement-validation-summary">
+        <span>Décisions achat : {Number(procurementValidation.decisions_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Validées : {Number(procurementValidation.validated_decisions_count || 0).toLocaleString("fr-FR")}</span>
+        <span>En attente : {Number(procurementValidation.pending_decisions_count || 0).toLocaleString("fr-FR")}</span>
+        <span>À arbitrer : {Number(procurementValidation.to_arbitrate_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Bloquées : {Number(procurementValidation.blocked_decisions_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Source : {procurementValidation.source || "fact_simulation"}</span>
+      </section>
 
       {hasActiveAnalysis ? (
         <ActiveProcurementAnalysis

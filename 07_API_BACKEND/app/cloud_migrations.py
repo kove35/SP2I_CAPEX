@@ -369,6 +369,76 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS governance_quality JSONB NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE INDEX IF NOT EXISTS ix_dqe_import_audit_created_at ON dqe_import_audit(created_at);
+
+    CREATE TABLE IF NOT EXISTS procurement_decisions (
+        id BIGSERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        scenario_id VARCHAR(36) NULL,
+        simulation_line_id BIGINT NULL,
+        lot VARCHAR(255) NOT NULL DEFAULT '',
+        family VARCHAR(255) NOT NULL DEFAULT '',
+        designation VARCHAR(500) NOT NULL DEFAULT '',
+        quantity DOUBLE PRECISION NOT NULL DEFAULT 0,
+        unit VARCHAR(50) NOT NULL DEFAULT '',
+        ai_decision VARCHAR(50) NOT NULL DEFAULT 'REVIEW_REQUIRED',
+        ai_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ai_reason TEXT NOT NULL DEFAULT '',
+        proposed_decision VARCHAR(50) NOT NULL DEFAULT 'REVIEW_REQUIRED',
+        validated_decision VARCHAR(50) NOT NULL DEFAULT '',
+        validation_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+        supplier_selected VARCHAR(255) NOT NULL DEFAULT '',
+        supplier_country VARCHAR(150) NOT NULL DEFAULT '',
+        purchase_mode VARCHAR(50) NOT NULL DEFAULT '',
+        estimated_local_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        estimated_import_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        estimated_savings DOUBLE PRECISION NOT NULL DEFAULT 0,
+        risk_level VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+        validator_name VARCHAR(255) NOT NULL DEFAULT '',
+        validator_id INTEGER NULL,
+        validated_at TIMESTAMPTZ NULL,
+        comment TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE procurement_decisions
+        ADD COLUMN IF NOT EXISTS project_id INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS scenario_id VARCHAR(36) NULL,
+        ADD COLUMN IF NOT EXISTS simulation_line_id BIGINT NULL,
+        ADD COLUMN IF NOT EXISTS lot VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS family VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS designation VARCHAR(500) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS quantity DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS unit VARCHAR(50) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS ai_decision VARCHAR(50) NOT NULL DEFAULT 'REVIEW_REQUIRED',
+        ADD COLUMN IF NOT EXISTS ai_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS ai_reason TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS proposed_decision VARCHAR(50) NOT NULL DEFAULT 'REVIEW_REQUIRED',
+        ADD COLUMN IF NOT EXISTS validated_decision VARCHAR(50) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS validation_status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+        ADD COLUMN IF NOT EXISTS supplier_selected VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS supplier_country VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS purchase_mode VARCHAR(50) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS estimated_local_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS estimated_import_cost DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS estimated_savings DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS risk_level VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+        ADD COLUMN IF NOT EXISTS validator_name VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS validator_id INTEGER NULL,
+        ADD COLUMN IF NOT EXISTS validated_at TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS comment TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_procurement_decision_source_line
+        ON procurement_decisions (project_id, scenario_id, simulation_line_id)
+        ;
+
+    CREATE INDEX IF NOT EXISTS ix_procurement_decisions_project_status
+        ON procurement_decisions (project_id, validation_status);
+
+    CREATE INDEX IF NOT EXISTS ix_procurement_decisions_scenario
+        ON procurement_decisions (scenario_id);
     """
 
     with engine.begin() as connection:
