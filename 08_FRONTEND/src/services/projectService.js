@@ -232,6 +232,10 @@ export function getProjectWorkflow(project = {}, appState = {}) {
       status: executionStatusOverride || (executionReady ? "READY" : executionRequired ? "REQUIRED" : "BLOCKED"),
       is_ready: executionReady,
       actions_count: Number(project.execution_actions_count || 0),
+      open_count: Number(project.execution_open_count || 0),
+      done_count: Number(project.execution_done_count || 0),
+      blocked_count: Number(project.execution_blocked_count || 0),
+      at_risk_count: Number(project.execution_at_risk_count || 0),
       critical_lots_count: Number(project.execution_critical_lots_count || 0),
       deliveries_to_watch_count: Number(project.execution_deliveries_to_watch_count || 0),
       eta_to_watch_count: Number(project.execution_eta_to_watch_count || 0),
@@ -462,6 +466,55 @@ export async function listProjectProcurementDecisions(projectId, scenarioId) {
   try {
     return await request({
       url: `/projects/${projectId}/procurement/decisions`,
+      params: scenarioId ? { scenario_id: scenarioId } : undefined,
+      headers: authHeaders(),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function getProjectExecutionActionStatus(projectId, scenarioId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({
+      url: `/projects/${projectId}/execution/status`,
+      params: scenarioId ? { scenario_id: scenarioId } : undefined,
+      headers: authHeaders(),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function generateProjectExecutionActions(projectId, scenarioId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({
+      url: `/projects/${projectId}/execution/actions/generate`,
+      method: "POST",
+      params: scenarioId ? { scenario_id: scenarioId } : undefined,
+      headers: authHeaders(),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function listProjectExecutionActions(projectId, scenarioId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({
+      url: `/projects/${projectId}/execution/actions`,
       params: scenarioId ? { scenario_id: scenarioId } : undefined,
       headers: authHeaders(),
     });

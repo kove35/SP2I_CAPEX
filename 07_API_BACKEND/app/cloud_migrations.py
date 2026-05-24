@@ -439,6 +439,77 @@ def ensure_powerbi_schema(engine: Engine) -> None:
 
     CREATE INDEX IF NOT EXISTS ix_procurement_decisions_scenario
         ON procurement_decisions (scenario_id);
+
+    CREATE TABLE IF NOT EXISTS site_execution_actions (
+        id BIGSERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        scenario_id VARCHAR(36) NULL,
+        procurement_decision_id BIGINT NULL,
+        simulation_line_id BIGINT NULL,
+        lot VARCHAR(255) NOT NULL DEFAULT '',
+        family VARCHAR(255) NOT NULL DEFAULT '',
+        designation VARCHAR(500) NOT NULL DEFAULT '',
+        action_type VARCHAR(50) NOT NULL DEFAULT 'COORDINATION',
+        title VARCHAR(255) NOT NULL DEFAULT '',
+        problem TEXT NOT NULL DEFAULT '',
+        impact TEXT NOT NULL DEFAULT '',
+        recommended_action TEXT NOT NULL DEFAULT '',
+        priority VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+        risk_level VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+        status VARCHAR(50) NOT NULL DEFAULT 'TO_DO',
+        responsible_role VARCHAR(150) NOT NULL DEFAULT '',
+        responsible_name VARCHAR(255) NOT NULL DEFAULT '',
+        due_date TIMESTAMPTZ NULL,
+        started_at TIMESTAMPTZ NULL,
+        completed_at TIMESTAMPTZ NULL,
+        delivery_eta_days DOUBLE PRECISION NOT NULL DEFAULT 0,
+        date_needed TIMESTAMPTZ NULL,
+        delay_days DOUBLE PRECISION NOT NULL DEFAULT 0,
+        storage_impact DOUBLE PRECISION NOT NULL DEFAULT 0,
+        criticality_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        source VARCHAR(100) NOT NULL DEFAULT 'procurement_decisions',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE site_execution_actions
+        ADD COLUMN IF NOT EXISTS project_id INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS scenario_id VARCHAR(36) NULL,
+        ADD COLUMN IF NOT EXISTS procurement_decision_id BIGINT NULL,
+        ADD COLUMN IF NOT EXISTS simulation_line_id BIGINT NULL,
+        ADD COLUMN IF NOT EXISTS lot VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS family VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS designation VARCHAR(500) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS action_type VARCHAR(50) NOT NULL DEFAULT 'COORDINATION',
+        ADD COLUMN IF NOT EXISTS title VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS problem TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS impact TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS recommended_action TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS priority VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+        ADD COLUMN IF NOT EXISTS risk_level VARCHAR(50) NOT NULL DEFAULT 'MEDIUM',
+        ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'TO_DO',
+        ADD COLUMN IF NOT EXISTS responsible_role VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS responsible_name VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS due_date TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS delivery_eta_days DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS date_needed TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS delay_days DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS storage_impact DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS criticality_score DOUBLE PRECISION NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS source VARCHAR(100) NOT NULL DEFAULT 'procurement_decisions',
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_site_execution_action_source
+        ON site_execution_actions (project_id, scenario_id, procurement_decision_id, action_type);
+
+    CREATE INDEX IF NOT EXISTS ix_site_execution_actions_project_status
+        ON site_execution_actions (project_id, status);
+
+    CREATE INDEX IF NOT EXISTS ix_site_execution_actions_scenario
+        ON site_execution_actions (scenario_id);
     """
 
     with engine.begin() as connection:

@@ -148,6 +148,10 @@ class ExecutionStatus(BaseModel):
     status: str = "BLOCKED"
     is_ready: bool = False
     actions_count: int = 0
+    open_count: int = 0
+    done_count: int = 0
+    blocked_count: int = 0
+    at_risk_count: int = 0
     critical_lots_count: int = 0
     deliveries_to_watch_count: int = 0
     eta_to_watch_count: int = 0
@@ -242,3 +246,70 @@ class ProcurementDecisionStatus(BaseModel):
 class ProcurementDecisionBootstrapResponse(BaseModel):
     inserted_count: int = 0
     status: ProcurementDecisionStatus = Field(default_factory=ProcurementDecisionStatus)
+
+
+class SiteExecutionActionBase(BaseModel):
+    lot: str = ""
+    family: str = ""
+    designation: str = ""
+    action_type: str = "COORDINATION"
+    title: str = ""
+    problem: str = ""
+    impact: str = ""
+    recommended_action: str = ""
+    priority: str = "MEDIUM"
+    risk_level: str = "MEDIUM"
+    status: str = "TO_DO"
+    responsible_role: str = ""
+    responsible_name: str = ""
+    due_date: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    delivery_eta_days: float = 0
+    date_needed: datetime | None = None
+    delay_days: float = 0
+    storage_impact: float = 0
+    criticality_score: float = 0
+    source: str = "procurement_decisions"
+
+
+class SiteExecutionActionUpdate(BaseModel):
+    status: str | None = None
+    responsible_name: str | None = None
+    responsible_role: str | None = None
+    due_date: datetime | None = None
+    recommended_action: str | None = None
+
+
+class SiteExecutionActionOut(SiteExecutionActionBase):
+    id: int
+    project_id: int
+    scenario_id: str | None = None
+    procurement_decision_id: int | None = None
+    simulation_line_id: int | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class SiteExecutionActionListResponse(BaseModel):
+    actions: list[SiteExecutionActionOut]
+
+
+class SiteExecutionActionStatus(BaseModel):
+    status: str = "BLOCKED"
+    is_ready: bool = False
+    actions_count: int = 0
+    open_count: int = 0
+    done_count: int = 0
+    blocked_count: int = 0
+    at_risk_count: int = 0
+    critical_lots_count: int = 0
+    deliveries_to_watch_count: int = 0
+    eta_to_watch_count: int = 0
+    source: str = "site_execution_actions"
+    message: str = ""
+
+
+class SiteExecutionActionGenerateResponse(BaseModel):
+    inserted_count: int = 0
+    status: SiteExecutionActionStatus = Field(default_factory=SiteExecutionActionStatus)

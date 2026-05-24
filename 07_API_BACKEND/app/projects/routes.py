@@ -27,6 +27,11 @@ from app.projects.schemas import (
     ProcurementDecisionUpdate,
     ProcurementStatus,
     ScenarioStatus,
+    SiteExecutionActionGenerateResponse,
+    SiteExecutionActionListResponse,
+    SiteExecutionActionOut,
+    SiteExecutionActionStatus,
+    SiteExecutionActionUpdate,
     WorkflowAction,
     WorkflowStep,
 )
@@ -35,6 +40,12 @@ from app.services.procurement_decisions import (
     list_procurement_decisions,
     procurement_decision_status,
     update_procurement_decision,
+)
+from app.services.site_execution_actions import (
+    execution_action_status,
+    generate_site_execution_actions,
+    list_site_execution_actions,
+    update_site_execution_action,
 )
 from app.services.service_pipeline import ServicePipeline
 
@@ -445,6 +456,15 @@ def _resolve_project_execution_status(
             message="L'approvisionnement est pret. Preparez les actions chantier.",
         ).model_dump()
 
+    action_status = execution_action_status(
+        db,
+        project_id,
+        scenario_id=scenario_status.get("scenario_id"),
+        procurement_ready=True,
+    )
+    if action_status is not None:
+        return ExecutionStatus(**action_status).model_dump()
+
     filters = ["fs.projet_id = :project_id"]
     params: dict[str, Any] = {"project_id": project_id}
     if scenario_status.get("run_id"):
@@ -476,7 +496,7 @@ def _resolve_project_execution_status(
                     ) AS deliveries_to_watch_count,
                     COUNT(*) FILTER (WHERE COALESCE(fs.lead_time_total, 0) > 0) AS eta_to_watch_count
                 FROM fact_simulation fs
-                WHERE {" OR ".join(filters)}
+                WHERE {" AND ".join(filters)}
                   AND COALESCE(fs.designation, '') <> ''
                 """
             ),
@@ -918,3 +938,62 @@ def get_project_procurement_status(
     if status is None:
         status = _resolve_project_procurement_status(project_id, scenario, db)
     return ProcurementDecisionStatus(**status)
+
+
+@router.get("/{project_id}/execution/actions", response_model=SiteExecutionActionListResponse)
+def get_project_execution_actions(
+    project_id: int,
+    scenario_id: str | None = Query(default=None),
+    limit: int = Query(default=500, ge=1, le=2000),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SiteExecutionActionListResponse:
+    _get_owned_project(db, current_user, project_id)
+    rows = list_site_execution_actions(db, project_id, scenario_id=scenario_id, limit=limit, offset=offset)
+    return SiteExecutionActionListResponse(actions=[SiteExecutionActionOut(**row) for row in rows])
+
+
+@router.post("/{project_id}/execution/actions/generate", response_model=SiteExecutionActionGenerateResponse)
+def generate_project_execution_actions(
+    project_id: int,
+    scenario_id: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SiteExecutionActionGenerateResponse:
+    _get_owned_project(db, current_user, project_id)
+    scenario = _resolve_project_scenario_status(project_id, db)
+    payload = generate_site_execution_actions(db, project_id, scenario_id=scenario_id or scenario.get("scenario_id"))
+    return SiteExecutionActionGenerateResponse(**payload)
+
+
+@router.patch("/{project_id}/execution/actions/{action_id}", response_model=SiteExecutionActionOut)
+def patch_project_execution_action(
+    project_id: int,
+    action_id: int,
+    payload: SiteExecutionActionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SiteExecutionActionOut:
+    _get_owned_project(db, current_user, project_id)
+    row = update_site_execution_action(db, project_id, action_id, payload.model_dump(exclude_unset=True))
+    if not row:
+        raise HTTPException(status_code=404, detail="Action chantier introuvable.")
+    return SiteExecutionActionOut(**row)
+
+
+@router.get("/{project_id}/execution/status", response_model=SiteExecutionActionStatus)
+def get_project_execution_status(
+    project_id: int,
+    scenario_id: str | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SiteExecutionActionStatus:
+    _get_owned_project(db, current_user, project_id)
+    scenario = _resolve_project_scenario_status(project_id, db)
+    procurement = _resolve_project_procurement_status(project_id, scenario, db)
+    procurement_ready = bool(procurement.get("status") in {"READY", "EXPORTABLE"} and procurement.get("is_ready"))
+    status = execution_action_status(db, project_id, scenario_id=scenario_id or scenario.get("scenario_id"), procurement_ready=procurement_ready)
+    if status is None:
+        status = _resolve_project_execution_status(project_id, procurement, scenario, db)
+    return SiteExecutionActionStatus(**status)

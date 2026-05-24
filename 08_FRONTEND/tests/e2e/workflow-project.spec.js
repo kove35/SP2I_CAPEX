@@ -287,6 +287,9 @@ test("approvisionnement pret sans actions chantier affiche CTA Preparer l'execut
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
   await expect(quickActions.getByRole("button", { name: /ex[eé]cution/i })).toBeVisible();
+  await navigateSpa(page, "/app/site?tab=planning");
+  await expect(page.getByTestId("execution-actions-summary")).toContainText(/actions chantier/i);
+  await expect(page.getByText(/Actions chantier prioritaires/i)).toBeVisible();
 });
 
 test("page Scenarios affiche le fil d'Ariane workflow compact", async ({ page }) => {
@@ -369,6 +372,8 @@ test("execution avec approvisionnement pret demande preparation chantier", async
   const emptyState = page.getByTestId("execution-empty-state").first();
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/approvisionnement est pr[eê]t|pr[eé]parez les actions chantier/i);
+  await expect(page.getByRole("button", { name: /g[eé]n[eé]rer actions chantier/i })).toBeVisible();
+  await expect(page.getByTestId("execution-actions-summary")).toContainText(/actions chantier/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/pr[eé]parer l[’']ex[eé]cution/i);
 });
 
