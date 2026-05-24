@@ -3,7 +3,7 @@ import AnalyticsCard from "../../ui/AnalyticsCard";
 import KpiCard from "../../ui/KpiCard";
 import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getProjectWorkflow } from "../../services/projectService";
+import { generateProjectExecutionActions, getProjectWorkflow, listProjectExecutionActions } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
@@ -129,8 +129,30 @@ function DataTable({ columns, rows, empty }) {
   );
 }
 
+function mapExecutionAction(action) {
+  const priorityLabels = { LOW: "Basse", MEDIUM: "Moyenne", HIGH: "Haute", CRITICAL: "Critique" };
+  const statusLabels = {
+    TO_DO: "À traiter",
+    IN_PROGRESS: "En cours",
+    DONE: "Terminé",
+    AT_RISK: "À risque",
+    BLOCKED: "Bloqué",
+    CANCELLED: "Annulé",
+  };
+  return {
+    priority: priorityLabels[action.priority] || action.priority || "Moyenne",
+    lot: action.lot || action.family || "-",
+    issue: action.problem || action.title || "Action chantier à planifier",
+    impact: action.impact || "-",
+    owner: action.responsible_name || action.responsible_role || "Responsable chantier",
+    due: action.due_date ? new Date(action.due_date).toLocaleDateString("fr-FR") : "À planifier",
+    status: statusLabels[action.status] || action.status || "À traiter",
+  };
+}
+
 export default function SiteExecutionPage() {
   const [tab, setTab] = React.useState(new URLSearchParams(window.location.search).get("tab") || "planning");
+  const [remoteActions, setRemoteActions] = React.useState([]);
   const { state } = useAppStore();
   const workflow = React.useMemo(
     () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
@@ -140,6 +162,7 @@ export default function SiteExecutionPage() {
   const procurementReady = workflow.procurement?.is_ready || workflow.steps.find((step) => step.id === "procurement")?.state === "done";
   const executionStatus = workflow.execution?.status || "BLOCKED";
   const executionReady = workflow.execution?.is_ready || workflow.steps.find((step) => step.id === "execution")?.state === "done";
+  const executionSummary = workflow.execution || {};
   const context = React.useMemo(
     () => getExecutionContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, state.lastSimulation),
     [state.activeProject, state.activeScenario, state.lastSimulation]
@@ -149,9 +172,30 @@ export default function SiteExecutionPage() {
     setTab(new URLSearchParams(window.location.search).get("tab") || "planning");
   }, [window.location.search]);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    listProjectExecutionActions(state.activeProject, workflow.scenario?.scenario_id).then((payload) => {
+      if (!cancelled && Array.isArray(payload?.actions)) {
+        setRemoteActions(payload.actions.map(mapExecutionAction));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.activeProject, workflow.scenario?.scenario_id]);
+
+  const handleGenerateExecutionActions = async () => {
+    await generateProjectExecutionActions(state.activeProject, workflow.scenario?.scenario_id);
+    const payload = await listProjectExecutionActions(state.activeProject, workflow.scenario?.scenario_id);
+    if (Array.isArray(payload?.actions)) {
+      setRemoteActions(payload.actions.map(mapExecutionAction));
+    }
+  };
+
   const storageUsed = 72;
   const storageRemaining = 100 - storageUsed;
-  const blockedLots = siteActions.filter((action) => action.priority === "Haute").length;
+  const displayedActions = remoteActions.length ? remoteActions : siteActions;
+  const blockedLots = Number(executionSummary.critical_lots_count || 0) || displayedActions.filter((action) => action.priority === "Haute" || action.priority === "Critique").length;
   const criticalDeliveries = deliveries.filter((item) => item.risk === "Eleve" || item.risk === "Moyen").length;
   const watchedEta = deliveries.filter((item) => String(item.gap).startsWith("+")).length;
 
@@ -264,6 +308,7 @@ export default function SiteExecutionPage() {
           testId="execution-empty-state"
         />
       ) : !executionReady && executionStatus === "REQUIRED" ? (
+        <div>
         <WorkflowGuardEmptyState
           title="Exécution à préparer"
           message="L’approvisionnement est prêt. Préparez les actions chantier avant le suivi opérationnel."
@@ -273,6 +318,10 @@ export default function SiteExecutionPage() {
           requiredStep="Actions chantier"
           testId="execution-empty-state"
         />
+        <button type="button" className="primary-action secondary-action" onClick={handleGenerateExecutionActions}>
+          Générer actions chantier
+        </button>
+        </div>
       ) : null}
 
       {setupDone && !context.hasActiveDqe ? (
@@ -297,11 +346,20 @@ export default function SiteExecutionPage() {
 
       <section className="metric-grid">
         <KpiCard label="Lots critiques" value={blockedLots} tone="warning" />
-        <KpiCard label="Livraisons à risque" value={criticalDeliveries} tone="warning" />
+        <KpiCard label="Livraisons à risque" value={Number(executionSummary.deliveries_to_watch_count || 0) || criticalDeliveries} tone="warning" />
         <KpiCard label="Stockage utilise" value={`${storageUsed}%`} />
-        <KpiCard label="ETA à surveiller" value={watchedEta} />
+        <KpiCard label="ETA à surveiller" value={Number(executionSummary.eta_to_watch_count || 0) || watchedEta} />
         <KpiCard label="Budget expose" value="A consolider" />
-        <KpiCard label="Actions requises" value={siteActions.length} tone="warning" />
+        <KpiCard label="Actions requises" value={Number(executionSummary.actions_count || 0) || displayedActions.length} tone="warning" />
+      </section>
+
+      <section className="procurement-scope-note" data-testid="execution-actions-summary">
+        <span>Actions chantier : {Number(executionSummary.actions_count || displayedActions.length || 0).toLocaleString("fr-FR")}</span>
+        <span>Ouvertes : {Number(executionSummary.open_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Terminées : {Number(executionSummary.done_count || 0).toLocaleString("fr-FR")}</span>
+        <span>À risque : {Number(executionSummary.at_risk_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Bloquées : {Number(executionSummary.blocked_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Source : {executionSummary.source || "fact_simulation"}</span>
       </section>
 
       <section className="execution-operational-grid">
@@ -316,7 +374,7 @@ export default function SiteExecutionPage() {
               { key: "due", label: "Echeance" },
               { key: "status", label: "Statut" },
             ]}
-            rows={siteActions}
+            rows={displayedActions}
             empty="Aucune action chantier critique identifiee pour le moment."
           />
         </AnalyticsCard>
