@@ -108,7 +108,7 @@ function normalizeLine(row, index) {
     semantic_confidence_score: number(row.semantic_confidence_score, family === "NON_CLASSE" ? 42 : 86),
     benchmark_min: minPrice,
     benchmark_max: maxPrice,
-    alert: anomalyScore >= 60 ? "Critique" : anomalyScore >= 30 ? "A surveiller" : "OK",
+    alert: anomalyScore >= 60 ? "Critique" : anomalyScore >= 30 ? "À surveiller" : "OK",
   };
 }
 

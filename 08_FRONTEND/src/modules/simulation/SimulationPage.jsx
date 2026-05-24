@@ -33,7 +33,7 @@ function riskLabel(value) {
 }
 
 function scenarioRiskLabel(lines = []) {
-  if (!lines.length) return "A evaluer";
+  if (!lines.length) return "À évaluer";
   const highRisk = lines.filter((line) => String(line.risk_level || "").toLowerCase().includes("eleve") || String(line.risk_level || "").toLowerCase().includes("high")).length;
   if (highRisk > 0) return "Eleve";
   const mediumRisk = lines.filter((line) => String(line.risk_level || "").toLowerCase().includes("moyen") || String(line.risk_level || "").toLowerCase().includes("medium")).length;
@@ -351,7 +351,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
                   <li>Decision : {criticalLines ? "validation requise avant arbitrage." : "scenario exploitable pour comparaison."}</li>
                 </ul>
                 <button className="primary-action secondary-action" type="button" disabled={!simulation} onClick={() => { window.history.pushState({}, "", "/app/procurement"); window.dispatchEvent(new PopStateEvent("popstate")); }}>
-                  Preparer l'approvisionnement
+                  Préparer l’approvisionnement
                 </button>
               </AnalyticsCard>
             </aside>

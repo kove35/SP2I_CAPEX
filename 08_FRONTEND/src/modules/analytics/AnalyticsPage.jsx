@@ -51,7 +51,7 @@ function DirectionIndicatorsView({ engine, kpis, barRows, table, riskRows }) {
       {engine.isLoading ? <Skeleton rows={3} /> : null}
       <section className="analytics-command-grid">
         <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
-        <AnalyticsCard title="Alertes de direction" eyebrow="Priorites a surveiller">
+        <AnalyticsCard title="Alertes de direction" eyebrow="Priorités à surveiller">
           <RiskMatrix rows={riskRows} />
         </AnalyticsCard>
       </section>
@@ -102,12 +102,12 @@ function buildPilotageAlerts(workflow) {
   if (configuration.state !== "done") alerts.push("Configuration projet incomplete.");
   if (dqe.state !== "done") alerts.push("DQE absent ou non certifie.");
   if (dqe.state === "done" && budget.state !== "done") alerts.push("Budget non synchronise avec la base projet.");
-  if (budget.state === "done" && scenarios.state !== "done") alerts.push("Aucun scenario actif pour arbitrage CAPEX.");
+  if (budget.state === "done" && scenarios.state !== "done") alerts.push("Aucun scénario actif pour arbitrage CAPEX.");
   if (procurement.status === "REVIEW_REQUIRED") alerts.push("Arbitrages achat generes mais validation humaine requise.");
-  if (procurement.status === "REQUIRED") alerts.push("Approvisionnement a preparer depuis le scenario actif.");
-  if (execution.status === "REQUIRED") alerts.push("Execution a preparer : actions chantier non encore generees.");
-  if (execution.status === "AT_RISK") alerts.push("Execution a risque : lots critiques ou livraisons a surveiller.");
-  if (!alerts.length) alerts.push("Projet pret pour pilotage direction avec donnees disponibles.");
+  if (procurement.status === "REQUIRED") alerts.push("Approvisionnement à préparer depuis le scénario actif.");
+  if (execution.status === "REQUIRED") alerts.push("Exécution à préparer : actions chantier non encore générées.");
+  if (execution.status === "AT_RISK") alerts.push("Exécution à risque : lots critiques ou livraisons à surveiller.");
+  if (!alerts.length) alerts.push("Projet prêt pour pilotage direction avec données disponibles.");
   return alerts;
 }
 
@@ -143,10 +143,10 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
     ["Taux economie", displayPercent(kpis.taux_economie || kpis.roi || state.lastSimulation?.kpi?.taux_economie)],
     ["Trust score DQE", dqe.trust_score ? `${dqe.trust_score}/100` : "-"],
     ["Lignes DQE", dqe.normalized_lines_count ? dqe.normalized_lines_count.toLocaleString("fr-FR") : "-"],
-    ["Scenario actif", scenarioName],
+    ["Scénario actif", scenarioName],
     ["Approvisionnement", procurement.status || "-"],
     ["Lots critiques", execution.critical_lots_count != null ? execution.critical_lots_count : "-"],
-    ["Livraisons a risque", execution.deliveries_to_watch_count != null ? execution.deliveries_to_watch_count : "-"],
+    ["Livraisons à risque", execution.deliveries_to_watch_count != null ? execution.deliveries_to_watch_count : "-"],
   ];
 
   return (
@@ -189,9 +189,9 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
       <section className="workspace-module-grid">
         <ModuleStatusCard title="DQE" step={dqeStep} message={dqe.file_name ? `${dqe.file_name} · ${dqe.certification_status || dqe.status}` : "Controle de certification DQE requis."} detail={`Trust score : ${dqe.trust_score ? `${dqe.trust_score}/100` : "-"}`} actionLabel="Ouvrir DQE" actionRoute="/app/dqe?tab=import" />
         <ModuleStatusCard title="Budget" step={budgetStep} message={workflow.budget?.message || "Etat de synchronisation budget projet."} detail={displayMoney(workflow.budget?.total_amount)} actionLabel="Voir budget" actionRoute="/app/dqe?tab=sync" />
-        <ModuleStatusCard title="Scenarios" step={scenarioStep} message={scenario.message || "Scenario CAPEX utilise pour l'arbitrage."} detail={`${scenario.line_count || "-"} lignes simulees`} actionLabel="Ouvrir scenarios" actionRoute="/app/simulation" />
+        <ModuleStatusCard title="Scénarios" step={scenarioStep} message={scenario.message || "Scénario CAPEX utilisé pour l’arbitrage."} detail={`${scenario.line_count || "-"} lignes simulées`} actionLabel="Ouvrir scénarios" actionRoute="/app/simulation" />
         <ModuleStatusCard title="Approvisionnement" step={procurementStep} message={procurement.message || "Etat des arbitrages achat."} detail={`${procurement.decisions_count || "-"} decisions achat`} actionLabel="Ouvrir approvisionnement" actionRoute="/app/procurement" />
-        <ModuleStatusCard title="Execution" step={executionStep} message={execution.message || "Etat des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Ouvrir execution" actionRoute="/app/site?tab=planning" />
+        <ModuleStatusCard title="Exécution" step={executionStep} message={execution.message || "État des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Ouvrir Exécution" actionRoute="/app/site?tab=planning" />
       </section>
 
       <section className="workspace-summary-footer">
@@ -247,7 +247,7 @@ function RiskView({ riskRows, table }) {
       <AnalyticsCard title="Carte des risques projet" eyebrow="Impact et probabilite">
         <RiskMatrix rows={riskRows} />
       </AnalyticsCard>
-      <AnalyticsCard title="Postes exposes" eyebrow="Lignes a surveiller">
+      <AnalyticsCard title="Postes exposés" eyebrow="Lignes à surveiller">
         <FactMetreGrid rows={table} total={table.length} />
       </AnalyticsCard>
     </>

@@ -6,9 +6,9 @@ const stepLabels = {
   configuration: "Configuration",
   dqe: "DQE",
   budget: "Budget",
-  scenarios: "Scenario",
+  scenarios: "Scénario",
   procurement: "Approvisionnement",
-  execution: "Execution",
+  execution: "Exécution",
 };
 
 const currentModuleByPath = {
@@ -21,13 +21,13 @@ const currentModuleByPath = {
 
 function normalizeStatus(workflow, step) {
   if (!step) return "";
-  if (step.id === "configuration" && step.state === "done") return "terminee";
+  if (step.id === "configuration" && step.state === "done") return "terminée";
   if (step.id === "execution") {
     const status = workflow?.execution?.status;
-    if (status === "REQUIRED") return "a preparer";
-    if (status === "READY") return "prete";
+    if (status === "REQUIRED") return "à préparer";
+    if (status === "READY") return "prête";
     if (status === "ACTIVE") return "active";
-    if (status === "AT_RISK") return "a risque";
+    if (status === "AT_RISK") return "à risque";
   }
   return String(step.status || "").toLowerCase();
 }
@@ -41,16 +41,16 @@ function actionLabel(workflow, nextStep) {
   if (workflow?.primary_action?.label) return workflow.primary_action.label;
   if (nextStep?.id === "execution") {
     const status = workflow?.execution?.status;
-    if (status === "REQUIRED") return "Preparer l'execution";
-    if (status === "READY") return "Ouvrir Execution";
-    if (status === "ACTIVE") return "Suivre l'execution";
-    if (status === "AT_RISK") return "Suivre l'execution a risque";
+    if (status === "REQUIRED") return "Préparer l’exécution";
+    if (status === "READY") return "Ouvrir Exécution";
+    if (status === "ACTIVE") return "Suivre l’exécution";
+    if (status === "AT_RISK") return "Suivre l’exécution à risque";
   }
   if (nextStep?.id === "configuration") return "Configurer le projet";
   if (nextStep?.id === "dqe") return "Importer le DQE";
   if (nextStep?.id === "budget") return "Synchroniser le budget";
-  if (nextStep?.id === "scenarios") return "Tester un scenario";
-  if (nextStep?.id === "procurement") return workflow?.procurement?.status === "REVIEW_REQUIRED" ? "Valider les arbitrages achat" : "Preparer l'approvisionnement";
+  if (nextStep?.id === "scenarios") return "Tester un scénario";
+  if (nextStep?.id === "procurement") return workflow?.procurement?.status === "REVIEW_REQUIRED" ? "Valider les arbitrages achat" : "Préparer l’approvisionnement";
   return nextStep?.action || "Ouvrir";
 }
 
@@ -94,7 +94,7 @@ export default function ProjectWorkflowBreadcrumb({ workflow, currentModule, sho
         <strong>
           {visibleMobile.length
             ? visibleMobile.map((step) => `${stepLabels[step.id] || step.label} ${normalizeStatus(workflow, step)}`).join(" -> ")
-            : `Prochaine etape : ${action}`}
+            : `Prochaine étape : ${action}`}
         </strong>
       </div>
       {showAction ? (

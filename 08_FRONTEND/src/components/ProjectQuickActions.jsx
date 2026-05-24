@@ -33,10 +33,10 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const actions = needsSetup
     ? [{ label: "Configurer le projet", path: "/app/projects", icon: Settings }]
     : sidebarQuickActions.map((action) => {
-        if (action.label === "Tester un scenario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de tester un scenario" };
-        if (action.label === "Nouveau scenario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de creer un scenario" };
-        if (procurementReady && action.label === "Tester un scenario") return { ...action, label: "Execution", path: "/app/site?tab=planning", icon: HardHat };
-        if (scenarioReady && action.label === "Tester un scenario") return { ...action, label: "Approvisionnement", path: "/app/procurement" };
+        if (action.label === "Tester un scénario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de tester un scénario" };
+        if (action.label === "Nouveau scénario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de créer un scénario" };
+        if (procurementReady && action.label === "Tester un scénario") return { ...action, label: "Exécution", path: "/app/site?tab=planning", icon: HardHat };
+        if (scenarioReady && action.label === "Tester un scénario") return { ...action, label: "Approvisionnement", path: "/app/procurement" };
         return action;
       });
 
@@ -46,7 +46,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
       return;
     }
 
-    if (action.label === "Tester un scenario" && !hasActiveDqeVersion(state.activeProject)) {
+    if (action.label === "Tester un scénario" && !hasActiveDqeVersion(state.activeProject)) {
       onNavigate?.("/app/dqe?tab=import&notice=dqe-required");
       return;
     }
@@ -65,7 +65,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
             className="project-action-button"
             onClick={() => handleClick(action)}
             disabled={isDisabled || action.disabled}
-            title={hasProject ? action.title || action.label : "Selectionner un projet"}
+            title={hasProject ? action.title || action.label : "Sélectionner un projet"}
           >
             <Icon size={16} />
             <span>{action.label}</span>

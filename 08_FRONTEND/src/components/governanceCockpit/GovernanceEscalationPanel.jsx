@@ -30,7 +30,7 @@ export default function GovernanceEscalationPanel({ escalations = [], onSelect }
             <span>{item.severity === "CRITICAL" ? <AlertOctagon size={16} /> : <ShieldCheck size={16} />} {labels[item.level] || item.level.replaceAll("_", " ")}</span>
             <strong>{item.volume}</strong>
             <small>{descriptions[item.level] || "Controle humain requis."}</small>
-            <small>{item.critical} critiques | {item.high} a surveiller</small>
+            <small>{item.critical} critiques | {item.high} à surveiller</small>
           </button>
         ))}
       </div>

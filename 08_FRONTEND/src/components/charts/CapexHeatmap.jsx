@@ -72,7 +72,7 @@ function normalizeBackendPayload(payload) {
       capex: value,
       share: value / total,
       decision: "A arbitrer",
-      risque: "A evaluer",
+      risque: "À évaluer",
       roi: 0,
       filters: { lot: xLabels[Number(item[0])] || "", famille: yLabels[Number(item[1])] || "" },
     };
@@ -154,7 +154,7 @@ function buildInsights(heatmap) {
   return [
     `${lot} concentre ${formatPercent(top.share)} du budget filtre.`,
     `${family} represente le metier dominant sur cette zone.`,
-    top.decision === "IMPORT" ? "Potentiel d'optimisation import a analyser." : "Arbitrage local a surveiller pour securiser le planning.",
+    top.decision === "IMPORT" ? "Potentiel d’optimisation import à analyser." : "Arbitrage local à surveiller pour sécuriser le planning.",
   ];
 }
 
@@ -202,7 +202,7 @@ export default function CapexHeatmap({ data = [], rows = [] }) {
                 `Budget: <b>${formatMoney(value)}</b>`,
                 `Part projet: <b>${formatPercent(cell.share || 0)}</b>`,
                 `Decision: <b>${cell.decision || "A arbitrer"}</b>`,
-                `Risque: <b>${cell.risque || "A evaluer"}</b>`,
+                `Risque: <b>${cell.risque || "À évaluer"}</b>`,
                 `ROI: <b>${formatPercent(cell.roi || 0)}</b>`,
                 `Postes concernes: <b>${cell.count || "-"}</b>`,
                 "Cliquer pour filtrer KPI, tableau et graphiques.",

@@ -18,15 +18,15 @@ function projectCardBadge(workflow, primaryAction) {
   const label = primaryAction?.label || workflow?.label || "Projet";
   const mapping = [
     [/configurer/i, "Configuration requise"],
-    [/importer.*dqe/i, "DQE a importer"],
-    [/synchroniser.*budget/i, "Budget a synchroniser"],
-    [/tester.*scenario/i, "Scenario a lancer"],
-    [/preparer.*approvisionnement/i, "Approvisionnement a preparer"],
-    [/valider.*arbitrages/i, "Arbitrages a valider"],
-    [/preparer.*execution/i, "Execution a preparer"],
-    [/suivre.*execution.*risque/i, "Execution a risque"],
-    [/suivre.*execution/i, "Execution active"],
-    [/ouvrir.*execution/i, "Execution prete"],
+    [/importer.*dqe/i, "DQE à importer"],
+    [/synchroniser.*budget/i, "Budget à synchroniser"],
+    [/tester.*scenario|tester.*scénario/i, "Scénario à lancer"],
+    [/preparer.*approvisionnement|préparer.*approvisionnement/i, "Approvisionnement à préparer"],
+    [/valider.*arbitrages/i, "Arbitrages à valider"],
+    [/preparer.*execution|préparer.*exécution/i, "Exécution à préparer"],
+    [/suivre.*execution.*risque|suivre.*exécution.*risque/i, "Exécution à risque"],
+    [/suivre.*execution|suivre.*exécution/i, "Exécution active"],
+    [/ouvrir.*execution|ouvrir.*exécution/i, "Exécution prête"],
   ];
   return mapping.find(([pattern]) => pattern.test(label))?.[1] || workflow?.label || label;
 }
@@ -139,16 +139,16 @@ export default function ProjectHub({ onNavigate }) {
           return (
             <article className="project-card" key={project.id} data-testid="project-card">
               <div className="project-card-top">
-                <span><Building2 size={16} /> {project.city || "Ville a renseigner"}, {project.country || "Pays a renseigner"}</span>
+                <span><Building2 size={16} /> {project.city || "Ville à renseigner"}, {project.country || "Pays à renseigner"}</span>
                 <strong>{projectCardBadge(workflow, primaryAction)}</strong>
               </div>
               <h2>{project.name}</h2>
-              <p>{project.client_name || "Client / organisation a renseigner"}</p>
+              <p>{project.client_name || "Client / organisation à renseigner"}</p>
               <div className="project-card-metrics">
                 <span><ShieldCheck size={15} /> Confiance {project.trust_score ?? 0}/100</span>
                 <span><FileSpreadsheet size={15} /> Configuration {project.setup_completion_percent ?? workflow.completion}%</span>
-                <span><FileSpreadsheet size={15} /> {project.last_dqe || "DQE a importer"}</span>
-                <span><Gauge size={15} /> {project.budget ? formatMoney(project.budget) : "Budget a synchroniser"}</span>
+                <span><FileSpreadsheet size={15} /> {project.last_dqe || "DQE à importer"}</span>
+                <span><Gauge size={15} /> {project.budget ? formatMoney(project.budget) : "Budget à synchroniser"}</span>
               </div>
               <ProjectWorkflowStepper compact workflow={workflow} onNavigate={onNavigate} onSetup={() => setSetupProject(project)} />
               <div className="project-card-actions">
