@@ -21,6 +21,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sp2i-capex-api")
 
 import_routes = import_module("app.routes.import")
+import_module("app.models")
 import_module("app.auth.models")
 import_module("app.projects.models")
 

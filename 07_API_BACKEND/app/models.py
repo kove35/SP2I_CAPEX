@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Index, Integer, String, Text, func
+from sqlalchemy import BigInteger, DateTime, Float, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -76,4 +76,49 @@ class MonitoringLog(Base):
         Index("ix_monitoring_logs_type", "type"),
         Index("ix_monitoring_logs_niveau", "niveau"),
         Index("ix_monitoring_logs_created_at", "created_at"),
+    )
+
+
+class ProcurementDecision(Base):
+    """
+    Decision achat metier issue d'une recommandation IA puis validable par un humain.
+
+    Cette table ne remplace pas `fact_simulation` : elle ajoute la couche
+    enterprise de validation achat et conserve le lien vers la ligne simulee.
+    """
+
+    __tablename__ = "procurement_decisions"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    scenario_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    simulation_line_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    lot: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    family: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    designation: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    quantity: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    unit: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    ai_decision: Mapped[str] = mapped_column(String(50), nullable=False, default="REVIEW_REQUIRED")
+    ai_score: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    ai_reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    proposed_decision: Mapped[str] = mapped_column(String(50), nullable=False, default="REVIEW_REQUIRED")
+    validated_decision: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    validation_status: Mapped[str] = mapped_column(String(50), nullable=False, default="PENDING")
+    supplier_selected: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    supplier_country: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    purchase_mode: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    estimated_local_cost: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    estimated_import_cost: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    estimated_savings: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    risk_level: Mapped[str] = mapped_column(String(50), nullable=False, default="MEDIUM")
+    validator_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    validator_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    comment: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "scenario_id", "simulation_line_id", name="uq_procurement_decision_source_line"),
+        Index("ix_procurement_decisions_project_status", "project_id", "validation_status"),
     )

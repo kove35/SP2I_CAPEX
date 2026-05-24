@@ -135,6 +135,10 @@ class ProcurementStatus(BaseModel):
     local_lines_count: int = 0
     hybrid_lines_count: int = 0
     validated_decisions_count: int = 0
+    pending_decisions_count: int = 0
+    to_arbitrate_count: int = 0
+    review_required_count: int = 0
+    blocked_decisions_count: int = 0
     export_available: bool = False
     source: str = "fact_simulation"
     message: str = ""
@@ -162,3 +166,79 @@ class ProjectWorkflowResponse(BaseModel):
     scenario: ScenarioStatus = Field(default_factory=ScenarioStatus)
     procurement: ProcurementStatus = Field(default_factory=ProcurementStatus)
     execution: ExecutionStatus = Field(default_factory=ExecutionStatus)
+
+
+class ProcurementDecisionBase(BaseModel):
+    lot: str = ""
+    family: str = ""
+    designation: str = ""
+    quantity: float = 0
+    unit: str = ""
+    ai_decision: str = "REVIEW_REQUIRED"
+    ai_score: float = 0
+    ai_reason: str = ""
+    proposed_decision: str = "REVIEW_REQUIRED"
+    validated_decision: str = ""
+    validation_status: str = "PENDING"
+    supplier_selected: str = ""
+    supplier_country: str = ""
+    purchase_mode: str = ""
+    estimated_local_cost: float = 0
+    estimated_import_cost: float = 0
+    estimated_savings: float = 0
+    risk_level: str = "MEDIUM"
+    validator_name: str = ""
+    validator_id: int | None = None
+    validated_at: datetime | None = None
+    comment: str = ""
+
+
+class ProcurementDecisionCreate(ProcurementDecisionBase):
+    scenario_id: str | None = None
+    simulation_line_id: int | None = None
+
+
+class ProcurementDecisionUpdate(BaseModel):
+    validated_decision: str | None = None
+    validation_status: str | None = None
+    supplier_selected: str | None = None
+    supplier_country: str | None = None
+    purchase_mode: str | None = None
+    validator_name: str | None = None
+    validator_id: int | None = None
+    comment: str | None = None
+
+
+class ProcurementDecisionOut(ProcurementDecisionBase):
+    id: int
+    project_id: int
+    scenario_id: str | None = None
+    simulation_line_id: int | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ProcurementDecisionListResponse(BaseModel):
+    decisions: list[ProcurementDecisionOut]
+
+
+class ProcurementDecisionStatus(BaseModel):
+    status: str = "BLOCKED"
+    is_ready: bool = False
+    decisions_count: int = 0
+    validated_decisions_count: int = 0
+    pending_decisions_count: int = 0
+    to_arbitrate_count: int = 0
+    review_required_count: int = 0
+    blocked_decisions_count: int = 0
+    import_lines_count: int = 0
+    local_lines_count: int = 0
+    hybrid_lines_count: int = 0
+    export_available: bool = False
+    source: str = "procurement_decisions"
+    message: str = ""
+
+
+class ProcurementDecisionBootstrapResponse(BaseModel):
+    inserted_count: int = 0
+    status: ProcurementDecisionStatus = Field(default_factory=ProcurementDecisionStatus)
