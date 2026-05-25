@@ -8,6 +8,7 @@ import {
   getProjectWorkflow,
   listProjectExecutionActions,
 } from "../../services/projectService";
+import ActionsWorkflowBoard from "./ActionsWorkflowBoard";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
@@ -337,6 +338,7 @@ export default function SiteExecutionPage() {
   );
 
   const [remoteActions, setRemoteActions] = React.useState([]);
+  const [remoteActionsRaw, setRemoteActionsRaw] = React.useState([]);
   const { state } = useAppStore();
 
   const workflow = React.useMemo(
@@ -387,6 +389,7 @@ export default function SiteExecutionPage() {
     listProjectExecutionActions(state.activeProject, workflow.scenario?.scenario_id).then(
       (payload) => {
         if (!cancelled && Array.isArray(payload?.actions)) {
+          setRemoteActionsRaw(payload.actions);
           setRemoteActions(payload.actions.map(mapExecutionAction));
         }
       }
@@ -625,6 +628,14 @@ export default function SiteExecutionPage() {
 
       <div className="tab-row">
         <button
+          className={tab === "workflow" ? "active" : ""}
+          onClick={() => setTab("workflow")}
+          type="button"
+        >
+          Workflow actions
+        </button>
+
+        <button
           className={tab === "planning" ? "active" : ""}
           onClick={() => setTab("planning")}
           type="button"
@@ -657,6 +668,28 @@ export default function SiteExecutionPage() {
         </button>
       </div>
 
+      {tab === "workflow" && (
+        <section className="execution-workflow-section">
+          <AnalyticsCard title="Workflow des actions chantier" eyebrow="Kanban opérationnel">
+            <ActionsWorkflowBoard
+              projectId={state.activeProject}
+              actions={remoteActionsRaw}
+              onRefresh={() => {
+                listProjectExecutionActions(state.activeProject, workflow.scenario?.scenario_id).then(
+                  (payload) => {
+                    if (Array.isArray(payload?.actions)) {
+                      setRemoteActionsRaw(payload.actions);
+                      setRemoteActions(payload.actions.map(mapExecutionAction));
+                    }
+                  }
+                );
+              }}
+              loading={false}
+            />
+          </AnalyticsCard>
+        </section>
+      )}
+
       <section className="metric-grid">
         <KpiCard label="Lots critiques" value={blockedLots} tone="warning" />
         <KpiCard
@@ -676,6 +709,8 @@ export default function SiteExecutionPage() {
           tone="warning"
         />
       </section>
+
+      {tab !== "workflow" && (
 
       <section className="procurement-scope-note" data-testid="execution-actions-summary">
         <span>
@@ -778,6 +813,7 @@ export default function SiteExecutionPage() {
           </AnalyticsCard>
         </aside>
       </section>
+      )}
     </main>
   );
 }
