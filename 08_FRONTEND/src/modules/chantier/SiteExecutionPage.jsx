@@ -711,7 +711,7 @@ export default function SiteExecutionPage() {
       </section>
 
       {tab !== "workflow" && (
-
+        <>
       <section className="procurement-scope-note" data-testid="execution-actions-summary">
         <span>
           Actions chantier :{" "}
@@ -813,6 +813,7 @@ export default function SiteExecutionPage() {
           </AnalyticsCard>
         </aside>
       </section>
+      </>
       )}
     </main>
   );
