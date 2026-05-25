@@ -2,6 +2,7 @@ import React from "react";
 import AppShell from "../layouts/AppShell";
 import LandingPage from "../marketing/LandingPage";
 import AnalyticsPage from "../modules/analytics/AnalyticsPage";
+import ApprovisionnementDashboard from "../modules/approvisionnement/pages/ApprovisionnementDashboard";
 import CockpitPage from "../modules/cockpit/CockpitPage";
 import DqePage from "../modules/dqe/DqePage";
 import LogisticsPage from "../modules/logistics/LogisticsPage";
@@ -17,6 +18,7 @@ const cockpitRoutes = {
   "/app/projects": null,
   "/app": <CockpitPage />,
   "/app/simulation": <SimulationPage />,
+  "/app/approvisionnement": <ApprovisionnementDashboard />,
   "/app/procurement": <ProcurementPage />,
   "/app/procurement-intelligence": (
     <React.Suspense fallback={<div className="live-refresh">Chargement du cockpit procurement...</div>}>
