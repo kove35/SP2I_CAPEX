@@ -352,14 +352,19 @@ test("execution prete affiche CTA Ouvrir Execution", async ({ page }) => {
   await expect(quickActions.getByRole("button", { name: /ex[eé]cution/i })).toBeVisible();
 });
 
-test("execution without procurement shows procurement CTA", async ({ page }) => {
-  await openConfiguredProjectWorkspace(page, "Projet execution sans achat");
+test("execution without scenario shows simulation CTA", async ({ page }) => {
+  await openConfiguredProjectWorkspace(page, "Projet execution sans scenario");
   await navigateSpa(page, "/app/site?tab=planning");
 
   const emptyState = page.getByTestId("execution-empty-state").first();
+
   await expect(emptyState).toBeVisible();
-  await expect(emptyState).toContainText(/pr[eé]parez les arbitrages achat/i);
-  await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/ouvrir approvisionnement/i);
+  await expect(emptyState).toContainText(/simulation à lancer|lancez une simulation/i);
+  await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(
+    /tester un sc[eé]nario/i
+  );
+
+  await expect(emptyState).not.toContainText(/pr[eé]parez les arbitrages achat/i);
 });
 
 test("execution avec approvisionnement pret demande preparation chantier", async ({ page }) => {
