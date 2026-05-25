@@ -346,6 +346,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         lignes_excel INTEGER NOT NULL DEFAULT 0,
         lignes_parsees INTEGER NOT NULL DEFAULT 0,
         lignes_fact_metre INTEGER NOT NULL DEFAULT 0,
+        lignes_rejetees INTEGER NOT NULL DEFAULT 0,
         lignes_review_required INTEGER NOT NULL DEFAULT 0,
         lignes_warning INTEGER NOT NULL DEFAULT 0,
         lignes_ignorees INTEGER NOT NULL DEFAULT 0,
@@ -363,6 +364,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     );
 
     ALTER TABLE dqe_import_audit
+        ADD COLUMN IF NOT EXISTS lignes_rejetees INTEGER NOT NULL DEFAULT 0,
         ADD COLUMN IF NOT EXISTS lignes_review_required INTEGER NOT NULL DEFAULT 0,
         ADD COLUMN IF NOT EXISTS lignes_warning INTEGER NOT NULL DEFAULT 0,
         ADD COLUMN IF NOT EXISTS lignes_ignorees INTEGER NOT NULL DEFAULT 0,

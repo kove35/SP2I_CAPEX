@@ -54,6 +54,7 @@ from app.services.site_execution_actions import (
 )
 from app.services.workflow_events import list_workflow_events, log_workflow_event
 from app.services.service_pipeline import ServicePipeline
+from app.governance.dqe_issue_builder import build_dqe_issue, summarize_dqe_issues
 
 
 router = APIRouter()
@@ -68,6 +69,34 @@ def _is_project_configured(project: Project) -> bool:
 
 def _compute_setup_status(project: Project) -> str:
     return "CONFIGURED" if _is_project_configured(project) else "CONFIG_REQUIRED"
+
+
+def _fetch_latest_dqe_audit(db: Session) -> Any | None:
+    """
+    Lit le dernier audit DQE en restant compatible avec les bases Render
+    creees avant l'ajout de `lignes_rejetees`.
+    """
+    base_select = """
+        SELECT fichier,
+               score_qualite,
+               lignes_parsees,
+               lignes_fact_metre,
+               lignes_review_required,
+               lignes_warning,
+               lignes_ignorees,
+               {loss_column} AS lignes_rejetees,
+               anomalies_json,
+               governance_quality,
+               metadata_json,
+               created_at
+        FROM dqe_import_audit
+        ORDER BY created_at DESC
+        LIMIT 1
+    """
+    try:
+        return db.execute(text(base_select.format(loss_column="lignes_rejetees"))).mappings().first()
+    except Exception:
+        return db.execute(text(base_select.format(loss_column="0"))).mappings().first()
 
 
 def serialize_project(project: Project) -> ProjectResponse:
@@ -129,25 +158,7 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
 
     if db is not None:
         try:
-            latest_audit = db.execute(
-                text(
-                    """
-                    SELECT fichier,
-                           score_qualite,
-                           lignes_parsees,
-                           lignes_fact_metre,
-                           lignes_review_required,
-                           lignes_warning,
-                           lignes_ignorees,
-                           lignes_rejetees,
-                           governance_quality,
-                           created_at
-                    FROM dqe_import_audit
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                    """
-                )
-            ).mappings().first()
+            latest_audit = _fetch_latest_dqe_audit(db)
             total_rows = db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one()
             synced = bool(total_rows and int(total_rows) > 0)
         except Exception:
@@ -162,6 +173,8 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
     review_required_count = 0
     certification_status = "UNKNOWN"
     synced_at = None
+    issues: list[dict[str, Any]] = []
+    issues_summary: dict[str, int] = {}
 
     if latest_audit:
         file_name = latest_audit.get("fichier") or ""
@@ -172,12 +185,29 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
         data_loss_count = int(latest_audit.get("lignes_rejetees") or 0)
         governance_quality = latest_audit.get("governance_quality") or {}
         governance_status = "DATA_QUALITY_GOVERNANCE" if governance_quality else "UNKNOWN"
+        issues = _json_field(latest_audit.get("anomalies_json"), [])
+        metadata = _json_field(latest_audit.get("metadata_json"), {})
+        issues_summary = metadata.get("dqe_issues_summary") or summarize_dqe_issues(issues)
         if review_required_count > 0:
             certification_status = "REVIEW_REQUIRED"
         elif int(latest_audit.get("lignes_warning") or 0) > 0:
             certification_status = "CERTIFIED_WITH_WARNINGS"
         else:
             certification_status = "CERTIFIED"
+        if certification_status in {"CERTIFIED", "CERTIFIED_WITH_WARNINGS"} and (trust_score <= 0 or normalized_lines_count <= 0):
+            issues.insert(
+                0,
+                build_dqe_issue(
+                    "AUDIT_METRICS_INCONSISTENT",
+                    detected_value={
+                        "certification_status": certification_status,
+                        "trust_score": trust_score,
+                        "normalized_lines_count": normalized_lines_count,
+                    },
+                    expected_value="trust_score > 0 et normalized_lines_count > 0",
+                ),
+            )
+            issues_summary = summarize_dqe_issues(issues)
         if synced:
             synced_at = latest_audit.get("created_at")
 
@@ -218,7 +248,20 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
         "uploaded_at": uploaded_at,
         "analyzed_at": analyzed_at,
         "synced_at": synced_at,
+        "issues_summary": issues_summary,
+        "issues": issues[:20],
     }
+
+
+def _json_field(value: Any, default: Any) -> Any:
+    if value in (None, ""):
+        return default
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(str(value))
+    except Exception:
+        return default
 
 
 def _resolve_project_budget_status(dqe_status: dict[str, Any], db: Session | None = None) -> dict[str, Any]:

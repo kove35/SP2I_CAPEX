@@ -206,17 +206,7 @@ def _resolve_project_dqe_status(db: Session, project_id: int) -> dict[str, Any]:
     latest_audit = None
     total_rows = 0
     try:
-        latest_audit = db.execute(
-            text(
-                """
-                SELECT fichier, score_qualite, lignes_parsees, lignes_fact_metre, lignes_review_required,
-                       lignes_warning, lignes_ignorees, lignes_rejetees, governance_quality, created_at
-                FROM dqe_import_audit
-                ORDER BY created_at DESC
-                LIMIT 1
-                """
-            )
-        ).mappings().first()
+        latest_audit = _fetch_latest_dqe_audit(db)
         total_rows = int(db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one() or 0)
     except Exception:
         latest_audit = None
@@ -272,6 +262,20 @@ def _resolve_project_dqe_status(db: Session, project_id: int) -> dict[str, Any]:
         "analyzed_at": None,
         "synced_at": synced_at,
     }
+
+
+def _fetch_latest_dqe_audit(db: Session) -> Any | None:
+    base_select = """
+        SELECT fichier, score_qualite, lignes_parsees, lignes_fact_metre, lignes_review_required,
+               lignes_warning, lignes_ignorees, {loss_column} AS lignes_rejetees, governance_quality, created_at
+        FROM dqe_import_audit
+        ORDER BY created_at DESC
+        LIMIT 1
+    """
+    try:
+        return db.execute(text(base_select.format(loss_column="lignes_rejetees"))).mappings().first()
+    except Exception:
+        return db.execute(text(base_select.format(loss_column="0"))).mappings().first()
 
 
 def _resolve_project_budget_status(db: Session, dqe_status: dict[str, Any]) -> dict[str, Any]:
