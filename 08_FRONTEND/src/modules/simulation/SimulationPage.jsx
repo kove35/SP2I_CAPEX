@@ -1,4 +1,5 @@
 import React from "react";
+import { ArrowRight, CheckCircle2, Clock3, ShieldAlert, Sparkles, TriangleAlert } from "lucide-react";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import KpiCard from "../../ui/KpiCard";
 import Skeleton from "../../ui/Skeleton";
@@ -43,6 +44,143 @@ function scenarioRiskLabel(lines = []) {
 function formatPercent(value) {
   if (!Number.isFinite(value)) return "-";
   return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
+}
+
+function navigateTo(route) {
+  window.history.pushState({}, "", route);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function RiskBadge({ value }) {
+  const normalized = String(value || "").toLowerCase();
+  const tone = normalized.includes("eleve") || normalized.includes("élevé") ? "high" : normalized.includes("moyen") ? "medium" : "low";
+  return <span className={`scenario-risk-badge ${tone}`}>{value}</span>;
+}
+
+function CopilotMetric({ label, value, detail, tone = "neutral" }) {
+  return (
+    <div className={`copilot-metric ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {detail ? <small>{detail}</small> : null}
+    </div>
+  );
+}
+
+function RecommendationLine({ icon: Icon, tone = "ok", children }) {
+  return (
+    <li className={`recommendation-line ${tone}`}>
+      <Icon size={16} />
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function ScenarioDecisionCopilot({
+  activeScenario,
+  loading,
+  runSimulation,
+  scenarioName,
+  setScenarioName,
+  dqeSummary,
+  simulationDisabledReason,
+  localBudget,
+  savings,
+  savingsRate,
+  analyzedLines,
+  importLineCount,
+  criticalLines,
+  scenarioRisk,
+  simulation,
+}) {
+  const roi = localBudget ? (savings / localBudget) * 100 : NaN;
+  const estimatedLeadTime = simulation ? "45-70 j" : "-";
+  const planningImpact = criticalLines > 0 ? "À sécuriser" : simulation ? "Maîtrisé" : "À évaluer";
+  const deliveryRisk = scenarioRisk === "Eleve" ? "Livraison critique" : scenarioRisk === "Moyen" ? "Surveillance" : "Maîtrisé";
+  const isViable = Boolean(simulation && savings >= 0 && criticalLines === 0);
+  const isReviewNeeded = Boolean(simulation && (criticalLines > 0 || scenarioRisk !== "Maitrise"));
+
+  return (
+    <aside className="scenario-decision-copilot" aria-label="Copilote décisionnel SP2I">
+      <section className="copilot-block config">
+        <div className="copilot-block-heading">
+          <span>1 · Configurer</span>
+          <strong>Que teste-t-on ?</strong>
+        </div>
+        <SimulationToolbar
+          running={loading}
+          onRun={runSimulation}
+          scenarioName={scenarioName}
+          onScenarioNameChange={setScenarioName}
+          disabled={!dqeSummary.hasActiveDqe}
+          disabledReason={simulationDisabledReason}
+        />
+      </section>
+
+      <section className="copilot-block impact">
+        <div className="copilot-block-heading">
+          <span>2 · Simuler / analyser</span>
+          <strong>Impact simulé</strong>
+        </div>
+        <div className="copilot-metric-grid">
+          <CopilotMetric label="Économie nette" value={formatMoney(savings)} tone="success" />
+          <CopilotMetric label="ROI import" value={formatPercent(roi)} detail="économie / CAPEX local" />
+          <CopilotMetric label="Taux économie" value={formatPercent(savingsRate)} />
+          <CopilotMetric label="Lignes analysées" value={analyzedLines || "-"} detail={`${importLineCount} orientées import`} />
+        </div>
+        <div className="copilot-ops-grid">
+          <span><Clock3 size={15} /> Délai logistique <strong>{estimatedLeadTime}</strong></span>
+          <span><ShieldAlert size={15} /> Risque livraison <RiskBadge value={deliveryRisk} /></span>
+          <span><TriangleAlert size={15} /> Lots critiques <strong>{criticalLines || 0}</strong></span>
+          <span><ArrowRight size={15} /> Impact planning <strong>{planningImpact}</strong></span>
+        </div>
+      </section>
+
+      <section className="copilot-block recommendation">
+        <div className="copilot-block-heading">
+          <span>3 · Décider</span>
+          <strong>Recommandation SP2I</strong>
+        </div>
+        <div className="copilot-ai-card">
+          <div>
+            <Sparkles size={18} />
+            <strong>{isViable ? "Scénario viable" : isReviewNeeded ? "Validation requise" : "Simulation à lancer"}</strong>
+          </div>
+          <p>
+            {simulation
+              ? isViable
+                ? "Le scénario présente une économie exploitable avec un risque opérationnel maîtrisé."
+                : "Le scénario est exploitable, mais certains arbitrages doivent être sécurisés avant engagement achat."
+              : `Configurez puis simulez la stratégie ${activeScenario.label} pour produire une recommandation CAPEX.`}
+          </p>
+        </div>
+        <ul className="recommendation-list">
+          <RecommendationLine icon={CheckCircle2}>Stratégie active : {activeScenario.label}</RecommendationLine>
+          <RecommendationLine icon={savings >= 0 ? CheckCircle2 : TriangleAlert} tone={savings >= 0 ? "ok" : "warn"}>
+            Économie {savings >= 0 ? "positive" : "à challenger"} : {formatMoney(savings)}
+          </RecommendationLine>
+          <RecommendationLine icon={scenarioRisk === "Eleve" ? TriangleAlert : CheckCircle2} tone={scenarioRisk === "Eleve" ? "warn" : "ok"}>
+            Risque global : {scenarioRisk.toLowerCase()}
+          </RecommendationLine>
+          <RecommendationLine icon={criticalLines ? TriangleAlert : CheckCircle2} tone={criticalLines ? "warn" : "ok"}>
+            {criticalLines ? "Vérifier les lots critiques avant approvisionnement." : "Aucun lot critique détecté dans la simulation."}
+          </RecommendationLine>
+        </ul>
+      </section>
+
+      <section className="copilot-final-action">
+        <div>
+          <span>4 · Exécuter</span>
+          <strong>Décision CAPEX prête pour achat</strong>
+          <small>{simulation ? "Transférer les arbitrages vers le cockpit Approvisionnement." : "Lancez une simulation pour débloquer cette étape."}</small>
+        </div>
+        <button className="primary-action procurement-ready-action" type="button" disabled={!simulation} onClick={() => navigateTo("/app/procurement")}>
+          Préparer l’approvisionnement
+          <ArrowRight size={17} />
+        </button>
+      </section>
+    </aside>
+  );
 }
 
 function readDqeVersions(projectId) {
@@ -303,7 +441,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
               : "Gouvernance indisponible sans version DQE active"}
           </span>
         </div>
-        {!dqeSummary.hasActiveDqe ? <button type="button" className="primary-action secondary-action" onClick={() => { window.history.pushState({}, "", "/app/dqe?tab=import"); window.dispatchEvent(new PopStateEvent("popstate")); }}>Importer un DQE</button> : null}
+        {!dqeSummary.hasActiveDqe ? <button type="button" className="primary-action secondary-action" onClick={() => navigateTo("/app/dqe?tab=import")}>Importer un DQE</button> : null}
       </section>
 
       {tab === "simulation" ? (
@@ -322,39 +460,23 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
                 {loading ? <Skeleton /> : <SimulationTable rows={lines} />}
               </div>
             </AnalyticsCard>
-            <aside className="context-panel">
-              <AnalyticsCard title="Scenario actif" eyebrow="Decision projet">
-                <ul className="signal-list">
-                  <li>Strategie active : {activeScenario.label}</li>
-                  <li>Statut scenario : {scenarioStatus}</li>
-                  <li>Source : {dqeSummary.label}</li>
-                  <li>Risque : {scenarioRisk}</li>
-                </ul>
-              </AnalyticsCard>
-              <AnalyticsCard title="Hypotheses" eyebrow="Parametres CAPEX">
-                <SimulationToolbar running={loading} onRun={runSimulation} scenarioName={scenarioName} onScenarioNameChange={setScenarioName} disabled={!dqeSummary.hasActiveDqe} disabledReason={simulationDisabledReason} />
-              </AnalyticsCard>
-              <AnalyticsCard title="Impact estime" eyebrow="Resultat scenario">
-                <ul className="signal-list">
-                  <li>Economie estimee : {formatMoney(savings)}</li>
-                  <li>Taux economie : {formatPercent(savingsRate)}</li>
-                  <li>Lignes analysees : {analyzedLines || "-"}</li>
-                  <li>Risque : {scenarioRisk.toLowerCase()}</li>
-                </ul>
-              </AnalyticsCard>
-              <AnalyticsCard title="Synthese de decision" eyebrow="Arbitrage projet">
-                <ul className="signal-list">
-                  <li>{analyzedLines || 0} lignes analysees.</li>
-                  <li>{importLineCount} lignes orientees import.</li>
-                  <li>{formatMoney(savings)} d'economie nette estimee.</li>
-                  <li>{criticalLines} ligne(s) a risque eleve.</li>
-                  <li>Decision : {criticalLines ? "validation requise avant arbitrage." : "scenario exploitable pour comparaison."}</li>
-                </ul>
-                <button className="primary-action secondary-action" type="button" disabled={!simulation} onClick={() => { window.history.pushState({}, "", "/app/procurement"); window.dispatchEvent(new PopStateEvent("popstate")); }}>
-                  Préparer l’approvisionnement
-                </button>
-              </AnalyticsCard>
-            </aside>
+            <ScenarioDecisionCopilot
+              activeScenario={activeScenario}
+              loading={loading}
+              runSimulation={runSimulation}
+              scenarioName={scenarioName}
+              setScenarioName={setScenarioName}
+              dqeSummary={dqeSummary}
+              simulationDisabledReason={simulationDisabledReason}
+              localBudget={localBudget}
+              savings={savings}
+              savingsRate={savingsRate}
+              analyzedLines={analyzedLines}
+              importLineCount={importLineCount}
+              criticalLines={criticalLines}
+              scenarioRisk={scenarioRisk}
+              simulation={simulation}
+            />
           </section>
         </>
       ) : (
