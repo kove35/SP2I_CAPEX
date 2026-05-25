@@ -265,6 +265,7 @@ class ServicePipeline:
         audit_excel = payload.get("audit_excel", {}) if isinstance(payload, dict) else {}
         ai_preview = audit_excel.get("ai_preview", {}) if isinstance(audit_excel, dict) else {}
         ai_confidence = audit_excel.get("ai_confidence", {}) if isinstance(audit_excel, dict) else {}
+        dqe_issues = audit_excel.get("dqe_issues", []) if isinstance(audit_excel, dict) else []
         governance_quality = (
             ai_preview.get("governance_quality")
             or ai_confidence.get("governance_quality")
@@ -316,7 +317,8 @@ class ServicePipeline:
             "ecart_capex_pct": round(ecart_pct, 6),
             "lots_detectes": int(ai_preview.get("lots_detected") or 0),
             "colonnes_reconnues": int(ai_preview.get("recognized_columns") or 0),
-            "anomalies": audit_excel.get("ai_anomalies", []) if isinstance(audit_excel, dict) else [],
+            "anomalies": (dqe_issues or audit_excel.get("ai_anomalies", [])) if isinstance(audit_excel, dict) else [],
+            "dqe_issues_summary": audit_excel.get("dqe_issues_summary", {}) if isinstance(audit_excel, dict) else {},
             "sheet_selection": audit_excel.get("sheet_selection", {}) if isinstance(audit_excel, dict) else {},
             "governance_quality": governance_quality,
         }
@@ -341,6 +343,7 @@ class ServicePipeline:
                         lignes_excel,
                         lignes_parsees,
                         lignes_fact_metre,
+                        lignes_rejetees,
                         lignes_review_required,
                         lignes_warning,
                         lignes_ignorees,
@@ -361,6 +364,7 @@ class ServicePipeline:
                         :lignes_excel,
                         :lignes_parsees,
                         :lignes_fact_metre,
+                        :lignes_rejetees,
                         :lignes_review_required,
                         :lignes_warning,
                         :lignes_ignorees,
@@ -382,6 +386,7 @@ class ServicePipeline:
                     "lignes_excel": quality.get("lignes_excel", 0),
                     "lignes_parsees": quality.get("lignes_parsees", 0),
                     "lignes_fact_metre": quality.get("lignes_fact_metre", 0),
+                    "lignes_rejetees": quality.get("lignes_rejetees", 0),
                     "lignes_review_required": quality.get("lignes_review_required", 0),
                     "lignes_warning": quality.get("lignes_warning", 0),
                     "lignes_ignorees": quality.get("lignes_ignorees", 0),
@@ -393,7 +398,14 @@ class ServicePipeline:
                     "colonnes_reconnues": quality.get("colonnes_reconnues", 0),
                     "anomalies_json": json.dumps(quality.get("anomalies", []), ensure_ascii=False, default=str),
                     "governance_quality": json.dumps(quality.get("governance_quality", {}), ensure_ascii=False, default=str),
-                    "metadata_json": json.dumps({"sheet_selection": quality.get("sheet_selection", {})}, ensure_ascii=False, default=str),
+                    "metadata_json": json.dumps(
+                        {
+                            "sheet_selection": quality.get("sheet_selection", {}),
+                            "dqe_issues_summary": quality.get("dqe_issues_summary", {}),
+                        },
+                        ensure_ascii=False,
+                        default=str,
+                    ),
                 },
             )
             self.db.commit()
