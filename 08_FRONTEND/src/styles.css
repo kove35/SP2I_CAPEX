@@ -7293,6 +7293,405 @@ button.procurement-kpi-card:hover {
   background: rgba(120, 53, 15, .12);
 }
 
+.appro-dashboard-page {
+  display: grid;
+  gap: 18px;
+  color: var(--text);
+}
+
+.appro-dashboard-hero,
+.appro-panel,
+.appro-copilot-card {
+  border: 1px solid rgba(148, 163, 184, .16);
+  background: linear-gradient(180deg, rgba(15, 23, 42, .92), rgba(8, 13, 24, .96));
+  box-shadow: 0 18px 44px rgba(2, 6, 23, .22);
+}
+
+.appro-dashboard-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 22px;
+  border-radius: 14px;
+}
+
+.appro-dashboard-hero h1 {
+  max-width: 780px;
+  margin: 4px 0 8px;
+  font-size: clamp(1.45rem, 2.1vw, 2.2rem);
+  line-height: 1.08;
+}
+
+.appro-dashboard-hero p:not(.eyebrow) {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+}
+
+.appro-hero-actions,
+.appro-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.appro-hero-actions button,
+.appro-panel-header input,
+.appro-copilot-card button {
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .82);
+  color: var(--text);
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.appro-hero-actions button,
+.appro-copilot-card button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.appro-product-map,
+.appro-filter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.appro-product-map span,
+.appro-filter-strip span {
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(15, 23, 42, .64);
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.appro-product-map .active {
+  color: #dffcf5;
+  border-color: rgba(103, 232, 201, .34);
+  background: rgba(20, 184, 166, .12);
+}
+
+.appro-kpi-band {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.appro-kpi-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 104px;
+  padding: 15px;
+  border: 1px solid rgba(148, 163, 184, .15);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, .86);
+}
+
+.appro-kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #60a5fa;
+}
+
+.appro-kpi-card.tone-green::before { background: #34d399; }
+.appro-kpi-card.tone-amber::before { background: #f59e0b; }
+.appro-kpi-card.tone-cyan::before { background: #22d3ee; }
+.appro-kpi-card.tone-violet::before { background: #a78bfa; }
+.appro-kpi-card.tone-red::before { background: #f87171; }
+
+.appro-kpi-card span,
+.appro-panel-header span,
+.appro-copilot-card span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.appro-kpi-card strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 1.35rem;
+}
+
+.appro-dashboard-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+
+.appro-main-stack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.appro-secondary-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .85fr);
+  gap: 18px;
+}
+
+.appro-panel {
+  min-width: 0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.appro-panel-header {
+  margin-bottom: 14px;
+}
+
+.appro-panel-header strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 1rem;
+}
+
+.appro-panel-header input {
+  width: min(320px, 100%);
+}
+
+.appro-copilot {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.appro-copilot-card {
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.appro-copilot-card.hero {
+  border-color: rgba(103, 232, 201, .28);
+}
+
+.appro-copilot-card strong {
+  display: block;
+  margin: 10px 0 8px;
+  font-size: 1.08rem;
+}
+
+.appro-copilot-card p,
+.appro-copilot-card small,
+.appro-prudent-note,
+.appro-empty {
+  color: var(--muted);
+}
+
+.appro-copilot-card.hero button {
+  width: 100%;
+  justify-content: center;
+  margin-top: 10px;
+  border-color: rgba(103, 232, 201, .38);
+  background: linear-gradient(135deg, rgba(20, 184, 166, .9), rgba(37, 99, 235, .82));
+}
+
+.appro-copilot-card button.secondary {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+  background: rgba(15, 23, 42, .72);
+}
+
+.appro-copilot-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+
+.appro-copilot-list li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 9px;
+  color: #dbeafe;
+  font-size: .9rem;
+}
+
+.appro-supplier-list {
+  display: grid;
+  gap: 10px;
+}
+
+.appro-supplier-card {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .13);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, .58);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.appro-supplier-card span,
+.appro-supplier-card footer,
+.appro-supplier-card em {
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.appro-supplier-card footer,
+.appro-supplier-card em {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.appro-supplier-card em {
+  justify-content: flex-start;
+  font-style: normal;
+  color: #a7f3d0;
+}
+
+.appro-supplier-card em.warning {
+  color: #fbbf24;
+}
+
+.appro-score-line,
+.appro-logistics-flow {
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .12);
+}
+
+.appro-score-line i {
+  display: block;
+  height: 6px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #34d399);
+}
+
+.appro-logistics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.appro-logistics-grid div {
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, .12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, .54);
+}
+
+.appro-logistics-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.12rem;
+}
+
+.appro-logistics-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0;
+  padding: 8px;
+}
+
+.appro-logistics-flow span {
+  flex: 1 1 86px;
+  border-radius: 999px;
+  padding: 7px 8px;
+  background: rgba(15, 23, 42, .78);
+  color: #dbeafe;
+  text-align: center;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.appro-risk-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.appro-risk-list div {
+  padding: 12px;
+  border: 1px solid rgba(248, 113, 113, .16);
+  border-radius: 12px;
+  background: rgba(127, 29, 29, .12);
+}
+
+.appro-risk-list span,
+.appro-risk-list p {
+  display: block;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+@media (max-width: 1180px) {
+  .appro-dashboard-layout,
+  .appro-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .appro-copilot {
+    position: static;
+  }
+}
+
+@media (max-width: 860px) {
+  .appro-dashboard-hero {
+    display: grid;
+  }
+
+  .appro-hero-actions {
+    flex-wrap: wrap;
+  }
+
+  .appro-kpi-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .appro-panel-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .appro-risk-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .appro-kpi-band {
+    grid-template-columns: 1fr;
+  }
+
+  .appro-dashboard-hero,
+  .appro-panel,
+  .appro-copilot-card {
+    padding: 14px;
+  }
+}
+
 .execution-context-strip {
   border: 1px solid rgba(148, 163, 184, .16);
   border-radius: 10px;

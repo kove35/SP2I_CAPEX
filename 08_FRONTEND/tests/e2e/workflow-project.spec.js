@@ -260,6 +260,28 @@ test("procurement page without scenario shows guided empty state", async ({ page
   await expect(page.getByTestId("procurement-validation-summary")).toContainText(/d[eé]cisions achat/i);
 });
 
+test("pilotage approvisionnement cockpit orchestrates existing workflow", async ({ page }) => {
+  const projectName = "Projet pilotage approvisionnement";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "SCENARIO_READY",
+    scenario_ready: true,
+    procurement_ready: false,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/approvisionnement");
+
+  await expect(page.getByRole("heading", { name: /commandes, fournisseurs, risques/i })).toBeVisible();
+  await expect(page.getByText(/pilotage approvisionnement/i).first()).toBeVisible();
+  await expect(page.getByText(/budget engag/i).first()).toBeVisible();
+  await expect(page.getByText(/portefeuille achat consolid/i)).toBeVisible();
+  await expect(page.getByText(/copilote approvisionnement sp2i/i)).toBeVisible();
+});
+
 test("scenario pret sans approvisionnement affiche CTA Preparer l'approvisionnement", async ({ page }) => {
   const projectName = "Projet scenario pret sans achat";
   await openConfiguredProjectWorkspace(page, projectName);

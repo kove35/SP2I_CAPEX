@@ -15,6 +15,7 @@ const currentModuleByPath = {
   dqe: "dqe",
   simulation: "scenarios",
   procurement: "procurement",
+  approvisionnement: "procurement",
   site: "execution",
   analytics: "pilotage",
 };
