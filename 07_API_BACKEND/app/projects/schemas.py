@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -101,6 +102,8 @@ class DqeStatus(BaseModel):
     uploaded_at: datetime | None = None
     analyzed_at: datetime | None = None
     synced_at: datetime | None = None
+    issues_summary: dict[str, int] = Field(default_factory=dict)
+    issues: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class BudgetStatus(BaseModel):

@@ -11,6 +11,8 @@ from app.ai.excel_mapping_rules import (
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
 from app.core.errors import PipelineIntegrityError
 from app.core.ai import AIExcelOrchestrator
+from app.governance.dqe_column_validator import validate_dqe_columns
+from app.governance.dqe_issue_builder import build_dqe_issue, summarize_dqe_issues
 from app.governance.rules import summarize_classified_rows
 from app.repositories import RepositoryExcel
 from app.schemas import SimulationItem, SimulationRequest
@@ -90,6 +92,8 @@ class ServiceAIMapping:
             "ai_preview": ai_payload.get("intelligent_preview"),
             "ai_confidence": ai_payload.get("confidence"),
             "ai_anomalies": ai_payload.get("anomalies", []),
+            "dqe_issues": ai_payload.get("dqe_issues", []),
+            "dqe_issues_summary": ai_payload.get("dqe_issues_summary", {}),
             "ai_classified_rows": ai_payload.get("classified_rows", [])[:preview_limit],
             "ai_suggestions": self._generer_suggestions(meilleure_analyse, ai_payload),
             "lineage": lineage.as_dict(),
@@ -125,6 +129,8 @@ class ServiceAIMapping:
             "ai_preview": parse_result["intelligent_preview"],
             "ai_confidence": parse_result["confidence"],
             "ai_anomalies": parse_result["anomalies"],
+            "dqe_issues": parse_result["dqe_issues"],
+            "dqe_issues_summary": parse_result["dqe_issues_summary"],
             "sheet_selection": sheet_selection,
             "lineage": lineage.as_dict(),
         }
@@ -276,8 +282,9 @@ class ServiceAIMapping:
         rows_in = 0
 
         for analyse in analyses:
-            rows_in += max(len(feuilles[analyse["feuille"]]) - int(analyse.get("ligne_entete") or 0), 0)
-            parse_result = self.ai_orchestrator.parse_and_enrich(feuilles[analyse["feuille"]], analyse)
+            sheet_rows = feuilles[analyse["feuille"]]
+            rows_in += max(len(sheet_rows) - int(analyse.get("ligne_entete") or 0), 0)
+            parse_result = self.ai_orchestrator.parse_and_enrich(sheet_rows, analyse)
             lignes.extend(parse_result["lignes_normalisees"])
             classified_rows.extend(
                 {**row, "feuille": analyse["feuille"]}
@@ -298,6 +305,8 @@ class ServiceAIMapping:
         confidence["governance_quality"] = governance_summary
         confidence["trust_score"] = self._calculer_trust_score_global(governance_summary)
         confidence["quality_taxonomy"] = "DATA_QUALITY_GOVERNANCE"
+        dqe_issues = self._collecter_issues_dqe(feuilles, analyses, classified_rows, anomalies)
+        confidence["dqe_issues_summary"] = summarize_dqe_issues(dqe_issues)
         intelligent_preview = self.ai_orchestrator.preview_generator.generate(
             lignes,
             analyse_reference,
@@ -307,6 +316,7 @@ class ServiceAIMapping:
         intelligent_preview["sheets_used"] = [analyse["feuille"] for analyse in analyses]
         intelligent_preview["source_fact_metre"] = (sheet_selection or {}).get("source_fact_metre", [])
         intelligent_preview["governance_quality"] = governance_summary
+        intelligent_preview["dqe_issues_summary"] = confidence["dqe_issues_summary"]
         intelligent_preview["analytics_state"] = "LIVE"
 
         self._valider_integrite_pipeline(rows_in, lignes, classified_rows, sheet_selection, governance_summary)
@@ -319,7 +329,115 @@ class ServiceAIMapping:
             "intelligent_preview": intelligent_preview,
             "sheet_selection": sheet_selection or {},
             "governance_quality": governance_summary,
+            "dqe_issues": dqe_issues,
+            "dqe_issues_summary": confidence["dqe_issues_summary"],
         }
+
+    def _collecter_issues_dqe(
+        self,
+        feuilles: dict[str, list[list[Any]]],
+        analyses: list[dict[str, Any]],
+        classified_rows: list[dict[str, Any]],
+        anomalies: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+
+        if not feuilles or not any(feuilles.values()):
+            issues.append(build_dqe_issue("FILE_EMPTY"))
+            return issues
+
+        if not analyses:
+            issues.append(
+                build_dqe_issue(
+                    "DQE_SHEET_NOT_FOUND",
+                    available_columns=[],
+                    expected_aliases=["METRE", "DQE", "BUDGET", "DEVIS", "QUANTITATIF"],
+                )
+            )
+            return issues
+
+        for analyse in analyses:
+            sheet_name = analyse.get("feuille")
+            sheet_rows = feuilles.get(sheet_name, [])
+            header_line = int(analyse.get("ligne_entete") or 0)
+            header_row = sheet_rows[header_line - 1] if header_line and header_line <= len(sheet_rows) else []
+            if not header_line:
+                issues.append(build_dqe_issue("HEADER_NOT_FOUND", sheet_name=sheet_name))
+                continue
+            issues.extend(validate_dqe_columns(header_row, analyse.get("mapping", []), str(sheet_name or "")))
+
+        issues.extend(self._issues_lignes_classifiees(classified_rows))
+        issues.extend(self._issues_anomalies_normalisees(anomalies))
+        return self._dedupliquer_issues(issues)
+
+    def _issues_lignes_classifiees(self, classified_rows: list[dict[str, Any]], limit: int = 20) -> list[dict[str, Any]]:
+        issues: list[dict[str, Any]] = []
+        for row in classified_rows:
+            row_type = str(row.get("row_type") or "")
+            if row_type in {"vide", "lot", "total", "ratio_analytics"}:
+                if len(issues) >= limit:
+                    continue
+                issues.append(
+                    build_dqe_issue(
+                        "STRUCTURAL_ROW_IGNORED",
+                        sheet_name=row.get("feuille"),
+                        line_number=row.get("row_index"),
+                        detected_value=row.get("raw_text"),
+                        row_type=row_type,
+                        reason=row.get("reason"),
+                    )
+                )
+            elif row_type == "inconnu":
+                issues.append(
+                    build_dqe_issue(
+                        "ARTICLE_LINE_NOT_NORMALIZED",
+                        sheet_name=row.get("feuille"),
+                        line_number=row.get("row_index"),
+                        detected_value=row.get("raw_text"),
+                        reason=row.get("reason"),
+                    )
+                )
+        return issues
+
+    def _issues_anomalies_normalisees(self, anomalies: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        mapping = {
+            "quantite_incoherente": "ZERO_QUANTITY",
+            "prix_absent": "EMPTY_PRICE",
+            "doublon_possible": "DUPLICATE_ARTICLE_LINE",
+            "prix_anormal": "LINE_AMOUNT_OUTLIER",
+        }
+        issues = []
+        for anomaly in anomalies:
+            issue_type = mapping.get(str(anomaly.get("anomaly_type") or ""))
+            if not issue_type:
+                continue
+            issues.append(
+                build_dqe_issue(
+                    issue_type,
+                    line_number=anomaly.get("line_id"),
+                    detected_value=anomaly.get("reason"),
+                    message=anomaly.get("reason"),
+                    source="normalized_anomaly_detector",
+                )
+            )
+        return issues
+
+    def _dedupliquer_issues(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        deduped: list[dict[str, Any]] = []
+        seen: set[tuple[Any, ...]] = set()
+        for issue in issues:
+            key = (
+                issue.get("issue_type"),
+                issue.get("sheet_name"),
+                issue.get("line_number"),
+                issue.get("column_name"),
+                issue.get("field"),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(issue)
+        return deduped
 
     def _evaluer_feuille_fact(self, analyse: dict[str, Any], rows: list[list[Any]]) -> dict[str, Any]:
         sheet_name = str(analyse.get("feuille") or "")
