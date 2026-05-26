@@ -8,6 +8,7 @@ from app.ai.excel_mapping_rules import (
     REGLES_MAPPING_EXCEL,
     normaliser_libelle,
 )
+from app.bim.maturity import detect_bim_maturity_from_columns, enrich_bim_maturity_with_lines
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
 from app.core.errors import PipelineIntegrityError
 from app.core.ai import AIExcelOrchestrator
@@ -94,6 +95,7 @@ class ServiceAIMapping:
             "ai_anomalies": ai_payload.get("anomalies", []),
             "dqe_issues": ai_payload.get("dqe_issues", []),
             "dqe_issues_summary": ai_payload.get("dqe_issues_summary", {}),
+            "bim_maturity": ai_payload.get("bim_maturity", {}),
             "ai_classified_rows": ai_payload.get("classified_rows", [])[:preview_limit],
             "ai_suggestions": self._generer_suggestions(meilleure_analyse, ai_payload),
             "lineage": lineage.as_dict(),
@@ -131,6 +133,7 @@ class ServiceAIMapping:
             "ai_anomalies": parse_result["anomalies"],
             "dqe_issues": parse_result["dqe_issues"],
             "dqe_issues_summary": parse_result["dqe_issues_summary"],
+            "bim_maturity": parse_result["bim_maturity"],
             "sheet_selection": sheet_selection,
             "lineage": lineage.as_dict(),
         }
@@ -307,6 +310,11 @@ class ServiceAIMapping:
         confidence["quality_taxonomy"] = "DATA_QUALITY_GOVERNANCE"
         dqe_issues = self._collecter_issues_dqe(feuilles, analyses, classified_rows, anomalies)
         confidence["dqe_issues_summary"] = summarize_dqe_issues(dqe_issues)
+        bim_maturity = enrich_bim_maturity_with_lines(
+            self._detecter_maturite_bim(feuilles, analyses),
+            lignes,
+        )
+        confidence["bim_maturity"] = bim_maturity
         intelligent_preview = self.ai_orchestrator.preview_generator.generate(
             lignes,
             analyse_reference,
@@ -317,6 +325,7 @@ class ServiceAIMapping:
         intelligent_preview["source_fact_metre"] = (sheet_selection or {}).get("source_fact_metre", [])
         intelligent_preview["governance_quality"] = governance_summary
         intelligent_preview["dqe_issues_summary"] = confidence["dqe_issues_summary"]
+        intelligent_preview["bim_maturity"] = bim_maturity
         intelligent_preview["analytics_state"] = "LIVE"
 
         self._valider_integrite_pipeline(rows_in, lignes, classified_rows, sheet_selection, governance_summary)
@@ -331,7 +340,23 @@ class ServiceAIMapping:
             "governance_quality": governance_summary,
             "dqe_issues": dqe_issues,
             "dqe_issues_summary": confidence["dqe_issues_summary"],
+            "bim_maturity": bim_maturity,
         }
+
+    def _detecter_maturite_bim(
+        self,
+        feuilles: dict[str, list[list[Any]]],
+        analyses: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        columns: list[Any] = []
+        for analyse in analyses:
+            sheet_name = analyse.get("feuille")
+            sheet_rows = feuilles.get(sheet_name, [])
+            header_line = int(analyse.get("ligne_entete") or 0)
+            if header_line and header_line <= len(sheet_rows):
+                columns.extend(sheet_rows[header_line - 1])
+            columns.extend(item.get("colonne_excel") for item in analyse.get("mapping", []))
+        return detect_bim_maturity_from_columns(columns)
 
     def _collecter_issues_dqe(
         self,

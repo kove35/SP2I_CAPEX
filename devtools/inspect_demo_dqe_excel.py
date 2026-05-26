@@ -80,6 +80,7 @@ def main() -> int:
         governance = confidence.get("governance_quality") or {}
         issues = audit.get("dqe_issues") or []
         issues_summary = audit.get("dqe_issues_summary") or {}
+        bim_maturity = audit.get("bim_maturity") or {}
         analysis = audit.get("analyse") or {}
         sheet_selection = audit.get("sheet_selection") or {}
         certification_status = certification_from_governance(governance)
@@ -103,6 +104,8 @@ def main() -> int:
         print(f"certification_status: {certification_status}")
         print("issues_summary:")
         print(json.dumps(issues_summary, ensure_ascii=False, indent=2, default=str))
+        print("bim_maturity:")
+        print(json.dumps(bim_maturity, ensure_ascii=False, indent=2, default=str))
 
         section("Detected DQE issues")
         if not issues:

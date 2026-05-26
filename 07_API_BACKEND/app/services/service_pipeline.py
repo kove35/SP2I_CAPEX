@@ -266,6 +266,12 @@ class ServicePipeline:
         ai_preview = audit_excel.get("ai_preview", {}) if isinstance(audit_excel, dict) else {}
         ai_confidence = audit_excel.get("ai_confidence", {}) if isinstance(audit_excel, dict) else {}
         dqe_issues = audit_excel.get("dqe_issues", []) if isinstance(audit_excel, dict) else []
+        bim_maturity = (
+            audit_excel.get("bim_maturity")
+            or ai_confidence.get("bim_maturity")
+            or ai_preview.get("bim_maturity")
+            or {}
+        ) if isinstance(audit_excel, dict) else {}
         governance_quality = (
             ai_preview.get("governance_quality")
             or ai_confidence.get("governance_quality")
@@ -321,6 +327,7 @@ class ServicePipeline:
             "dqe_issues_summary": audit_excel.get("dqe_issues_summary", {}) if isinstance(audit_excel, dict) else {},
             "sheet_selection": audit_excel.get("sheet_selection", {}) if isinstance(audit_excel, dict) else {},
             "governance_quality": governance_quality,
+            "bim_maturity": bim_maturity,
         }
 
     def _montant_local_source(self, ligne: dict[str, Any]) -> float:
@@ -402,6 +409,7 @@ class ServicePipeline:
                         {
                             "sheet_selection": quality.get("sheet_selection", {}),
                             "dqe_issues_summary": quality.get("dqe_issues_summary", {}),
+                            "bim_maturity": quality.get("bim_maturity", {}),
                         },
                         ensure_ascii=False,
                         default=str,

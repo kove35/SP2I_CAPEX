@@ -175,6 +175,7 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
     synced_at = None
     issues: list[dict[str, Any]] = []
     issues_summary: dict[str, int] = {}
+    bim_maturity: dict[str, Any] = {}
 
     if latest_audit:
         file_name = latest_audit.get("fichier") or ""
@@ -188,6 +189,7 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
         issues = _json_field(latest_audit.get("anomalies_json"), [])
         metadata = _json_field(latest_audit.get("metadata_json"), {})
         issues_summary = metadata.get("dqe_issues_summary") or summarize_dqe_issues(issues)
+        bim_maturity = metadata.get("bim_maturity") or {}
         if review_required_count > 0:
             certification_status = "REVIEW_REQUIRED"
         elif int(latest_audit.get("lignes_warning") or 0) > 0:
@@ -250,6 +252,7 @@ def _resolve_project_dqe_status(project_id: int, db: Session | None = None) -> d
         "synced_at": synced_at,
         "issues_summary": issues_summary,
         "issues": issues[:20],
+        "bim_maturity": bim_maturity,
     }
 
 
