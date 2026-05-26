@@ -134,6 +134,13 @@ def list_site_execution_actions(
                 scenario_id,
                 procurement_decision_id,
                 simulation_line_id,
+                batiment,
+                niveau,
+                appart,
+                piece,
+                type_zone,
+                bim_object_id,
+                ifc_guid,
                 lot,
                 family,
                 designation,
@@ -190,6 +197,13 @@ def generate_site_execution_actions(
                 scenario_id,
                 procurement_decision_id,
                 simulation_line_id,
+                batiment,
+                niveau,
+                appart,
+                piece,
+                type_zone,
+                bim_object_id,
+                ifc_guid,
                 lot,
                 family,
                 designation,
@@ -215,6 +229,13 @@ def generate_site_execution_actions(
                 pd.scenario_id,
                 pd.id,
                 pd.simulation_line_id,
+                COALESCE(NULLIF(fm.batiment, ''), dbat.batiment, ''),
+                COALESCE(NULLIF(fm.niveau, ''), dniv.niveau, ''),
+                COALESCE(NULLIF(fm.appart, ''), ''),
+                COALESCE(NULLIF(fm.piece, ''), ''),
+                COALESCE(NULLIF(fm.type_zone, ''), ''),
+                COALESCE(NULLIF(fm.bim_object_id, ''), ''),
+                COALESCE(NULLIF(fm.ifc_guid, ''), ''),
                 COALESCE(NULLIF(pd.lot, ''), ''),
                 COALESCE(NULLIF(pd.family, ''), ''),
                 COALESCE(NULLIF(pd.designation, ''), ''),
@@ -297,6 +318,9 @@ def generate_site_execution_actions(
               ON fs.projet_id = pd.project_id
              AND fs.simulation_line_id = pd.simulation_line_id
              AND (pd.scenario_id IS NULL OR fs.scenario_id::text = pd.scenario_id)
+            LEFT JOIN dim_batiment dbat ON dbat.batiment_id = fs.batiment_id
+            LEFT JOIN dim_niveau dniv ON dniv.niveau_id = fs.niveau_id
+            LEFT JOIN fact_metre fm ON fm.id_ligne = fs.id_ligne
             WHERE {" AND ".join(filters)}
               AND COALESCE(pd.designation, '') <> ''
               AND (

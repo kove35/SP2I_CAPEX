@@ -523,6 +523,21 @@ export async function listProjectExecutionActions(projectId, scenarioId) {
   }
 }
 
+export async function getProjectSpatialSummary(projectId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({
+      url: `/projects/${projectId}/spatial/summary`,
+      headers: authHeaders(),
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function updateProjectExecutionAction(projectId, actionId, updates) {
   const session = getStoredSession();
   if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {

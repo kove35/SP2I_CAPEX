@@ -84,6 +84,36 @@ async function setSyncedDqe(page) {
   });
 }
 
+async function setSpatialSyncedDqe(page) {
+  await page.evaluate(() => {
+    window.localStorage.setItem("sp2i:dqeVersions:demo-brazza-clinic", JSON.stringify([
+      {
+        id: "test-spatial-dqe",
+        version_number: 1,
+        file_name: "DQE_SPATIAL_TEST.xlsx",
+        status: "SYNCED",
+        trust_score: 96,
+        normalized_lines_count: 584,
+        data_loss_count: 0,
+        review_required_count: 0,
+        is_active: true,
+        synced_at: new Date().toISOString(),
+        bim_maturity: {
+          maturity: "BIM_LITE",
+          mode: "BIM_LITE",
+          is_bim_compatible: true,
+          spatialized_lines_count: 584,
+          coverage: {
+            batiment: 1,
+            niveau: 1,
+            piece: 0.8,
+          },
+        },
+      },
+    ]));
+  });
+}
+
 async function updateLocalProject(page, projectName, patch) {
   await page.evaluate(({ name, values }) => {
     const stored = window.localStorage.getItem("sp2i:projects");
@@ -411,6 +441,36 @@ test("execution avec approvisionnement pret demande preparation chantier", async
   await expect(page.getByRole("button", { name: /g[eé]n[eé]rer actions chantier/i })).toBeVisible();
   await expect(page.getByTestId("execution-actions-summary")).toContainText(/actions chantier/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/pr[eé]parer l[’']ex[eé]cution/i);
+});
+
+test("execution BIM-lite shows spatial drilldown and spatial tab", async ({ page }) => {
+  const projectName = "Projet execution spatial";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSpatialSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "EXECUTION_READY",
+    scenario_ready: true,
+    procurement_ready: true,
+    execution_ready: true,
+    execution_status: "READY",
+    execution_actions_count: 3,
+  });
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await expect(projectCard).toBeVisible();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/site?tab=planning");
+
+  await expect(page.getByTestId("spatial-drilldown-panel")).toBeVisible();
+  await expect(page.getByTestId("spatial-kpi-band")).toContainText(/bim-lite/i);
+  await expect(page.getByTestId("execution-tab-spatial")).toBeVisible();
+  await page.getByTestId("execution-tab-spatial").click();
+  await expect(page.getByTestId("spatial-timeline-board")).toBeVisible();
+  await expect(page.getByTestId("spatial-timeline-board")).toContainText(/timeline spatiale/i);
+  await expect(page.getByTestId("spatial-event-feed")).toContainText(/event engine|timeline spatiale/i);
+  await expect(page.getByTestId("spatial-critical-path-panel")).toContainText(/chemins d’impact chantier|propagation spatiale/i);
+  await expect(page.getByTestId("spatial-execution-board")).toBeVisible();
 });
 
 test("Pilotage with incomplete workflow shows next action", async ({ page }) => {
