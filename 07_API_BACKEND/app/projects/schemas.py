@@ -104,6 +104,7 @@ class DqeStatus(BaseModel):
     synced_at: datetime | None = None
     issues_summary: dict[str, int] = Field(default_factory=dict)
     issues: list[dict[str, Any]] = Field(default_factory=list)
+    bim_maturity: dict[str, Any] = Field(default_factory=dict)
 
 
 class BudgetStatus(BaseModel):

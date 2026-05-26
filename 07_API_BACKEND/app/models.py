@@ -21,9 +21,24 @@ class FactMetre(Base):
     economie_nette: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     decision_import: Mapped[str] = mapped_column(String(50), nullable=False, default="LOCAL")
     lot: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    sous_lot: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     famille: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
     batiment: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     niveau: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    appart: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    type_zone: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    formule: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    bim_object_id: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    ifc_guid: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    type_objet: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    famille_bim: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    systeme: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    phase_chantier: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    classification: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    omniclass: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    uniclass: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    ifc_type: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     statut_ligne: Mapped[str] = mapped_column(String(150), nullable=False, default="OK")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -36,6 +51,8 @@ class FactMetre(Base):
         Index("ix_fact_metre_famille", "famille"),
         Index("ix_fact_metre_lot", "lot"),
         Index("ix_fact_metre_batiment", "batiment"),
+        Index("ix_fact_metre_spatial", "batiment", "niveau", "piece"),
+        Index("ix_fact_metre_ifc_guid", "ifc_guid"),
     )
 
 
