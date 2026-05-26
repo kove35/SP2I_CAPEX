@@ -136,6 +136,10 @@ export default function ProjectHub({ onNavigate }) {
         {projects.map((project) => {
           const workflow = getProjectWorkflow(project, state);
           const primaryAction = getProjectPrimaryAction(project, state);
+          const workflowDqe = workflow.dqe || workflow.activeDqe || {};
+          const trustScore = workflowDqe.trust_score ?? project.trust_score ?? 0;
+          const dqeFileName = workflowDqe.file_name || project.last_dqe || "DQE à importer";
+          const budgetAmount = workflow.budget?.total_amount || project.budget || 0;
           return (
             <article className="project-card" key={project.id} data-testid="project-card">
               <div className="project-card-top">
@@ -145,10 +149,10 @@ export default function ProjectHub({ onNavigate }) {
               <h2>{project.name}</h2>
               <p>{project.client_name || "Client / organisation à renseigner"}</p>
               <div className="project-card-metrics">
-                <span><ShieldCheck size={15} /> Confiance {project.trust_score ?? 0}/100</span>
+                <span><ShieldCheck size={15} /> Confiance {trustScore}/100</span>
                 <span><FileSpreadsheet size={15} /> Configuration {project.setup_completion_percent ?? workflow.completion}%</span>
-                <span><FileSpreadsheet size={15} /> {project.last_dqe || "DQE à importer"}</span>
-                <span><Gauge size={15} /> {project.budget ? formatMoney(project.budget) : "Budget à synchroniser"}</span>
+                <span><FileSpreadsheet size={15} /> {dqeFileName}</span>
+                <span><Gauge size={15} /> {budgetAmount ? formatMoney(budgetAmount) : "Budget à synchroniser"}</span>
               </div>
               <ProjectWorkflowStepper compact workflow={workflow} onNavigate={onNavigate} onSetup={() => setSetupProject(project)} />
               <div className="project-card-actions">

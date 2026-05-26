@@ -425,6 +425,18 @@ export async function getBackendProjectWorkflow(projectId) {
   }
 }
 
+export async function getBackendProjectWorkflowState(projectId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({ url: `/projects/${projectId}/workflow-state`, headers: authHeaders() });
+  } catch {
+    return null;
+  }
+}
+
 export async function getProjectProcurementDecisionStatus(projectId, scenarioId) {
   const session = getStoredSession();
   if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
