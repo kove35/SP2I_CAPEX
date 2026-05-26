@@ -7726,6 +7726,409 @@ button.procurement-kpi-card:hover {
   line-height: 1.35;
 }
 
+.spatial-panel,
+.spatial-kpi-band {
+  border: 1px solid rgba(148, 163, 184, .18);
+  background: rgba(15, 23, 42, .72);
+  border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(2, 6, 23, .18);
+}
+
+.spatial-panel {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.spatial-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.spatial-panel-header h3 {
+  margin: 2px 0 0;
+  font-size: 16px;
+  color: #f8fafc;
+}
+
+.spatial-mode-badge {
+  border: 1px solid rgba(34, 211, 238, .24);
+  color: #a7f3d0;
+  background: rgba(20, 184, 166, .09);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.spatial-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: #b7c9df;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.spatial-breadcrumb strong {
+  color: #f8fafc;
+}
+
+.spatial-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.spatial-filter-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.spatial-filter-field span {
+  color: #b7c9df;
+  font-size: 12px;
+}
+
+.spatial-filter-field select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 7px;
+  padding: 8px 9px;
+  background: rgba(2, 6, 23, .5);
+  color: #f8fafc;
+}
+
+.spatial-link-action {
+  margin-top: 12px;
+  border: 0;
+  background: transparent;
+  color: #67e8f9;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.spatial-kpi-band {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  margin: 0 0 16px;
+}
+
+.spatial-kpi {
+  min-width: 0;
+  padding: 10px;
+  border-radius: 7px;
+  background: rgba(2, 6, 23, .38);
+}
+
+.spatial-kpi span {
+  display: block;
+  color: #b7c9df;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.spatial-kpi strong {
+  color: #f8fafc;
+  font-size: 15px;
+}
+
+.spatial-kpi.warning strong {
+  color: #fde68a;
+}
+
+.spatial-workflow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.spatial-risk-panel {
+  grid-column: 1 / -1;
+}
+
+.spatial-timeline-board,
+.spatial-executive-kpis,
+.spatial-critical-path-panel {
+  grid-column: 1 / -1;
+}
+
+.spatial-executive-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.spatial-executive-kpi {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  padding: 13px;
+  background: rgba(2, 6, 23, .34);
+}
+
+.spatial-executive-kpi span,
+.spatial-timeline-meta span,
+.spatial-timeline-meta em,
+.spatial-event-item p,
+.spatial-event-item small,
+.spatial-storage-row span,
+.spatial-critical-path-panel p,
+.spatial-recommendation-list,
+.spatial-planning-metrics {
+  color: #b7c9df;
+  font-size: 13px;
+}
+
+.spatial-executive-kpi strong {
+  display: block;
+  margin-top: 5px;
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.spatial-executive-kpi.warning strong {
+  color: #fde68a;
+}
+
+.spatial-timeline-list,
+.spatial-event-list,
+.spatial-dependency-list,
+.spatial-storage-list,
+.spatial-critical-path-list {
+  display: grid;
+  gap: 10px;
+}
+
+.spatial-timeline-row {
+  display: grid;
+  grid-template-columns: minmax(0, .85fr) minmax(360px, 1.15fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(2, 6, 23, .32);
+}
+
+.spatial-timeline-row.critical {
+  border-color: rgba(245, 158, 11, .34);
+  background: rgba(245, 158, 11, .08);
+}
+
+.spatial-timeline-meta strong,
+.spatial-event-item strong,
+.spatial-storage-row strong,
+.spatial-critical-path-panel strong {
+  display: block;
+  color: #f8fafc;
+}
+
+.spatial-timeline-meta em {
+  display: block;
+  margin-top: 4px;
+  font-style: normal;
+}
+
+.spatial-timeline-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.spatial-timeline-steps span {
+  min-width: 0;
+  border-radius: 7px;
+  padding: 8px;
+  background: rgba(15, 23, 42, .62);
+}
+
+.spatial-timeline-steps small {
+  display: block;
+  color: #8da2ba;
+  font-size: 11px;
+}
+
+.spatial-timeline-steps b {
+  display: block;
+  margin-top: 3px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.spatial-event-item,
+.spatial-storage-row,
+.spatial-dependency-row,
+.spatial-critical-path-list article {
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 8px;
+  padding: 11px;
+  background: rgba(2, 6, 23, .32);
+}
+
+.spatial-event-item.warning,
+.spatial-storage-row.warning {
+  border-color: rgba(245, 158, 11, .3);
+}
+
+.spatial-event-item.critical {
+  border-color: rgba(239, 68, 68, .34);
+}
+
+.spatial-event-item > span,
+.spatial-storage-row b {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: #67e8f9;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.spatial-dependency-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #b7c9df;
+}
+
+.spatial-dependency-row strong {
+  color: #f8fafc;
+}
+
+.spatial-dependency-row i {
+  color: #67e8f9;
+  font-style: normal;
+}
+
+.spatial-planning-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.spatial-planning-metrics span {
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(14, 165, 233, .1);
+}
+
+.spatial-planning-metrics b {
+  margin-right: 5px;
+  color: #f8fafc;
+}
+
+.spatial-recommendation-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+.spatial-storage-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spatial-zone-list,
+.spatial-heatmap-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.spatial-zone-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 163, 184, .14);
+  background: rgba(2, 6, 23, .32);
+}
+
+.spatial-zone-row strong,
+.spatial-heatmap-cell strong {
+  display: block;
+  color: #f8fafc;
+}
+
+.spatial-zone-row span,
+.spatial-zone-status span,
+.spatial-heatmap-cell span,
+.spatial-risk-panel p {
+  color: #b7c9df;
+  font-size: 13px;
+}
+
+.spatial-zone-status {
+  text-align: right;
+}
+
+.spatial-zone-status b {
+  display: block;
+  color: #fca5a5;
+  font-size: 13px;
+}
+
+.spatial-heatmap-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.spatial-heatmap-cell {
+  min-height: 96px;
+  border-radius: 7px;
+  padding: 11px;
+  border: 1px solid rgba(148, 163, 184, .13);
+  background: rgba(15, 23, 42, .52);
+}
+
+.spatial-heatmap-cell.warning {
+  background: rgba(245, 158, 11, .12);
+  border-color: rgba(245, 158, 11, .28);
+}
+
+.spatial-heatmap-cell.critical {
+  background: rgba(239, 68, 68, .13);
+  border-color: rgba(239, 68, 68, .32);
+}
+
+.spatial-heatmap-cell b {
+  display: inline-flex;
+  margin-top: 9px;
+  color: #e2e8f0;
+}
+
+.spatial-risk-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+.spatial-risk-chain span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, .12);
+  color: #bae6fd;
+  font-size: 13px;
+}
+
+.spatial-risk-chain i {
+  color: #b7c9df;
+  font-style: normal;
+}
+
 .execution-operational-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(300px, .55fr);
@@ -7823,6 +8226,28 @@ button.procurement-kpi-card:hover {
   .execution-context-strip,
   .execution-operational-grid {
     grid-template-columns: 1fr;
+  }
+
+  .spatial-filter-grid,
+  .spatial-kpi-band,
+  .spatial-executive-kpis,
+  .spatial-workflow-grid,
+  .spatial-heatmap-grid,
+  .spatial-timeline-row,
+  .spatial-timeline-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .spatial-zone-row {
+    display: grid;
+  }
+
+  .spatial-storage-row {
+    display: grid;
+  }
+
+  .spatial-zone-status {
+    text-align: left;
   }
 
   .project-workflow-steps,

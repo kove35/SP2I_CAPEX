@@ -10,6 +10,13 @@ import {
 } from "../../services/projectService";
 import ActionsWorkflowBoard from "./ActionsWorkflowBoard";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
+import {
+  SpatialDrilldownPanel,
+  SpatialKpiBand,
+  SpatialWorkflowPanel,
+  useSpatialIntelligence,
+} from "../spatial";
+import { hasSpatialCapabilities } from "../spatial/utils/spatialFormatters";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
@@ -367,6 +374,9 @@ export default function SiteExecutionPage() {
     workflow.steps.find((step) => step.id === "execution")?.state === "done";
 
   const executionSummary = workflow.execution || {};
+  const spatial = useSpatialIntelligence({ workflow });
+  const spatialSummary = spatial.data;
+  const spatialEnabled = hasSpatialCapabilities(spatialSummary, workflow);
 
   const context = React.useMemo(
     () =>
@@ -546,6 +556,18 @@ export default function SiteExecutionPage() {
         </div>
       </section>
 
+      {spatialEnabled ? (
+        <>
+          <SpatialDrilldownPanel
+            summary={spatialSummary}
+            filters={spatial.filters}
+            onFilterChange={spatial.setSpatialFilter}
+            onReset={spatial.resetSpatialFilters}
+          />
+          <SpatialKpiBand summary={spatialSummary} />
+        </>
+      ) : null}
+
       {!setupDone ? (
         <WorkflowGuardEmptyState
           title="Configuration projet requise"
@@ -628,12 +650,24 @@ export default function SiteExecutionPage() {
 
       <div className="tab-row">
         <button
+          data-testid="execution-tab-workflow"
           className={tab === "workflow" ? "active" : ""}
           onClick={() => setTab("workflow")}
           type="button"
         >
           Workflow actions
         </button>
+
+        {spatialEnabled ? (
+          <button
+            className={tab === "spatial" ? "active" : ""}
+            onClick={() => setTab("spatial")}
+            type="button"
+            data-testid="execution-tab-spatial"
+          >
+            Spatial
+          </button>
+        ) : null}
 
         <button
           className={tab === "planning" ? "active" : ""}
@@ -690,6 +724,10 @@ export default function SiteExecutionPage() {
         </section>
       )}
 
+      {tab === "spatial" && spatialEnabled ? (
+        <SpatialWorkflowPanel summary={spatialSummary} filters={spatial.filters} />
+      ) : null}
+
       <section className="metric-grid">
         <KpiCard label="Lots critiques" value={blockedLots} tone="warning" />
         <KpiCard
@@ -710,7 +748,7 @@ export default function SiteExecutionPage() {
         />
       </section>
 
-      {tab !== "workflow" && (
+      {tab !== "workflow" && tab !== "spatial" && (
         <>
       <section className="procurement-scope-note" data-testid="execution-actions-summary">
         <span>

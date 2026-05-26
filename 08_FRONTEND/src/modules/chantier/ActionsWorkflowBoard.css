@@ -112,6 +112,35 @@
   padding-top: 8px;
 }
 
+.action-spatial-context,
+.drawer-spatial-context {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.action-spatial-context span,
+.drawer-spatial-context strong {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.action-spatial-context strong,
+.drawer-spatial-context span {
+  color: #0f172a;
+  font-size: 12px;
+}
+
+.drawer-spatial-context small {
+  color: #64748b;
+}
+
 .meta-row {
   display: flex;
   justify-content: space-between;

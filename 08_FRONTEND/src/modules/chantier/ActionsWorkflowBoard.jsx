@@ -24,6 +24,7 @@ import {
 
 import dayjs from 'dayjs';
 import { updateProjectExecutionAction } from '../../services/projectService';
+import { compactSpatialLocation } from '../spatial/utils/spatialFormatters';
 import './ActionsWorkflowBoard.css';
 
 const STATUS_COLUMNS = [
@@ -80,6 +81,7 @@ function ActionCard({ action, onDetails }) {
 
   const isOverdue = daysUntilDue !== null && daysUntilDue < 0;
   const isUrgent = daysUntilDue !== null && daysUntilDue <= 3;
+  const spatialLocation = compactSpatialLocation(action);
 
   return (
     <Card
@@ -112,6 +114,13 @@ function ActionCard({ action, onDetails }) {
       </div>
 
       <p className="action-problem">{action.problem}</p>
+
+      {spatialLocation ? (
+        <div className="action-spatial-context">
+          <span>Localisation</span>
+          <strong>{spatialLocation}</strong>
+        </div>
+      ) : null}
 
       <div className="action-meta">
         <div className="meta-row">
@@ -314,6 +323,18 @@ function ActionsWorkflowBoard({
                   rows={2}
                 />
               </Form.Item>
+
+              {compactSpatialLocation(selectedAction) ? (
+                <div className="drawer-spatial-context">
+                  <strong>Contexte spatial</strong>
+                  <span>{compactSpatialLocation(selectedAction)}</span>
+                  {selectedAction.ifc_guid || selectedAction.bim_object_id ? (
+                    <small>
+                      Objet BIM : {selectedAction.ifc_guid || selectedAction.bim_object_id}
+                    </small>
+                  ) : null}
+                </div>
+              ) : null}
 
               <Form.Item
                 label="Statut"

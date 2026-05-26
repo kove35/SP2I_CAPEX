@@ -156,6 +156,13 @@ class SiteExecutionAction(Base):
     scenario_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     procurement_decision_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     simulation_line_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    batiment: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    niveau: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    appart: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    type_zone: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    bim_object_id: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    ifc_guid: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     lot: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     family: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     designation: Mapped[str] = mapped_column(String(500), nullable=False, default="")
@@ -190,6 +197,7 @@ class SiteExecutionAction(Base):
             name="uq_site_execution_action_source",
         ),
         Index("ix_site_execution_actions_project_status", "project_id", "status"),
+        Index("ix_site_execution_actions_spatial", "project_id", "batiment", "niveau", "piece"),
     )
 
 

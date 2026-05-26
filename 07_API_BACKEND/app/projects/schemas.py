@@ -163,6 +163,24 @@ class ExecutionStatus(BaseModel):
     message: str = ""
 
 
+class SpatialSummaryResponse(BaseModel):
+    project_id: int
+    maturity: dict[str, Any] = Field(default_factory=dict)
+    kpis: dict[str, Any] = Field(default_factory=dict)
+    hierarchy: list[dict[str, Any]] = Field(default_factory=list)
+    capex_by_batiment: list[dict[str, Any]] = Field(default_factory=list)
+    capex_by_niveau: list[dict[str, Any]] = Field(default_factory=list)
+    capex_by_piece: list[dict[str, Any]] = Field(default_factory=list)
+    execution_by_space: list[dict[str, Any]] = Field(default_factory=list)
+    risk_heatmap: list[dict[str, Any]] = Field(default_factory=list)
+    timeline: list[dict[str, Any]] = Field(default_factory=list)
+    dependencies: dict[str, Any] = Field(default_factory=dict)
+    event_feed: list[dict[str, Any]] = Field(default_factory=list)
+    planning: dict[str, Any] = Field(default_factory=dict)
+    storage: list[dict[str, Any]] = Field(default_factory=list)
+    risk_propagation: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class ProjectWorkflowResponse(BaseModel):
     status: str
     label: str
@@ -253,6 +271,13 @@ class ProcurementDecisionBootstrapResponse(BaseModel):
 
 
 class SiteExecutionActionBase(BaseModel):
+    batiment: str = ""
+    niveau: str = ""
+    appart: str = ""
+    piece: str = ""
+    type_zone: str = ""
+    bim_object_id: str = ""
+    ifc_guid: str = ""
     lot: str = ""
     family: str = ""
     designation: str = ""

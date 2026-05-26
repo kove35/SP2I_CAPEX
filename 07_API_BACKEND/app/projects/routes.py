@@ -34,6 +34,7 @@ from app.projects.schemas import (
     SiteExecutionActionOut,
     SiteExecutionActionStatus,
     SiteExecutionActionUpdate,
+    SpatialSummaryResponse,
     WorkflowEventListResponse,
     WorkflowEventOut,
     WorkflowAction,
@@ -52,6 +53,7 @@ from app.services.site_execution_actions import (
     list_site_execution_actions,
     update_site_execution_action,
 )
+from app.spatial.services.spatial_intelligence import get_project_spatial_summary
 from app.services.workflow_events import list_workflow_events, log_workflow_event
 from app.services.service_pipeline import ServicePipeline
 from app.governance.dqe_issue_builder import build_dqe_issue, summarize_dqe_issues
@@ -945,6 +947,16 @@ def get_project_workflow(
     db: Session = Depends(get_db),
 ) -> ProjectWorkflowResponse:
     return compute_project_workflow_status(_get_owned_project(db, current_user, project_id), db)
+
+
+@router.get("/{project_id}/spatial/summary", response_model=SpatialSummaryResponse)
+def get_project_spatial_intelligence_summary(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SpatialSummaryResponse:
+    _get_owned_project(db, current_user, project_id)
+    return SpatialSummaryResponse(**get_project_spatial_summary(db, project_id))
 
 
 @router.get("/{project_id}/report.pdf")
