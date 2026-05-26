@@ -5,6 +5,7 @@ from typing import Any
 
 from app.core import clean_lot, clean_niveau, nettoyer_nombre
 from app.governance.rules import assess_parsed_row
+from app.utils.id_normalizer import normalize_optional_id
 
 
 def _texte(valeur: Any) -> str:
@@ -92,11 +93,14 @@ class AIDQEParser:
 
         quantity = nettoyer_nombre(self._value(row, columns, "quantite", 0), 0) or 0
         amount = nettoyer_nombre(self._value(row, columns, "prix_total_ht", 0), 0) or 0
-
+        import_amount = nettoyer_nombre(self._value(row, columns, "montant_import", 0), 0) or 0
         unit_price = nettoyer_nombre(self._value(row, columns, "prix_unitaire_ht", 0), 0) or 0
+        import_unit_price = nettoyer_nombre(self._value(row, columns, "pu_import", 0), 0) or 0
         lot_cell = clean_lot(self._value(row, columns, "lot", ""))
+        lot_code = normalize_optional_id(self._value(row, columns, "lot_code", ""))
 
-        if designation and quantity > 0 and (amount > 0 or unit_price > 0) and (current_lot or lot_cell):
+        has_price_signal = amount > 0 or unit_price > 0 or import_amount > 0 or import_unit_price > 0
+        if designation and quantity > 0 and has_price_signal and (current_lot or lot_cell or lot_code):
             return "article", "Designation avec quantite ou montant et contexte lot.", ""
 
         lot = self._detect_lot(row, columns, text)
@@ -113,38 +117,58 @@ class AIDQEParser:
         if not designation:
             return None
 
-        lot = clean_lot(self._value(row, columns, "lot", "")) or current_lot
+        lot = clean_lot(self._value(row, columns, "lot", "")) or normalize_optional_id(self._value(row, columns, "lot_code", "")) or current_lot
         if not lot or self._is_invalid_lot(lot):
             return None
 
         quantity = self._value(row, columns, "quantite", 0)
         unit_price = self._value(row, columns, "prix_unitaire_ht", 0)
         total_price = self._value(row, columns, "prix_total_ht", 0)
+        import_unit_price = self._value(row, columns, "pu_import", 0)
+        import_total_price = self._value(row, columns, "montant_import", 0)
         numeric_quantity = nettoyer_nombre(quantity, 0) or 0
         numeric_unit_price = nettoyer_nombre(unit_price, 0) or 0
         numeric_total_price = nettoyer_nombre(total_price, 0) or 0
+        numeric_import_unit_price = nettoyer_nombre(import_unit_price, 0) or 0
+        numeric_import_total_price = nettoyer_nombre(import_total_price, 0) or 0
         if numeric_total_price <= 0 and numeric_quantity > 0 and numeric_unit_price > 0:
             total_price = numeric_quantity * numeric_unit_price
             numeric_total_price = nettoyer_nombre(total_price, 0) or 0
+        if numeric_import_total_price <= 0 and numeric_quantity > 0 and numeric_import_unit_price > 0:
+            import_total_price = numeric_quantity * numeric_import_unit_price
+            numeric_import_total_price = nettoyer_nombre(import_total_price, 0) or 0
 
-        if numeric_quantity <= 0 or numeric_total_price <= 0:
+        if numeric_quantity <= 0 or (numeric_total_price <= 0 and numeric_import_total_price <= 0):
             return None
 
+        article_id = normalize_optional_id(self._value(row, columns, "article_id", ""), self._value(row, columns, "id_ligne", ""))
+        ifc_guid = normalize_optional_id(self._value(row, columns, "ifc_guid", ""))
+
         return {
-            "id_ligne": str(self._value(row, columns, "id_ligne", "")),
+            "id_ligne": article_id or ifc_guid or str(self._value(row, columns, "id_ligne", "")),
+            "project_code": normalize_optional_id(self._value(row, columns, "project_code", "")),
+            "batiment_code": normalize_optional_id(self._value(row, columns, "batiment_code", "")),
+            "niveau_code": normalize_optional_id(self._value(row, columns, "niveau_code", "")),
+            "appartement_code": normalize_optional_id(self._value(row, columns, "appartement_code", "")),
+            "piece_code": normalize_optional_id(self._value(row, columns, "piece_code", "")),
+            "lot_code": normalize_optional_id(self._value(row, columns, "lot_code", "")),
+            "sous_lot_code": normalize_optional_id(self._value(row, columns, "sous_lot_code", "")),
+            "article_id": article_id,
             "lot": lot,
-            "sous_lot": str(self._value(row, columns, "sous_lot", "")),
-            "batiment": str(self._value(row, columns, "batiment", "")),
-            "niveau": clean_niveau(self._value(row, columns, "niveau", "")),
-            "appart": str(self._value(row, columns, "appart", "")),
-            "piece": str(self._value(row, columns, "piece", "")),
+            "sous_lot": str(self._value(row, columns, "sous_lot", "")) or normalize_optional_id(self._value(row, columns, "sous_lot_code", "")),
+            "batiment": str(self._value(row, columns, "batiment", "")) or normalize_optional_id(self._value(row, columns, "batiment_code", "")),
+            "niveau": clean_niveau(self._value(row, columns, "niveau", "") or self._value(row, columns, "niveau_code", "")),
+            "appart": str(self._value(row, columns, "appart", "")) or normalize_optional_id(self._value(row, columns, "appartement_code", "")),
+            "piece": str(self._value(row, columns, "piece", "")) or normalize_optional_id(self._value(row, columns, "piece_code", "")),
             "type_zone": str(self._value(row, columns, "type_zone", "")),
+            "code_article": normalize_optional_id(self._value(row, columns, "code_article", ""), self._value(row, columns, "id_ligne", "")),
             "designation": designation,
             "unite": str(self._value(row, columns, "unite", "")),
             "quantite": quantity,
             "formule": str(self._value(row, columns, "formule", "")),
             "bim_object_id": str(self._value(row, columns, "bim_object_id", "")),
-            "ifc_guid": str(self._value(row, columns, "ifc_guid", "")),
+            "ifc_guid": ifc_guid,
+            "bim_object": str(self._value(row, columns, "bim_object", "")),
             "type_objet": str(self._value(row, columns, "type_objet", "")),
             "famille_bim": str(self._value(row, columns, "famille_bim", "")),
             "systeme": str(self._value(row, columns, "systeme", "")),
@@ -155,6 +179,16 @@ class AIDQEParser:
             "ifc_type": str(self._value(row, columns, "ifc_type", "")),
             "prix_unitaire_ht": unit_price,
             "prix_total_ht": total_price,
+            "pu_import": import_unit_price,
+            "montant_import": import_total_price,
+            "decision": str(self._value(row, columns, "decision", "")),
+            "fournisseur": str(self._value(row, columns, "fournisseur", "")),
+            "execution_status": str(self._value(row, columns, "execution_status", "")),
+            "workflow_status": str(self._value(row, columns, "workflow_status", "")),
+            "risque": str(self._value(row, columns, "risque", "")),
+            "eta": self._value(row, columns, "eta", ""),
+            "bim_maturity": str(self._value(row, columns, "bim_maturity", "")),
+            "source_file_type": str(self._value(row, columns, "source", "")),
             "source": "ai_hybrid_excel_parser",
         }
 

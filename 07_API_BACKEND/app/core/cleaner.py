@@ -8,6 +8,7 @@ from typing import Any
 
 from app.core.errors import DataQualityError
 from app.core.global_parameters import DEFAULT_SIMULATION_MODE, VALID_SIMULATION_MODES
+from app.utils.id_normalizer import normalize_optional_id
 
 
 logger = logging.getLogger("sp2i.simulation")
@@ -177,6 +178,15 @@ class DataCleaner:
 
         return {
             "id_ligne": str(ligne.get("id_ligne") or f"DQE-{index:06d}"),
+            "project_code": normalize_optional_id(ligne.get("project_code") or ligne.get("projet_id")),
+            "batiment_code": normalize_optional_id(ligne.get("batiment_code") or ligne.get("batiment_id"), ligne.get("batiment")),
+            "niveau_code": normalize_optional_id(ligne.get("niveau_code") or ligne.get("niveau_id"), ligne.get("niveau")),
+            "appartement_code": normalize_optional_id(ligne.get("appartement_code") or ligne.get("appartement_id"), ligne.get("appart")),
+            "piece_code": normalize_optional_id(ligne.get("piece_code") or ligne.get("piece_id"), ligne.get("piece")),
+            "lot_code": normalize_optional_id(ligne.get("lot_code") or ligne.get("lot_id"), ligne.get("lot")),
+            "sous_lot_code": normalize_optional_id(ligne.get("sous_lot_code") or ligne.get("sous_lot_id"), ligne.get("sous_lot")),
+            "article_id": normalize_optional_id(ligne.get("article_id"), ligne.get("id_ligne")),
+            "code_article": normalize_optional_id(ligne.get("code_article") or ligne.get("code_bpu")),
             "designation": designation,
             "designation_normalisee": designation_normalisee,
             "quantite": round(quantite, 4),
@@ -202,6 +212,16 @@ class DataCleaner:
             "omniclass": str(ligne.get("omniclass") or "").strip(),
             "uniclass": str(ligne.get("uniclass") or "").strip(),
             "ifc_type": str(ligne.get("ifc_type") or "").strip(),
+            "bim_object": str(ligne.get("bim_object") or "").strip(),
+            "pu_import": nettoyer_nombre(ligne.get("pu_import"), 0) or 0,
+            "montant_import": nettoyer_nombre(ligne.get("montant_import"), 0) or 0,
+            "decision": str(ligne.get("decision") or ligne.get("decision_import") or "").strip(),
+            "fournisseur": str(ligne.get("fournisseur") or "").strip(),
+            "execution_status": str(ligne.get("execution_status") or "").strip(),
+            "workflow_status": str(ligne.get("workflow_status") or "").strip(),
+            "risque": str(ligne.get("risque") or "").strip(),
+            "eta": str(ligne.get("eta") or "").strip(),
+            "bim_maturity": str(ligne.get("bim_maturity") or "").strip(),
             "statut_ligne": self._statut_ligne(quantite, prix_unitaire, prix_total),
             "cle_metier": f"{lot}|{batiment}|{niveau}|{designation_normalisee}",
         }

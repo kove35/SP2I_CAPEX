@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.utils.id_normalizer import normalize_id
+
 
 UNKNOWN_BY_LEVEL = {
     "project": "Projet",
@@ -20,4 +22,4 @@ def normalize_spatial_value(value: Any, level: str) -> str:
 
 
 def make_spatial_key(*parts: Any) -> str:
-    return " / ".join(str(part or "").strip() for part in parts if str(part or "").strip())
+    return " / ".join(normalize_id(part) for part in parts if normalize_id(part))

@@ -121,6 +121,17 @@ export async function assertWorkflowNotBlocked(page, workflowName) {
   return true;
 }
 
+export async function assertWorkflowIsBlockedBy(page, blockedWorkflow, blockerWorkflow) {
+  const state = await getWorkflowState(page, blockedWorkflow);
+  if (!state?.blocked) {
+    throw new Error(`Workflow ${blockedWorkflow} devrait être bloqué`);
+  }
+  if (blockerWorkflow && state.blocker && state.blocker !== blockerWorkflow) {
+    throw new Error(`Workflow ${blockedWorkflow} bloqué par ${state.blocker}, attendu ${blockerWorkflow}`);
+  }
+  return true;
+}
+
 export async function assertResponsibleAssigned(page, workflowName, responsible) {
   /**
    * Assertion : responsable assigné au workflow.
