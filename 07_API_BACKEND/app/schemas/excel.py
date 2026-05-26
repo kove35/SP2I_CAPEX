@@ -32,6 +32,10 @@ class ExcelUploadResponse(BaseModel):
     feuille_recommandee: str | None
     analyses: list[ExcelSheetAnalysis]
     lignes_normalisees_preview: list[dict[str, Any]]
+    normalized_lines_count: int = 0
+    preview_rows_count: int = 0
+    parser_rows_count: int = 0
+    governance_rows_count: int = 0
     simulation_preview: dict[str, Any] | None = None
     ai_preview: dict[str, Any] | None = None
     ai_confidence: dict[str, Any] | None = None

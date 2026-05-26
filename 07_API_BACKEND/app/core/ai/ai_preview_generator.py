@@ -17,13 +17,18 @@ class AIPreviewGenerator:
         recognized_columns = len(sheet_analysis.get("mapping", []))
         ambiguous_columns = sum(1 for item in sheet_analysis.get("mapping", []) if item.get("confiance", 0) < 0.75)
         estimated_capex = sum(nettoyer_nombre(row.get("prix_total_ht"), 0) or 0 for row in rows)
+        estimated_import_capex = sum(nettoyer_nombre(row.get("montant_import"), 0) or 0 for row in rows)
 
         return {
+            "normalized_lines_count": len(rows),
+            "parser_rows_count": len(rows),
+            "preview_rows_count": min(len(rows), 25),
             "lots_detected": len(lots),
             "recognized_columns": recognized_columns,
             "quality_score": confidence.get("global_confidence", 0),
             "ambiguous_columns": ambiguous_columns,
             "invalid_rows": len(anomalies),
             "estimated_capex_detected": estimated_capex,
+            "estimated_import_capex_detected": estimated_import_capex,
             "human_validation_required": confidence.get("needs_human_validation", True),
         }

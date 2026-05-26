@@ -86,6 +86,14 @@ class ServicePipeline:
         Elle sert a fiabiliser le nouveau flux Excel -> PostgreSQL -> Power BI.
         """
         lignes, audit_excel = ServiceAIMapping().extraire_lignes_normalisees(contenu, nom_fichier)
+        pipeline_logger.info(
+            "excel.import.parsed raw_rows=%s parser_rows=%s governance_rows=%s normalized_rows=%s preview_rows=%s",
+            ((audit_excel.get("analyse") or {}).get("lignes_detectees") if isinstance(audit_excel, dict) else 0),
+            audit_excel.get("parser_rows_count", 0) if isinstance(audit_excel, dict) else 0,
+            audit_excel.get("governance_rows_count", 0) if isinstance(audit_excel, dict) else 0,
+            len(lignes),
+            audit_excel.get("preview_rows_count", 0) if isinstance(audit_excel, dict) else 0,
+        )
         self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
         with self.chemin_source.open("w", encoding="utf-8") as fichier:
             json.dump(
@@ -181,6 +189,8 @@ class ServicePipeline:
                 total_capex,
                 familles,
             )
+            print("FACT_METRE ROWS:", len(fact_metre))
+            print("SYNCED ROWS:", int(total_sql or 0))
 
             return {
                 "status": "SUCCESS",
@@ -281,7 +291,12 @@ class ServicePipeline:
         capex_fact_float = float(capex_fact or 0)
         ecart = capex_fact_float - capex_source
         ecart_pct = abs(ecart) / capex_source if capex_source else 0
-        lignes_excel = int(ai_preview.get("lignes_detectees") or len(lignes_source) or 0)
+        lignes_excel = int(
+            ai_preview.get("lignes_detectees")
+            or audit_excel.get("parser_rows_count", 0)
+            or len(lignes_source)
+            or 0
+        )
         lignes_parsees = len(lignes_source)
         lignes_fact_int = int(lignes_fact or 0)
         pertes_strictes = int(governance_quality.get("blocking_loss_rows") or 0)
@@ -447,6 +462,8 @@ class ServicePipeline:
 
             logs.append("STEP 1 - Nettoyage et normalisation DQE")
             lignes_dqe = DataCleaner().normaliser_lignes(lignes_brutes)
+            print("RAW EXCEL ROWS:", len(lignes_brutes))
+            print("CLEANER ROWS:", len(lignes_dqe))
             lineage.track("cleaning.normalized", rows_in=len(lignes_brutes), rows_out=len(lignes_dqe))
             pipeline_logger.info("cleaning.normalized rows_in=%s rows_out=%s", len(lignes_brutes), len(lignes_dqe))
             lineage.audit_lots("cleaning.lots", lignes_dqe)
@@ -495,7 +512,7 @@ class ServicePipeline:
         mapper = MapperFamilles()
         fact_metre: list[dict[str, Any]] = []
         familles: dict[str, dict[str, Any]] = {}
-        signatures_deja_vues: set[tuple[str, str, float, float]] = set()
+        signatures_deja_vues: set[tuple[Any, ...]] = set()
         rejet_quantite = 0
         rejet_montant = 0
         rejet_doublon = 0
@@ -510,19 +527,20 @@ class ServicePipeline:
                 or ligne.get("P.U")
             )
             prix_total_ht = self._montant_local(ligne, quantite, prix_unitaire_ht)
+            montant_import = self._valeur_numerique(
+                ligne.get("montant_import")
+                or ligne.get("MONTANT_IMPORT")
+                or ligne.get("CAPEX_IMPORT")
+                or ligne.get("capex_import")
+            )
             if quantite <= 0:
                 rejet_quantite += 1
                 continue
-            if prix_total_ht <= 0:
+            if prix_total_ht <= 0 and montant_import <= 0:
                 rejet_montant += 1
                 continue
 
-            signature = (
-                self._lot_racine(ligne.get("lot")),
-                str(ligne.get("designation", "")).strip().upper(),
-                round(quantite, 4),
-                round(prix_total_ht, 2),
-            )
+            signature = self._fact_signature(ligne, quantite, prix_total_ht, montant_import)
             if signature in signatures_deja_vues:
                 rejet_doublon += 1
                 continue
@@ -567,8 +585,8 @@ class ServicePipeline:
                     "prix_unitaire_ht": prix_unitaire_ht,
                     "prix_total_ht": prix_total_ht,
                     "montant_local": prix_total_ht,
-                    "PU_IMPORT_HT": self._valeur_numerique(capex.get("PU_IMPORT_HT")),
-                    "CAPEX_IMPORT": self._valeur_numerique(capex.get("CAPEX_IMPORT")),
+                    "PU_IMPORT_HT": self._valeur_numerique(capex.get("PU_IMPORT_HT") or ligne.get("pu_import")),
+                    "CAPEX_IMPORT": self._valeur_numerique(capex.get("CAPEX_IMPORT") or montant_import),
                     "CAPEX_LOCAL": self._valeur_numerique(capex.get("CAPEX_LOCAL") or prix_total_ht),
                     "ECONOMIE_NETTE": self._valeur_numerique(capex.get("ECONOMIE_NETTE")),
                     "DECISION_IMPORT": capex.get("DECISION_IMPORT", "LOCAL"),
@@ -576,6 +594,27 @@ class ServicePipeline:
                     "economie_nette": self._valeur_numerique(capex.get("ECONOMIE_NETTE")),
                     "decision_import": capex.get("DECISION_IMPORT", "LOCAL"),
                     "statut_ligne": ligne.get("statut_ligne", ""),
+                    "project_code": ligne.get("project_code", ""),
+                    "batiment_code": ligne.get("batiment_code", ""),
+                    "niveau_code": ligne.get("niveau_code", ""),
+                    "appartement_code": ligne.get("appartement_code", ""),
+                    "piece_code": ligne.get("piece_code", ""),
+                    "lot_code": ligne.get("lot_code", ""),
+                    "sous_lot_code": ligne.get("sous_lot_code", ""),
+                    "article_id": ligne.get("article_id", ""),
+                    "code_article": ligne.get("code_article", ""),
+                    "bim_object": ligne.get("bim_object", ""),
+                    "ifc_guid": ligne.get("ifc_guid", ""),
+                    "pu_import": ligne.get("pu_import", ""),
+                    "montant_import": montant_import,
+                    "decision": ligne.get("decision", ""),
+                    "fournisseur": ligne.get("fournisseur", ""),
+                    "execution_status": ligne.get("execution_status", ""),
+                    "workflow_status": ligne.get("workflow_status", ""),
+                    "risque": ligne.get("risque", ""),
+                    "eta": ligne.get("eta", ""),
+                    "bim_maturity": ligne.get("bim_maturity", ""),
+                    "source_file_type": ligne.get("source_file_type", ""),
                 }
             )
 
@@ -591,6 +630,7 @@ class ServicePipeline:
             rejet_montant,
             rejet_doublon,
         )
+        print("FACT_METRE ROWS:", len(fact_metre))
 
     def _generer_audit_qualite(self, lignes_dqe: list[dict[str, Any]]) -> None:
         try:
@@ -668,6 +708,30 @@ class ServicePipeline:
         if quantite > 0 and prix_unitaire_ht > 0:
             return quantite * prix_unitaire_ht
         return 0.0
+
+    def _fact_signature(
+        self,
+        ligne: dict[str, Any],
+        quantite: float,
+        prix_total_ht: float,
+        montant_import: float,
+    ) -> tuple[Any, ...]:
+        spatial_bim = (
+            str(ligne.get("ifc_guid") or "").strip().upper(),
+            str(ligne.get("article_id") or ligne.get("id_ligne") or "").strip().upper(),
+            str(ligne.get("batiment_code") or ligne.get("batiment") or "").strip().upper(),
+            str(ligne.get("niveau_code") or ligne.get("niveau") or "").strip().upper(),
+            str(ligne.get("appartement_code") or ligne.get("appart") or "").strip().upper(),
+            str(ligne.get("piece_code") or ligne.get("piece") or "").strip().upper(),
+        )
+        if any(spatial_bim):
+            return spatial_bim
+        return (
+            self._lot_racine(ligne.get("lot")),
+            str(ligne.get("designation", "")).strip().upper(),
+            round(quantite, 4),
+            round(prix_total_ht or montant_import, 2),
+        )
 
     def _id_ligne_powerbi(self, ligne: dict[str, Any], id_ligne_source: str, cle_metier: str) -> str:
         """

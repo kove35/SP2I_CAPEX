@@ -1,5 +1,5 @@
 ﻿famille;libelle_famille;categorie_achat
-gros_oeuvre;Gros Oeuvre;LOCAL_DOMINANT
 default;Default;A_ANALYSER
-menuiserie;Menuiserie;IMPORTABLE
 peinture;Peinture;A_ANALYSER
+gros_oeuvre;Gros Oeuvre;LOCAL_DOMINANT
+plomberie;Plomberie;IMPORTABLE
