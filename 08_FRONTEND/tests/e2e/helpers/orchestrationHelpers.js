@@ -220,6 +220,18 @@ export async function getTimelineState(page) {
   });
 }
 
+export async function getStorageHeatmap(page) {
+  return await page.evaluate(() => {
+    return Array.from(
+      document.querySelectorAll('[data-testid^="heatmap-zone-"], [data-testid="spatial-storage-panel"] article')
+    ).map((el) => ({
+      zone: el.dataset.zone || el.textContent || "",
+      saturation: Number(el.dataset.saturation || 0),
+      status: el.dataset.status || "",
+    }));
+  });
+}
+
 export async function getCriticalPathLots(page) {
   /**
    * Récupère les lots du chemin critique.

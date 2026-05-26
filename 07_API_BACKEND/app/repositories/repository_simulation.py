@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.cleaner import nettoyer_nombre
 from app.models import DimFamille, FactMetre
+from app.utils.id_normalizer import normalize_id, normalize_optional_id
 
 
 def _nombre(valeur: Any) -> float:
@@ -18,6 +19,22 @@ def _nombre(valeur: Any) -> float:
 
 def _texte(valeur: Any) -> str:
     return str(valeur or "").strip()
+
+
+def _id(valeur: Any, fallback: Any = "") -> str:
+    return normalize_optional_id(valeur, fallback)
+
+
+def _optionnel(valeur: Any) -> Any | None:
+    if valeur in (None, ""):
+        return None
+    return valeur
+
+
+def _nombre_optionnel(valeur: Any) -> float | None:
+    if valeur in (None, ""):
+        return None
+    return _nombre(valeur)
 
 
 class RepositorySimulation:
@@ -36,7 +53,7 @@ class RepositorySimulation:
         seen: set[str] = set()
 
         for ligne in data:
-            id_ligne = _texte(ligne.get("id_ligne"))
+            id_ligne = self._fact_metre_key(ligne)
             if not id_ligne or id_ligne in seen:
                 continue
             seen.add(id_ligne)
@@ -53,8 +70,8 @@ class RepositorySimulation:
             capex_local = _nombre(ligne.get("CAPEX_LOCAL") or ligne.get("capex_local") or prix_total_ht)
             if capex_local <= 0 and quantite > 0 and pu_local > 0:
                 capex_local = quantite * pu_local
-            capex_import = _nombre(ligne.get("CAPEX_IMPORT") or ligne.get("capex_import"))
-            capex_optimise = _nombre(ligne.get("CAPEX_OPTIMISE") or ligne.get("capex_optimise") or capex_local)
+            capex_import = _nombre(ligne.get("CAPEX_IMPORT") or ligne.get("capex_import") or ligne.get("MONTANT_IMPORT") or ligne.get("montant_import"))
+            capex_optimise = _nombre(ligne.get("CAPEX_OPTIMISE") or ligne.get("capex_optimise") or capex_local or capex_import)
             economie = _nombre(ligne.get("ECONOMIE_NETTE") or ligne.get("economie") or ligne.get("economie_nette"))
             taux_economie = (economie / capex_local) if capex_local else 0
 
@@ -69,38 +86,64 @@ class RepositorySimulation:
                         capex_optimise,
                         economie_nette,
                         decision_import,
-                        lot,
-                        sous_lot,
-                        famille,
-                        batiment,
-                        niveau,
-                        appart,
-                        piece,
-                        type_zone,
-                        formule,
-                        bim_object_id,
-                        ifc_guid,
-                        type_objet,
-                        famille_bim,
-                        systeme,
-                        phase_chantier,
-                        classification,
-                        omniclass,
-                        uniclass,
-                        ifc_type,
-                        statut_ligne,
-                        projet_id,
-                        lot_id,
-                        niveau_id,
-                        batiment_id,
-                        famille_id,
-                        scenario_id,
                         pu_local,
                         pu_import,
                         capex_local,
                         capex_import,
                         economie,
                         taux_economie,
+                        lot,
+                        lot_id,
+                        sous_lot,
+                        sous_lot_id,
+                        famille,
+                        famille_id,
+                        article_id,
+                        code_article,
+                        marque,
+                        unite,
+                        batiment,
+                        batiment_id,
+                        batiment_code,
+                        niveau,
+                        niveau_id,
+                        niveau_code,
+                        appart,
+                        appart_id,
+                        appartement_id,
+                        appartement_code,
+                        piece,
+                        piece_id,
+                        piece_code,
+                        zone_id,
+                        type_zone,
+                        formule,
+                        bim_object_id,
+                        objet_bim_id,
+                        bim_object,
+                        ifc_guid,
+                        type_objet,
+                        famille_bim,
+                        systeme,
+                        phase_chantier,
+                        altitude,
+                        execution_status,
+                        workflow_status,
+                        eta,
+                        risque,
+                        fournisseur,
+                        import_local,
+                        montant_import,
+                        decision,
+                        bim_maturity,
+                        source_file_type,
+                        classification,
+                        omniclass,
+                        uniclass,
+                        ifc_type,
+                        statut_ligne,
+                        projet_id,
+                        scenario_id,
                         date_import
                     )
                     VALUES (
@@ -111,38 +154,64 @@ class RepositorySimulation:
                         :capex_optimise,
                         :economie_nette,
                         :decision_import,
-                        :lot,
-                        :sous_lot,
-                        :famille,
-                        :batiment,
-                        :niveau,
-                        :appart,
-                        :piece,
-                        :type_zone,
-                        :formule,
-                        :bim_object_id,
-                        :ifc_guid,
-                        :type_objet,
-                        :famille_bim,
-                        :systeme,
-                        :phase_chantier,
-                        :classification,
-                        :omniclass,
-                        :uniclass,
-                        :ifc_type,
-                        :statut_ligne,
-                        :projet_id,
-                        :lot_id,
-                        :niveau_id,
-                        :batiment_id,
-                        :famille_id,
-                        NULL,
                         :pu_local,
                         :pu_import,
                         :capex_local,
                         :capex_import,
                         :economie,
                         :taux_economie,
+                        :lot,
+                        :lot_id,
+                        :sous_lot,
+                        :sous_lot_id,
+                        :famille,
+                        :famille_id,
+                        :article_id,
+                        :code_article,
+                        :marque,
+                        :unite,
+                        :batiment,
+                        :batiment_id,
+                        :batiment_code,
+                        :niveau,
+                        :niveau_id,
+                        :niveau_code,
+                        :appart,
+                        :appart_id,
+                        :appartement_id,
+                        :appartement_code,
+                        :piece,
+                        :piece_id,
+                        :piece_code,
+                        NULL,
+                        :type_zone,
+                        :formule,
+                        :bim_object_id,
+                        NULL,
+                        :bim_object,
+                        :ifc_guid,
+                        :type_objet,
+                        :famille_bim,
+                        :systeme,
+                        :phase_chantier,
+                        :altitude,
+                        :execution_status,
+                        :workflow_status,
+                        :eta,
+                        :risque,
+                        :fournisseur,
+                        :import_local,
+                        :montant_import,
+                        :decision,
+                        :bim_maturity,
+                        :source_file_type,
+                        :classification,
+                        :omniclass,
+                        :uniclass,
+                        :ifc_type,
+                        :statut_ligne,
+                        :projet_id,
+                        NULL,
                         now()
                     )
                     ON CONFLICT (id_ligne) DO UPDATE SET
@@ -152,37 +221,61 @@ class RepositorySimulation:
                         capex_optimise = EXCLUDED.capex_optimise,
                         economie_nette = EXCLUDED.economie_nette,
                         decision_import = EXCLUDED.decision_import,
-                        lot = EXCLUDED.lot,
-                        sous_lot = EXCLUDED.sous_lot,
-                        famille = EXCLUDED.famille,
-                        batiment = EXCLUDED.batiment,
-                        niveau = EXCLUDED.niveau,
-                        appart = EXCLUDED.appart,
-                        piece = EXCLUDED.piece,
-                        type_zone = EXCLUDED.type_zone,
-                        formule = EXCLUDED.formule,
-                        bim_object_id = EXCLUDED.bim_object_id,
-                        ifc_guid = EXCLUDED.ifc_guid,
-                        type_objet = EXCLUDED.type_objet,
-                        famille_bim = EXCLUDED.famille_bim,
-                        systeme = EXCLUDED.systeme,
-                        phase_chantier = EXCLUDED.phase_chantier,
-                        classification = EXCLUDED.classification,
-                        omniclass = EXCLUDED.omniclass,
-                        uniclass = EXCLUDED.uniclass,
-                        ifc_type = EXCLUDED.ifc_type,
-                        statut_ligne = EXCLUDED.statut_ligne,
-                        projet_id = EXCLUDED.projet_id,
-                        lot_id = EXCLUDED.lot_id,
-                        niveau_id = EXCLUDED.niveau_id,
-                        batiment_id = EXCLUDED.batiment_id,
-                        famille_id = EXCLUDED.famille_id,
                         pu_local = EXCLUDED.pu_local,
                         pu_import = EXCLUDED.pu_import,
                         capex_local = EXCLUDED.capex_local,
                         capex_import = EXCLUDED.capex_import,
                         economie = EXCLUDED.economie,
                         taux_economie = EXCLUDED.taux_economie,
+                        lot = EXCLUDED.lot,
+                        lot_id = EXCLUDED.lot_id,
+                        sous_lot = EXCLUDED.sous_lot,
+                        sous_lot_id = EXCLUDED.sous_lot_id,
+                        famille = EXCLUDED.famille,
+                        famille_id = EXCLUDED.famille_id,
+                        article_id = EXCLUDED.article_id,
+                        code_article = EXCLUDED.code_article,
+                        marque = EXCLUDED.marque,
+                        unite = EXCLUDED.unite,
+                        batiment = EXCLUDED.batiment,
+                        batiment_id = EXCLUDED.batiment_id,
+                        batiment_code = EXCLUDED.batiment_code,
+                        niveau = EXCLUDED.niveau,
+                        niveau_id = EXCLUDED.niveau_id,
+                        niveau_code = EXCLUDED.niveau_code,
+                        appart = EXCLUDED.appart,
+                        appart_id = EXCLUDED.appart_id,
+                        appartement_id = EXCLUDED.appartement_id,
+                        appartement_code = EXCLUDED.appartement_code,
+                        piece = EXCLUDED.piece,
+                        piece_id = EXCLUDED.piece_id,
+                        piece_code = EXCLUDED.piece_code,
+                        type_zone = EXCLUDED.type_zone,
+                        formule = EXCLUDED.formule,
+                        bim_object_id = EXCLUDED.bim_object_id,
+                        bim_object = EXCLUDED.bim_object,
+                        ifc_guid = EXCLUDED.ifc_guid,
+                        type_objet = EXCLUDED.type_objet,
+                        famille_bim = EXCLUDED.famille_bim,
+                        systeme = EXCLUDED.systeme,
+                        phase_chantier = EXCLUDED.phase_chantier,
+                        altitude = EXCLUDED.altitude,
+                        execution_status = EXCLUDED.execution_status,
+                        workflow_status = EXCLUDED.workflow_status,
+                        eta = EXCLUDED.eta,
+                        risque = EXCLUDED.risque,
+                        fournisseur = EXCLUDED.fournisseur,
+                        import_local = EXCLUDED.import_local,
+                        montant_import = EXCLUDED.montant_import,
+                        decision = EXCLUDED.decision,
+                        bim_maturity = EXCLUDED.bim_maturity,
+                        source_file_type = EXCLUDED.source_file_type,
+                        classification = EXCLUDED.classification,
+                        omniclass = EXCLUDED.omniclass,
+                        uniclass = EXCLUDED.uniclass,
+                        ifc_type = EXCLUDED.ifc_type,
+                        statut_ligne = EXCLUDED.statut_ligne,
+                        projet_id = EXCLUDED.projet_id,
                         date_import = EXCLUDED.date_import,
                         updated_at = now()
                     """
@@ -194,38 +287,62 @@ class RepositorySimulation:
                     "prix_total_ht": prix_total_ht,
                     "capex_optimise": capex_optimise,
                     "economie_nette": economie,
-                    "decision_import": _texte(ligne.get("DECISION_IMPORT") or ligne.get("decision_import") or "LOCAL"),
+                    "decision_import": _texte(ligne.get("DECISION_IMPORT") or ligne.get("decision_import") or ligne.get("DECISION") or ligne.get("decision") or "LOCAL"),
+                    "pu_local": pu_local,
+                    "pu_import": _nombre(ligne.get("PU_IMPORT_HT") or ligne.get("pu_import") or ligne.get("PU_IMPORT")),
+                    "capex_local": capex_local,
+                    "capex_import": capex_import,
+                    "economie": economie,
+                    "taux_economie": taux_economie,
                     "lot": _texte(ligne.get("lot")),
+                    "lot_id": ids["lot_id"],
                     "sous_lot": _texte(ligne.get("sous_lot")),
+                    "sous_lot_id": _id(ligne.get("sous_lot_code") or ligne.get("SOUS_LOT_ID"), ligne.get("sous_lot")),
                     "famille": _texte(ligne.get("famille") or "default"),
+                    "famille_id": ids["famille_id"],
+                    "article_id": _id(ligne.get("article_id") or ligne.get("ARTICLE_ID"), id_ligne),
+                    "code_article": _id(ligne.get("code_article") or ligne.get("CODE_ARTICLE")),
+                    "marque": _texte(ligne.get("MARQUE") or ligne.get("marque")),
+                    "unite": _texte(ligne.get("unite") or ligne.get("UNITE") or ligne.get("unit")),
                     "batiment": _texte(ligne.get("batiment")),
+                    "batiment_id": ids["batiment_id"],
+                    "batiment_code": _id(ligne.get("batiment_code") or ligne.get("BATIMENT_ID"), ligne.get("batiment")),
                     "niveau": _texte(ligne.get("niveau")),
+                    "niveau_id": ids["niveau_id"],
+                    "niveau_code": _id(ligne.get("niveau_code") or ligne.get("NIVEAU_ID"), ligne.get("niveau")),
                     "appart": _texte(ligne.get("appart")),
+                    "appart_id": ids.get("appart_id"),
+                    "appartement_id": _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID"), ligne.get("appart")),
+                    "appartement_code": _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID"), ligne.get("appart")),
                     "piece": _texte(ligne.get("piece")),
+                    "piece_id": ids.get("piece_id"),
+                    "piece_code": _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece")),
                     "type_zone": _texte(ligne.get("type_zone")),
                     "formule": _texte(ligne.get("formule")),
                     "bim_object_id": _texte(ligne.get("bim_object_id")),
+                    "bim_object": _texte(ligne.get("bim_object") or ligne.get("BIM_OBJECT")),
                     "ifc_guid": _texte(ligne.get("ifc_guid")),
                     "type_objet": _texte(ligne.get("type_objet")),
                     "famille_bim": _texte(ligne.get("famille_bim")),
                     "systeme": _texte(ligne.get("systeme")),
                     "phase_chantier": _texte(ligne.get("phase_chantier")),
+                    "altitude": _nombre_optionnel(ligne.get("ALTITUDE") or ligne.get("altitude")),
+                    "execution_status": _texte(ligne.get("EXECUTION_STATUS") or ligne.get("execution_status")),
+                    "workflow_status": _texte(ligne.get("WORKFLOW_STATUS") or ligne.get("workflow_status")),
+                    "eta": _optionnel(ligne.get("ETA") or ligne.get("eta")),
+                    "risque": _texte(ligne.get("RISQUE") or ligne.get("risque") or ligne.get("RISK_LEVEL") or ligne.get("risk_level")),
+                    "fournisseur": _texte(ligne.get("FOURNISSEUR") or ligne.get("fournisseur") or ligne.get("supplier")),
+                    "import_local": _texte(ligne.get("IMPORT_LOCAL") or ligne.get("import_local") or ligne.get("DECISION") or ligne.get("decision") or ligne.get("DECISION_IMPORT") or ligne.get("decision_import")),
+                    "montant_import": _nombre(ligne.get("MONTANT_IMPORT") or ligne.get("montant_import") or ligne.get("capex_import")),
+                    "decision": _texte(ligne.get("DECISION") or ligne.get("decision") or ligne.get("DECISION_IMPORT") or ligne.get("decision_import")),
+                    "bim_maturity": _texte(ligne.get("BIM_MATURITY") or ligne.get("bim_maturity")),
+                    "source_file_type": _texte(ligne.get("SOURCE") or ligne.get("source_file_type")),
                     "classification": _texte(ligne.get("classification")),
                     "omniclass": _texte(ligne.get("omniclass")),
                     "uniclass": _texte(ligne.get("uniclass")),
                     "ifc_type": _texte(ligne.get("ifc_type")),
                     "statut_ligne": _texte(ligne.get("statut_ligne") or "OK"),
                     "projet_id": ids["projet_id"],
-                    "lot_id": ids["lot_id"],
-                    "niveau_id": ids["niveau_id"],
-                    "batiment_id": ids["batiment_id"],
-                    "famille_id": ids["famille_id"],
-                    "pu_local": pu_local,
-                    "pu_import": _nombre(ligne.get("PU_IMPORT_HT") or ligne.get("pu_import")),
-                    "capex_local": capex_local,
-                    "capex_import": capex_import,
-                    "economie": economie,
-                    "taux_economie": taux_economie,
                 },
             )
             inserted += 1
@@ -497,6 +614,18 @@ class RepositorySimulation:
         ).mappings().all()
         return [dict(row) for row in rows]
 
+    def _fact_metre_key(self, ligne: dict[str, Any]) -> str:
+        explicit = _id(ligne.get("id_ligne"))
+        if explicit:
+            return explicit
+        article_id = _id(ligne.get("article_id") or ligne.get("ARTICLE_ID"))
+        ifc_guid = _id(ligne.get("ifc_guid") or ligne.get("IFC_GUID"))
+        niveau = _id(ligne.get("niveau_code") or ligne.get("NIVEAU_ID") or ligne.get("niveau"))
+        appartement = _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID") or ligne.get("appart"))
+        piece = _id(ligne.get("piece_code") or ligne.get("PIECE_ID") or ligne.get("piece"))
+        key = "|".join(part for part in (article_id, ifc_guid, niveau, appartement, piece) if part)
+        return key or _id(ligne.get("designation"))
+
     def _resolve_dimension_ids(self, ligne: dict[str, Any], projet_id: int | None) -> dict[str, int | None]:
         projet = self.db.execute(
             text("SELECT COALESCE(:projet_id, (SELECT projet_id FROM dim_projet ORDER BY projet_id LIMIT 1))"),
@@ -504,8 +633,10 @@ class RepositorySimulation:
         ).scalar_one_or_none()
         lot = _texte(ligne.get("lot") or "NON_RENSEIGNE")
         famille = _texte(ligne.get("famille") or "default")
-        niveau = _texte(ligne.get("niveau") or "GLOBAL")
-        batiment = _texte(ligne.get("batiment") or "NON_RENSEIGNE")
+        niveau = _texte(ligne.get("niveau") or ligne.get("niveau_code") or ligne.get("NIVEAU_ID") or "GLOBAL")
+        batiment = _texte(ligne.get("batiment") or ligne.get("batiment_code") or ligne.get("BATIMENT_ID") or "NON_RENSEIGNE")
+        appart_code = _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID"), ligne.get("appart") or "NON_RENSEIGNE")
+        piece_code = _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece") or "NON_RENSEIGNE")
 
         lot_id = self.db.execute(
             text(
@@ -560,6 +691,28 @@ class RepositorySimulation:
             ),
             {"batiment": batiment},
         ).scalar_one()
+        appart_id = self.db.execute(
+            text(
+                """
+                INSERT INTO dim_appart (appart_code, batiment, niveau, appart, type_appart)
+                VALUES (CAST(:appart_code AS varchar), CAST(:batiment AS varchar), CAST(:niveau AS varchar), CAST(:appart AS varchar), 'A_CLASSER')
+                ON CONFLICT (appart_code) DO UPDATE SET updated_at = now()
+                RETURNING appart_id
+                """
+            ),
+            {"appart_code": appart_code, "batiment": batiment, "niveau": niveau, "appart": appart_code},
+        ).scalar_one()
+        piece_id = self.db.execute(
+            text(
+                """
+                INSERT INTO dim_piece (piece_code, batiment, niveau, appart, piece, type_piece)
+                VALUES (CAST(:piece_code AS varchar), CAST(:batiment AS varchar), CAST(:niveau AS varchar), CAST(:appart AS varchar), CAST(:piece AS varchar), 'A_CLASSER')
+                ON CONFLICT (piece_code) DO UPDATE SET updated_at = now()
+                RETURNING piece_id
+                """
+            ),
+            {"piece_code": piece_code, "batiment": batiment, "niveau": niveau, "appart": appart_code, "piece": piece_code},
+        ).scalar_one()
 
         return {
             "projet_id": projet,
@@ -567,6 +720,8 @@ class RepositorySimulation:
             "famille_id": famille_id,
             "niveau_id": niveau_id,
             "batiment_id": batiment_id,
+            "appart_id": appart_id,
+            "piece_id": piece_id,
             "supplier_id": self._default_supplier_id(),
             "country_id": self._default_country_id(),
         }

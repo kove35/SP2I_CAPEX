@@ -10,16 +10,16 @@ BIM_MATURITY_LITE = "BIM_LITE"
 BIM_MATURITY_READY = "BIM_READY"
 
 SPATIAL_FIELDS = {
-    "batiment": {"batiment", "bat", "building", "bloc", "immeuble"},
-    "niveau": {"niveau", "etage", "level", "floor"},
-    "appart": {"appart", "appartement", "logement", "unit_appart"},
-    "piece": {"piece", "room", "zone", "espace", "zone_piece", "local_piece"},
+    "batiment": {"batiment", "batiment_id", "bat", "building", "building_id", "bloc", "immeuble"},
+    "niveau": {"niveau", "niveau_id", "etage", "level", "level_id", "floor", "floor_id"},
+    "appart": {"appart", "appart_id", "appartement", "appartement_id", "logement", "unit_appart"},
+    "piece": {"piece", "piece_id", "room", "room_id", "zone", "zone_id", "espace", "zone_piece", "local_piece"},
     "type_zone": {"type_zone", "zone_type", "type_piece"},
-    "sous_lot": {"sous_lot", "souslot", "sub_lot", "sub_trade"},
+    "sous_lot": {"sous_lot", "sous_lot_id", "souslot", "sub_lot", "sub_lot_id", "sub_trade"},
 }
 
 BIM_FIELDS = {
-    "bim_object_id": {"bim_object_id", "object_id", "id_objet_bim", "bim_id"},
+    "bim_object_id": {"bim_object_id", "bim_object", "object_id", "id_objet_bim", "bim_id"},
     "ifc_guid": {"ifc_guid", "guid_ifc", "global_id", "globalid"},
     "type_objet": {"type_objet", "object_type", "type_bim", "type"},
     "famille_bim": {"famille_bim", "bim_family", "revit_family", "famille_revit"},

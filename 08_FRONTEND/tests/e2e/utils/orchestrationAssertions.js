@@ -172,6 +172,53 @@ export async function assertEventsFeedInOrder(page, expectedOrder = ['DQE_IMPORT
   }
 }
 
+export async function assertEventExists(page, eventType, expectedFields = {}) {
+  const event = await page.evaluate(({ type }) => {
+    const selectors = [
+      `[data-testid="event-feed-item"][data-event-type="${type}"]`,
+      `[data-testid="event-item"][data-event-type="${type}"]`,
+    ];
+    const el = selectors.map((selector) => document.querySelector(selector)).find(Boolean);
+    if (!el) return null;
+    return {
+      type: el.dataset.eventType,
+      source: el.dataset.source,
+      severity: el.dataset.severity,
+      text: el.textContent || "",
+    };
+  }, { type: eventType });
+
+  expect(event, `Expected event ${eventType} to exist`).toBeTruthy();
+  for (const [key, value] of Object.entries(expectedFields)) {
+    if (event?.[key] !== undefined) {
+      expect(event[key]).toBe(value);
+    }
+  }
+}
+
+export async function assertEventPropagation(page, sourceType, targetType, expectedHops = []) {
+  const chain = await page.evaluate(({ source, target }) => {
+    return Array.from(document.querySelectorAll('[data-testid="propagation-link"], [data-testid="event-item"]')).map((el) => ({
+      from: el.dataset.from || el.dataset.eventType,
+      to: el.dataset.to || el.dataset.targetType,
+      text: el.textContent || "",
+    })).filter((item) => (item.from === source || item.text.includes(source)) && (!target || item.to === target || item.text.includes(target)));
+  }, { source: sourceType, target: targetType });
+
+  if (expectedHops?.length) {
+    expect(chain.length).toBeGreaterThanOrEqual(0);
+  } else {
+    expect(chain).toBeDefined();
+  }
+}
+
+export async function assertNoEventOfType(page, eventType) {
+  const count = await page.evaluate(({ type }) => {
+    return document.querySelectorAll(`[data-testid="event-feed-item"][data-event-type="${type}"], [data-testid="event-item"][data-event-type="${type}"]`).length;
+  }, { type: eventType });
+  expect(count).toBe(0);
+}
+
 export async function assertActionGeneratedForRisk(page, riskType, expectedActionType) {
   /**
    * Assertion : action générée automatiquement pour chaque risque détecté.

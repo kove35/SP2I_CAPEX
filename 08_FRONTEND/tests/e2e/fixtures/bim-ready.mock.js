@@ -21,7 +21,7 @@ export const BIM_READY_PROJECT = {
       workflow_blocking_spatial: true,
       advanced_orchestration: true,
       concurrent_zone_parallelization: true,
-      3d_model_view: true,
+      "3d_model_view": true,
       component_level_tracking: true,
     },
     
@@ -120,7 +120,7 @@ export const BIM_READY_PROJECT = {
     },
     
     spatial_data: {
-      3d_model_available: true,
+      "3d_model_available": true,
       components_mapped: 450,
       proximity_relationships: 120,
       interference_scenarios: 8,
@@ -137,7 +137,7 @@ export const BIM_READY_PROJECT = {
       interference_detection: true,
       conflict_resolution: true,
       component_level_drilldown: true,
-      3d_visualization: true,
+      "3d_visualization": true,
       temporal_analysis: true,
     },
     
@@ -190,7 +190,7 @@ export const BIM_READY_PROJECT = {
     advanced_orchestration_working: true,
     concurrent_zones_functional: true,
     component_drilldown_available: true,
-    3d_model_rendering: true,
+    "3d_model_rendering": true,
     proximity_analysis_working: true,
     
     enabled_features: [

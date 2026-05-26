@@ -225,7 +225,7 @@ export const SPATIAL_SUMMARY_BIM_READY = {
   bim_maturity: 'BIM_READY',
   
   advanced_spatial: {
-    3d_model_url: 'https://bim-server/model/project-1',
+    "3d_model_url": 'https://bim-server/model/project-1',
     building_hierarchies: [
       {
         id: 'bath_a',

@@ -104,7 +104,7 @@ test.describe("Compatibility: NON_BIM Regression", () => {
     /**
      * Étape 11: Pas d'erreur console
      */
-    const errors: string[] = [];
+    const errors = [];
     page.on('console', msg => {
       if (msg.type() === 'error') {
         errors.push(msg.text());
