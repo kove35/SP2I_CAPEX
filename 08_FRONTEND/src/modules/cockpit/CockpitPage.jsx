@@ -70,7 +70,7 @@ export default function CockpitPage() {
   const workflow = getProjectWorkflow(project, state);
   const primaryAction = getProjectPrimaryAction(project, state);
   const alerts = buildProjectAlerts(workflow);
-  const activeDqe = workflow.activeDqe;
+  const activeDqe = workflow.dqe || workflow.activeDqe;
   const scenario = getScenarioContext(state.activeScenario);
   const dqeStep = getStep(workflow, "dqe");
   const budgetStep = getStep(workflow, "budget");
@@ -105,7 +105,7 @@ export default function CockpitPage() {
           </div>
           <div className="workspace-summary-status">
             <span>{workflow.label}</span>
-            <strong>Confiance {project.trust_score ?? activeDqe?.trust_score ?? "-"}/100</strong>
+            <strong>Confiance {activeDqe?.trust_score ?? project.trust_score ?? "-"}/100</strong>
             <small>{workflow.completion}% du parcours projet</small>
           </div>
         </header>

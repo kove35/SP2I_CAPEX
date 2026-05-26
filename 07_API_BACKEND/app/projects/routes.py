@@ -21,6 +21,7 @@ from app.projects.schemas import (
     ProjectResponse,
     ProjectSetupUpdate,
     ProjectWorkflowResponse,
+    ProjectWorkflowStateResponse,
     ExecutionStatus,
     ProcurementDecisionBootstrapResponse,
     ProcurementDecisionListResponse,
@@ -57,6 +58,7 @@ from app.spatial.services.spatial_intelligence import get_project_spatial_summar
 from app.services.workflow_events import list_workflow_events, log_workflow_event
 from app.services.service_pipeline import ServicePipeline
 from app.governance.dqe_issue_builder import build_dqe_issue, summarize_dqe_issues
+from app.workflow.project_workflow_state import build_project_workflow_state
 
 
 router = APIRouter()
@@ -101,7 +103,24 @@ def _fetch_latest_dqe_audit(db: Session) -> Any | None:
         return db.execute(text(base_select.format(loss_column="0"))).mappings().first()
 
 
-def serialize_project(project: Project) -> ProjectResponse:
+def serialize_project(project: Project, db: Session | None = None, include_workflow: bool = True) -> ProjectResponse:
+    workflow_state: dict[str, Any] | None = None
+    backend_workflow: dict[str, Any] | None = None
+    trust_score = 87
+    last_dqe = "DQE_PROJECT_SP2I.xlsx"
+    budget = project.target_budget or 0
+    workflow_status = project.setup_status or "CONFIG_REQUIRED"
+    if db is not None and include_workflow:
+        try:
+            workflow_state = build_project_workflow_state(db, project.id, setup_status=project.setup_status)
+            backend_workflow = compute_project_workflow_status(project, db).model_dump()
+            trust_score = int(workflow_state.get("trust_score") or backend_workflow.get("dqe", {}).get("trust_score") or trust_score)
+            last_dqe = workflow_state.get("file_name") or backend_workflow.get("dqe", {}).get("file_name") or last_dqe
+            budget = float(workflow_state.get("capex_local_total") or project.target_budget or 0)
+            workflow_status = backend_workflow.get("status") or workflow_status
+        except Exception:
+            workflow_state = None
+            backend_workflow = None
     return ProjectResponse(
         id=project.id,
         name=project.name,
@@ -127,7 +146,12 @@ def serialize_project(project: Project) -> ProjectResponse:
         owner_id=project.owner_id,
         status=project.status,
         created_at=project.created_at,
-        budget=project.target_budget or 0,
+        trust_score=trust_score,
+        last_dqe=last_dqe,
+        budget=budget,
+        workflow_status=workflow_status,
+        backend_workflow=backend_workflow,
+        workflow_state=workflow_state,
     )
 
 
@@ -589,11 +613,70 @@ def _resolve_project_execution_status(
 
 def compute_project_workflow_status(project: Project, db: Session | None = None) -> ProjectWorkflowResponse:
     setup_configured = _is_project_configured(project) and project.setup_status == "CONFIGURED"
+    workflow_state = build_project_workflow_state(db, project.id, setup_status=project.setup_status) if db is not None else {}
     dqe_status = _resolve_project_dqe_status(project.id, db)
     budget_status = _resolve_project_budget_status(dqe_status, db)
     scenario_status = _resolve_project_scenario_status(project.id, db)
     procurement_status = _resolve_project_procurement_status(project.id, scenario_status, db)
     execution_status = _resolve_project_execution_status(project.id, procurement_status, scenario_status, db)
+
+    if workflow_state.get("dqe") == "SYNCHRONISE":
+        dqe_status.update(
+            {
+                "status": "SYNCED",
+                "certification_status": dqe_status.get("certification_status") or "CERTIFIED",
+                "trust_score": workflow_state.get("trust_score") or dqe_status.get("trust_score") or 99,
+                "normalized_lines_count": workflow_state.get("normalized_lines_count") or dqe_status.get("normalized_lines_count") or 0,
+                "file_name": workflow_state.get("file_name") or dqe_status.get("file_name") or "",
+                "is_active": True,
+            }
+        )
+    if workflow_state.get("budget") == "SYNCHRONISE":
+        budget_status.update(
+            {
+                "status": "SYNCED",
+                "is_synced": True,
+                "lines_count": workflow_state.get("counts", {}).get("fact_metre_rows") or budget_status.get("lines_count") or 0,
+                "total_amount": workflow_state.get("capex_local_total") or budget_status.get("total_amount") or 0,
+                "message": "Budget synchronise depuis la source projet centralisee.",
+            }
+        )
+    if workflow_state.get("scenarios") == "SIMULE" and not scenario_status.get("is_ready"):
+        scenario_status.update(
+            {
+                "status": "SIMULATED",
+                "is_ready": True,
+                "line_count": workflow_state.get("counts", {}).get("simulation_rows") or 0,
+                "message": "Scenario detecte depuis la source projet centralisee.",
+            }
+        )
+    if workflow_state.get("procurement") == "PRET" and not procurement_status.get("is_ready"):
+        procurement_status.update(
+            {
+                "status": "READY",
+                "is_ready": True,
+                "decisions_count": workflow_state.get("counts", {}).get("procurement_decisions_count")
+                or workflow_state.get("counts", {}).get("procurement_fact_decisions_count")
+                or procurement_status.get("decisions_count")
+                or 0,
+                "export_available": True,
+                "message": "Approvisionnement pret depuis la source projet centralisee.",
+            }
+        )
+    if workflow_state.get("execution") == "A_PREPARER":
+        execution_status.update(
+            {
+                "status": "REQUIRED",
+                "is_ready": False,
+                "actions_count": workflow_state.get("counts", {}).get("execution_actions_count") or 0,
+                "message": "Approvisionnement pret. Actions chantier a preparer.",
+            }
+        )
+    elif workflow_state.get("execution") == "A_RISQUE":
+        execution_status.update({"status": "AT_RISK", "is_ready": True})
+    elif workflow_state.get("execution") == "PRETE":
+        execution_status.update({"status": "READY", "is_ready": True})
+
     budget_synced = bool(budget_status["is_synced"])
     scenario_ready = bool(scenario_status["status"] in {"READY", "SIMULATED", "VALIDATED"} and scenario_status["is_ready"])
     procurement_ready = bool(procurement_status["status"] in {"READY", "EXPORTABLE"} and procurement_status["is_ready"])
@@ -862,7 +945,7 @@ def list_projects(
 ) -> ProjectListResponse:
     _ensure_demo_project(db, current_user)
     projects = db.scalars(select(Project).where(Project.owner_id == current_user.id).order_by(Project.created_at.desc())).all()
-    return ProjectListResponse(projects=[serialize_project(project) for project in projects])
+    return ProjectListResponse(projects=[serialize_project(project, db) for project in projects])
 
 
 @router.post("", response_model=ProjectResponse)
@@ -891,7 +974,7 @@ def create_project(
     db.add(WorkspaceMembership(user_id=current_user.id, project_id=project.id, role=current_user.role))
     db.commit()
     db.refresh(project)
-    return serialize_project(project)
+    return serialize_project(project, db)
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -900,7 +983,7 @@ def get_project(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ProjectResponse:
-    return serialize_project(_get_owned_project(db, current_user, project_id))
+    return serialize_project(_get_owned_project(db, current_user, project_id), db)
 
 
 @router.patch("/{project_id}/setup", response_model=ProjectResponse)
@@ -937,7 +1020,7 @@ def update_project_setup(
         message="Configuration projet mise a jour.",
         metadata={"setup_completion_percent": project.setup_completion_percent},
     )
-    return serialize_project(project)
+    return serialize_project(project, db)
 
 
 @router.get("/{project_id}/workflow", response_model=ProjectWorkflowResponse)
@@ -947,6 +1030,16 @@ def get_project_workflow(
     db: Session = Depends(get_db),
 ) -> ProjectWorkflowResponse:
     return compute_project_workflow_status(_get_owned_project(db, current_user, project_id), db)
+
+
+@router.get("/{project_id}/workflow-state", response_model=ProjectWorkflowStateResponse)
+def get_project_workflow_state(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectWorkflowStateResponse:
+    project = _get_owned_project(db, current_user, project_id)
+    return ProjectWorkflowStateResponse(**build_project_workflow_state(db, project.id, setup_status=project.setup_status))
 
 
 @router.get("/{project_id}/spatial/summary", response_model=SpatialSummaryResponse)

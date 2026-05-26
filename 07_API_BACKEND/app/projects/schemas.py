@@ -66,6 +66,9 @@ class ProjectResponse(BaseModel):
     trust_score: int = 87
     last_dqe: str = "DQE_PROJECT_SP2I.xlsx"
     budget: float = 0
+    workflow_status: str = "CONFIG_REQUIRED"
+    backend_workflow: dict[str, Any] | None = None
+    workflow_state: dict[str, Any] | None = None
 
 
 class ProjectListResponse(BaseModel):
@@ -192,6 +195,23 @@ class ProjectWorkflowResponse(BaseModel):
     scenario: ScenarioStatus = Field(default_factory=ScenarioStatus)
     procurement: ProcurementStatus = Field(default_factory=ProcurementStatus)
     execution: ExecutionStatus = Field(default_factory=ExecutionStatus)
+
+
+class ProjectWorkflowStateResponse(BaseModel):
+    project_id: int
+    setup: str = "A_COMPLETER"
+    dqe: str = "A_IMPORTER"
+    budget: str = "A_SYNCHRONISER"
+    scenarios: str = "A_SIMULER"
+    procurement: str = "BLOQUE"
+    execution: str = "BLOQUEE"
+    trust_score: int = 0
+    progress_percent: int = 0
+    normalized_lines_count: int = 0
+    capex_local_total: float = 0
+    counts: dict[str, int] = Field(default_factory=dict)
+    source: dict[str, str] = Field(default_factory=dict)
+    file_name: str = ""
 
 
 class ProcurementDecisionBase(BaseModel):
