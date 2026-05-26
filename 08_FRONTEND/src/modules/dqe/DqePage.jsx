@@ -83,6 +83,18 @@ function formatDate(value) {
   return new Date(value).toLocaleString("fr-FR");
 }
 
+function resolveDqeLineCount(payload, fallbackAnalysis = {}) {
+  const candidates = [
+    payload?.normalized_lines_count,
+    payload?.ai_preview?.normalized_lines_count,
+    payload?.ai_confidence?.bim_maturity?.line_count,
+    payload?.ai_preview?.parser_rows_count,
+    fallbackAnalysis?.lignes_detectees,
+  ];
+  const count = candidates.find((value) => Number(value) > 0);
+  return count ? Number(count) : null;
+}
+
 export default function DqePage() {
   const { state } = useAppStore();
   const projectId = state.activeProject || PROJECT_CONTEXT.code;
@@ -138,7 +150,7 @@ export default function DqePage() {
   const aiConfidence = analysis?.ai_confidence || {};
   const aiAnomalies = Array.isArray(analysis?.ai_anomalies) ? analysis.ai_anomalies : [];
   const aiSuggestions = analysis?.ai_suggestions || {};
-  const lineCount = bestAnalysis.lignes_detectees || previewRows.length || 0;
+  const lineCount = resolveDqeLineCount(analysis, bestAnalysis) || 0;
   const qualityScore = Math.round(Number(aiPreview.quality_score ?? bestAnalysis.score_dqe ?? 0) * 100);
   const recognizedColumns = aiPreview.recognized_columns ?? "-";
   const lotsDetected = aiPreview.lots_detected ?? "-";
@@ -258,7 +270,7 @@ export default function DqePage() {
       updateCurrentVersion({
         status: "ANALYZED",
         trust_score: resultScore,
-        normalized_lines_count: result?.lignes_normalisees_preview?.length || resultBestAnalysis.lignes_detectees || null,
+        normalized_lines_count: resolveDqeLineCount(result, resultBestAnalysis),
         ignored_lines_count: result?.parsing_stats?.ignored || null,
         data_loss_count: result?.parsing_stats?.data_loss || null,
         quality_issue_count: resultAiPreview.invalid_rows || null,
@@ -315,7 +327,11 @@ export default function DqePage() {
               is_active: true,
               synced_at: new Date().toISOString(),
               trust_score: version.trust_score ?? qualityScore,
-              normalized_lines_count: result?.db_sync?.fact_metre_sql_count || version.normalized_lines_count,
+              normalized_lines_count:
+                result?.db_sync?.fact_metre_sql_count
+                || result?.db_sync?.data_quality?.lignes_fact_metre
+                || result?.db_sync?.data_quality?.lignes_parsees
+                || version.normalized_lines_count,
             }
           : { ...version, is_active: false }
       )));

@@ -66,6 +66,13 @@ async def upload_excel_intelligent(
     try:
         resultat = service.analyser_excel(contenu, fichier.filename)
         resultat["file_id"] = AIFileStore.save(resultat)
+        print("RAW EXCEL ROWS:", sum(int(item.get("lignes_detectees") or 0) for item in resultat.get("analyses", [])))
+        print("PARSER ROWS:", resultat.get("parser_rows_count", 0))
+        print("GOVERNANCE ROWS:", resultat.get("governance_rows_count", 0))
+        print("CLEANER ROWS:", resultat.get("normalized_lines_count", 0))
+        print("FACT_METRE ROWS:", 0)
+        print("PREVIEW ROWS:", resultat.get("preview_rows_count", 0))
+        print("SYNCED ROWS:", 0)
         return resultat
     except Exception as erreur:
         raise HTTPException(
@@ -94,7 +101,16 @@ async def upload_excel_et_synchroniser(
     _valider_fichier_tabulaire(fichier.filename, contenu)
 
     try:
-        return ServicePipeline(db).executer_depuis_excel(contenu, fichier.filename)
+        resultat = ServicePipeline(db).executer_depuis_excel(contenu, fichier.filename)
+        data_quality = ((resultat.get("db_sync") or {}).get("data_quality") or {})
+        print("RAW EXCEL ROWS:", data_quality.get("lignes_excel", 0))
+        print("PARSER ROWS:", data_quality.get("lignes_parsees", 0))
+        print("GOVERNANCE ROWS:", (data_quality.get("governance_quality") or {}).get("total_rows", 0))
+        print("CLEANER ROWS:", (resultat.get("resume") or {}).get("lignes_dqe", 0))
+        print("FACT_METRE ROWS:", data_quality.get("lignes_fact_metre", 0))
+        print("PREVIEW ROWS:", (resultat.get("audit_excel") or {}).get("preview_rows_count", 0))
+        print("SYNCED ROWS:", (resultat.get("db_sync") or {}).get("fact_metre_sql_count", 0))
+        return resultat
     except Exception as erreur:
         raise HTTPException(
             status_code=500,
