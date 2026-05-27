@@ -108,16 +108,22 @@ function hasMinimumSetup(project = {}) {
   return Boolean(project.name && project.city && project.country && project.currency && project.client_name && project.project_manager);
 }
 
+function getScopedSimulation(project = {}, appState = {}) {
+  const projectKey = getProjectWorkspaceKey(project);
+  return appState.lastSimulationProject === projectKey ? appState.lastSimulation : null;
+}
+
 export function getProjectWorkflow(project = {}, appState = {}) {
   const backendWorkflow = normalizeBackendWorkflow(project.backendWorkflow || project.backend_workflow);
   if (backendWorkflow) return backendWorkflow;
 
+  const scopedSimulation = getScopedSimulation(project, appState);
   const configured = project.setup_status === "CONFIGURED" || hasMinimumSetup(project);
   const versions = readDqeVersions(project);
   const activeDqe = versions.find((version) => version.is_active);
   const dqeReady = activeDqe && DQE_READY_STATUSES.includes(activeDqe.status);
   const budgetSynced = Boolean(project.budget || activeDqe?.synced_at || activeDqe?.status === "SYNCED");
-  const scenarioReady = Boolean(appState.lastSimulation || project.scenario_ready || project.workflow_status === "SCENARIO_READY" || project.workflow_status === "ACTIVE");
+  const scenarioReady = Boolean(scopedSimulation || project.scenario_ready || project.workflow_status === "SCENARIO_READY" || project.workflow_status === "ACTIVE");
   const procurementReady = Boolean(project.procurement_ready || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
   const procurementReviewRequired = Boolean(project.procurement_review_required || project.workflow_status === "PROCUREMENT_REVIEW_REQUIRED");
   const procurementRequired = Boolean(scenarioReady && !procurementReady && !procurementReviewRequired);
@@ -203,13 +209,13 @@ export function getProjectWorkflow(project = {}, appState = {}) {
     scenario: {
       status: scenarioReady ? "SIMULATED" : "NOT_STARTED",
       is_ready: scenarioReady,
-      line_count: Number(appState.lastSimulation?.kpi?.nb_lignes || appState.lastSimulation?.lignes?.length || 0),
+      line_count: Number(scopedSimulation?.kpi?.nb_lignes || scopedSimulation?.lignes?.length || 0),
       source: "local_demo",
     },
     procurement: {
       status: procurementReady ? "READY" : procurementReviewRequired ? "REVIEW_REQUIRED" : procurementRequired ? "REQUIRED" : "BLOCKED",
       is_ready: procurementReady,
-      decisions_count: Number(project.procurement_decisions_count || appState.lastSimulation?.lignes?.length || 0),
+      decisions_count: Number(project.procurement_decisions_count || scopedSimulation?.lignes?.length || 0),
       import_lines_count: Number(project.procurement_import_lines_count || 0),
       local_lines_count: Number(project.procurement_local_lines_count || 0),
       hybrid_lines_count: Number(project.procurement_hybrid_lines_count || 0),

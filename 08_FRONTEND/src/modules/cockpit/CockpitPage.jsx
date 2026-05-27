@@ -67,6 +67,8 @@ export default function CockpitPage() {
   const { state } = useAppStore();
   const engine = useAnalyticsEngine("direction");
   const project = getWorkspaceProject(state);
+  const projectKey = getProjectWorkspaceKey(project);
+  const currentSimulation = state.lastSimulationProject === projectKey ? state.lastSimulation : null;
   const workflow = getProjectWorkflow(project, state);
   const primaryAction = getProjectPrimaryAction(project, state);
   const alerts = buildProjectAlerts(workflow);
@@ -87,7 +89,7 @@ export default function CockpitPage() {
   const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
   const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || table;
-  const estimatedSavings = Number(state.lastSimulation?.kpi?.economie_nette || kpis.economie_nette || 0);
+  const estimatedSavings = Number(currentSimulation?.kpi?.economie_nette || kpis.economie_nette || 0);
   const procurementGain = Number(kpis.economie_nette || 0);
 
   const handlePrimaryAction = () => {
@@ -133,7 +135,7 @@ export default function CockpitPage() {
           <article className={`workspace-module-card ${moduleTone(scenarioStep.state)}`}>
             <span>Scenarios</span>
             <strong>{scenarioStep.status || "Bloque"}</strong>
-            <p>{state.lastSimulation ? `${scenario.label} · économie estimée ${formatMoney(estimatedSavings)}` : "Lancez une simulation pour comparer les stratégies CAPEX."}</p>
+            <p>{currentSimulation ? `${scenario.label} · économie estimée ${formatMoney(estimatedSavings)}` : "Lancez une simulation pour comparer les stratégies CAPEX."}</p>
             <small>Budget : {budgetStep.status || "Bloque"}</small>
             <button type="button" onClick={() => navigateTo("/app/simulation")}>Tester un scénario</button>
           </article>

@@ -377,16 +377,17 @@ export default function SiteExecutionPage() {
   const spatial = useSpatialIntelligence({ workflow });
   const spatialSummary = spatial.data;
   const spatialEnabled = hasSpatialCapabilities(spatialSummary, workflow);
+  const currentSimulation = state.lastSimulationProject === (state.activeProject || PROJECT_CONTEXT.code) ? state.lastSimulation : null;
 
   const context = React.useMemo(
     () =>
       getExecutionContext(
         state.activeProject || PROJECT_CONTEXT.code,
         state.activeScenario,
-        state.lastSimulation,
+        currentSimulation,
         workflow.scenario
       ),
-    [state.activeProject, state.activeScenario, state.lastSimulation, workflow.scenario]
+    [state.activeProject, state.activeScenario, currentSimulation, workflow.scenario]
   );
 
   React.useEffect(() => {
