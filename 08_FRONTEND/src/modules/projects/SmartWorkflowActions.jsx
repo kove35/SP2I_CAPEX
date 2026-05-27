@@ -1,0 +1,189 @@
+import React from "react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardCheck,
+  Coins,
+  PackageCheck,
+  Route,
+  ShieldCheck,
+  ShoppingCart,
+  Truck,
+} from "lucide-react";
+
+function money(value) {
+  const amount = Number(value || 0);
+  if (!Number.isFinite(amount) || amount <= 0) return "-";
+  return `${amount.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} FCFA`;
+}
+
+function count(value) {
+  return Number(value || 0).toLocaleString("fr-FR");
+}
+
+function stepById(workflow, id) {
+  return workflow?.steps?.find((step) => step.id === id) || {};
+}
+
+function currentStep(workflow) {
+  return workflow?.steps?.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || workflow?.steps?.at?.(-1) || {};
+}
+
+function nextStepLabel(workflow) {
+  const step = currentStep(workflow);
+  if (step.id === "scenarios") return "Arbitrage procurement";
+  if (step.id === "procurement") return "Validation humaine des décisions achat";
+  if (step.id === "execution") return "Préparation chantier et ETA";
+  if (step.id === "budget") return "Simulation CAPEX";
+  if (step.id === "dqe") return "Synchronisation budget";
+  return step.label || workflow?.label || "Pilotage projet";
+}
+
+function buildActions({ workflow = {}, module = "dashboard", kpis = {}, simulation = null, execution = {}, procurement = {} }) {
+  const scenarioDone = stepById(workflow, "scenarios").state === "done" || workflow?.scenario?.is_ready || simulation;
+  const procurementStatus = workflow?.procurement?.status || procurement.status;
+  const procurementReady = workflow?.procurement?.is_ready || ["READY", "EXPORTABLE"].includes(procurementStatus);
+  const executionStatus = workflow?.execution?.status || execution.status;
+  const gain = Number(simulation?.kpi?.economie_nette || kpis.economie_nette || kpis.gainSecurisable || kpis.gain_net_total || 0);
+  const lines = Number(simulation?.kpi?.lignes_importables || workflow?.procurement?.decisions_count || procurement.decisions_count || kpis.nb_lignes || 0);
+  const validations = Number(workflow?.procurement?.review_required_count || workflow?.procurement?.to_arbitrate_count || procurement.review_required_count || 0);
+  const criticalLots = Number(workflow?.execution?.critical_lots_count || execution.critical_lots_count || execution.blockedLots || 0);
+  const etaWatch = Number(workflow?.execution?.eta_to_watch_count || execution.eta_to_watch_count || 0);
+
+  if (!scenarioDone) {
+    return [
+      {
+        role: "Direction",
+        title: "Simuler la stratégie CAPEX",
+        route: "/app/simulation",
+        tone: "opportunity",
+        Icon: Coins,
+        why: "Comparer local, import et hybride avant engagement achat.",
+        impact: [`Gain estimé : ${money(gain)}`, `${count(lines)} lignes à analyser`, "Impact planning calculé après simulation"],
+      },
+      {
+        role: "Logistique",
+        title: "Vérifier paramètres logistiques",
+        route: "/app/procurement?tab=containers",
+        tone: "attention",
+        Icon: Truck,
+        why: "Contrôler douane, transport, ETA et consolidation container.",
+        impact: ["Risque supply chain : à qualifier", "ETA import : à confirmer", "Prochaine étape : simulation CAPEX"],
+      },
+    ];
+  }
+
+  if (!procurementReady) {
+    return [
+      {
+        role: "Procurement",
+        title: "Analyser les arbitrages achat",
+        route: "/app/procurement",
+        tone: validations ? "critical" : "attention",
+        Icon: ShoppingCart,
+        why: "Transformer les recommandations import/local en décisions humaines traçables.",
+        impact: [`${count(lines)} lignes importables ou arbitrables`, `Gain potentiel : ${money(gain)}`, `${count(validations)} validations humaines requises`, `${count(criticalLots)} lots critiques à arbitrer`],
+      },
+      {
+        role: "Direction",
+        title: "Approuver les économies CAPEX",
+        route: "/app/approvals",
+        tone: validations ? "critical" : "opportunity",
+        Icon: ShieldCheck,
+        why: "Sécuriser les économies avant commande fournisseur.",
+        impact: [`Économies sécurisables : ${money(gain)}`, "Conséquence : dossier procurement direction", "Traçabilité : approval workflow"],
+      },
+      {
+        role: "Logistique",
+        title: "Préparer les consolidations container",
+        route: "/app/procurement?tab=containers",
+        tone: "opportunity",
+        Icon: PackageCheck,
+        why: "Regrouper les lots import compatibles et réduire les coûts de transport.",
+        impact: ["Impact supply chain : FCL/LCL à confirmer", "Risque douane : à qualifier", "Prochaine étape : validation procurement"],
+      },
+    ];
+  }
+
+  if (executionStatus === "REQUIRED" || stepById(workflow, "execution").state === "todo") {
+    return [
+      {
+        role: "Chantier",
+        title: "Préparer les lots prêts à exécuter",
+        route: "/app/site?tab=planning",
+        tone: criticalLots ? "attention" : "validated",
+        Icon: ClipboardCheck,
+        why: "Convertir les décisions achat validées en actions terrain.",
+        impact: [`${count(criticalLots)} lots critiques`, `${count(etaWatch)} ETA à surveiller`, "Impact chantier : planning à sécuriser"],
+      },
+      {
+        role: "Procurement",
+        title: "Générer les commandes fournisseurs",
+        route: "/app/procurement",
+        tone: "validated",
+        Icon: CheckCircle2,
+        why: "Passer des arbitrages validés aux commandes opérationnelles.",
+        impact: ["Statut validation : prêt", "Conséquence : lancement approvisionnement", `Gain sécurisé : ${money(gain)}`],
+      },
+    ];
+  }
+
+  return [
+    {
+      role: module === "execution" ? "Chantier" : "Direction",
+      title: module === "execution" ? "Suivre les matériaux bloquants" : "Piloter les décisions CAPEX sécurisées",
+      route: module === "execution" ? "/app/site?tab=deliveries" : "/app/analytics",
+      tone: criticalLots ? "attention" : "validated",
+      Icon: module === "execution" ? AlertTriangle : Route,
+      why: "Maintenir le lien entre budget, commande, transport et exécution.",
+      impact: [`${count(criticalLots)} lots critiques`, `${count(etaWatch)} ETA à surveiller`, `Économies suivies : ${money(gain)}`],
+    },
+  ];
+}
+
+export default function SmartWorkflowActions({
+  workflow,
+  module = "dashboard",
+  kpis = {},
+  simulation = null,
+  execution = {},
+  procurement = {},
+  onNavigate,
+}) {
+  const actions = buildActions({ workflow, module, kpis, simulation, execution, procurement });
+  const current = currentStep(workflow);
+
+  return (
+    <section className="smart-workflow-actions" data-testid="smart-workflow-actions">
+      <header>
+        <div>
+          <span>Copilote actions SP2I</span>
+          <strong>Étape actuelle : {current.label || workflow?.label || "Pilotage projet"}</strong>
+          <small>Prochaine étape : {nextStepLabel(workflow)}</small>
+        </div>
+        <ol className="smart-timeline" aria-label="Timeline opérationnelle">
+          {["Simulation", "Arbitrage", "Validation", "Commande", "Transport", "Réception", "Exécution"].map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ol>
+      </header>
+      <div className="smart-action-grid">
+        {actions.map(({ Icon, ...action }) => (
+          <button
+            key={`${action.role}-${action.title}`}
+            type="button"
+            className={`smart-action-card ${action.tone}`}
+            onClick={() => onNavigate?.(action.route)}
+          >
+            <span className="smart-action-role"><Icon size={16} /> {action.role}</span>
+            <strong>{action.title}</strong>
+            <p>{action.why}</p>
+            <ul>
+              {action.impact.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}

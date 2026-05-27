@@ -10,13 +10,17 @@ const stateIcon = {
 };
 
 function compactActionLabel(workflow, nextStep) {
-  if (nextStep?.id !== "execution") return nextStep?.action || workflow?.primary_action?.label || "Ouvrir";
+  if (nextStep?.id === "scenarios") return "Simuler la stratégie CAPEX";
+  if (nextStep?.id === "procurement") {
+    return workflow?.procurement?.status === "REVIEW_REQUIRED" ? "Valider les décisions import critiques" : "Analyser les arbitrages achat";
+  }
+  if (nextStep?.id !== "execution") return nextStep?.action || workflow?.primary_action?.label || "Piloter";
   const status = workflow?.execution?.status;
-  if (status === "REQUIRED") return "Préparer l’exécution";
-  if (status === "ACTIVE") return "Suivre l’exécution";
-  if (status === "AT_RISK") return "Suivre l’exécution à risque";
-  if (status === "READY") return "Ouvrir Exécution";
-  return workflow?.primary_action?.label || nextStep?.action || "Ouvrir";
+  if (status === "REQUIRED") return "Préparer les actions chantier";
+  if (status === "ACTIVE") return "Piloter l’exécution chantier";
+  if (status === "AT_RISK") return "Traiter les lots chantier à risque";
+  if (status === "READY") return "Suivre les lots prêts à exécuter";
+  return workflow?.primary_action?.label || nextStep?.action || "Piloter";
 }
 
 function compactStepStatus(workflow, step) {

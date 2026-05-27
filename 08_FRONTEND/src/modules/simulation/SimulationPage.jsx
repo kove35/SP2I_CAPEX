@@ -13,6 +13,7 @@ import { compareScenarios, listScenarios } from "../../services/scenarioService"
 import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
 import { getProjectWorkflow, getBudgetStatus, isBudgetSynced, patchLocalProject } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
+import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 
 const SIMULATION_TIMEOUT_MS = Number(import.meta.env.VITE_ANALYTICS_TIMEOUT_MS || 18000);
 const DQE_SYNCED_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
@@ -195,7 +196,7 @@ function ScenarioDecisionCopilot({
           <small>{simulation ? "Transférer les arbitrages vers le cockpit Approvisionnement." : "Lancez une simulation pour débloquer cette étape."}</small>
         </div>
         <button className="primary-action procurement-ready-action" type="button" disabled={!simulation} onClick={() => navigateTo("/app/procurement")}>
-          Préparer l’approvisionnement
+          Analyser les arbitrages achat
           <ArrowRight size={17} />
         </button>
       </section>
@@ -451,6 +452,14 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         <button className={tab === "compare" ? "active" : ""} onClick={() => setTab("compare")} type="button">Comparer</button>
         <button className={tab === "history" ? "active" : ""} onClick={() => setTab("history")} type="button">Historique</button>
       </div>
+
+      <SmartWorkflowActions
+        workflow={workflow}
+        module="simulation"
+        simulation={simulation}
+        kpis={simulation?.kpi || {}}
+        onNavigate={navigateTo}
+      />
 
       {error ? <div className="app-error">{error}</div> : null}
       {notice ? <div className="app-warning">{notice}</div> : null}

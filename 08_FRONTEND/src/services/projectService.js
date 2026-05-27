@@ -258,25 +258,28 @@ export function getProjectWorkflow(project = {}, appState = {}) {
 export function getProjectPrimaryAction(project = {}, appState = {}) {
   const workflow = getProjectWorkflow(project, appState);
   if (workflow.primary_action) {
-    if (workflow.execution?.status === "REQUIRED") return { label: "Préparer l’exécution", route: "/app/site?tab=planning" };
-    if (workflow.execution?.status === "READY") return { label: "Ouvrir Exécution", route: "/app/site?tab=planning" };
-    if (workflow.execution?.status === "ACTIVE") return { label: "Suivre l’exécution", route: "/app/site?tab=planning" };
-    if (workflow.execution?.status === "AT_RISK") return { label: "Suivre l’exécution à risque", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "READY") return { label: "Suivre les lots prêts à exécuter", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "ACTIVE") return { label: "Piloter l’exécution chantier", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
+    if (workflow.status === "BUDGET_SYNCED") return { label: "Simuler la stratégie CAPEX", route: "/app/simulation" };
+    if (workflow.status === "SCENARIO_READY") return { label: "Analyser les arbitrages achat", route: "/app/procurement" };
+    if (workflow.status === "PROCUREMENT_REVIEW_REQUIRED") return { label: "Valider les décisions import critiques", route: "/app/procurement" };
     return workflow.primary_action;
   }
 
   const nextStep = workflow.steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || workflow.steps[workflow.steps.length - 1];
   if (nextStep.id === "configuration") return { label: "Configurer le projet", route: "/app/projects", mode: "setup" };
-  if (nextStep.id === "dqe") return { label: workflow.activeDqe ? "Analyser le DQE" : "Importer le DQE", route: "/app/dqe?tab=import" };
-  if (nextStep.id === "budget") return { label: "Synchroniser le budget", route: "/app/dqe?tab=sync" };
-  if (nextStep.id === "scenarios") return { label: "Tester un scénario", route: "/app/simulation" };
-  if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les arbitrages achat", route: "/app/procurement" };
-  if (nextStep.id === "procurement") return { label: "Préparer l’approvisionnement", route: "/app/procurement" };
-  if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Préparer l’exécution", route: "/app/site?tab=planning" };
-  if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Suivre l’exécution", route: "/app/site?tab=planning" };
-  if (nextStep.id === "execution" && workflow.execution?.status === "AT_RISK") return { label: "Suivre l’exécution à risque", route: "/app/site?tab=planning" };
-  if (nextStep.id === "execution") return { label: "Ouvrir Exécution", route: "/app/site?tab=planning" };
-  return { label: "Ouvrir le workspace", route: "/app" };
+  if (nextStep.id === "dqe") return { label: workflow.activeDqe ? "Auditer le DQE projet" : "Importer le DQE budget", route: "/app/dqe?tab=import" };
+  if (nextStep.id === "budget") return { label: "Synchroniser le budget CAPEX", route: "/app/dqe?tab=sync" };
+  if (nextStep.id === "scenarios") return { label: "Simuler la stratégie CAPEX", route: "/app/simulation" };
+  if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les décisions import critiques", route: "/app/procurement" };
+  if (nextStep.id === "procurement") return { label: "Analyser les arbitrages achat", route: "/app/procurement" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Piloter l’exécution chantier", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution") return { label: "Suivre les lots prêts à exécuter", route: "/app/site?tab=planning" };
+  return { label: "Piloter le workspace projet", route: "/app" };
 }
 
 export function getBudgetStatus(workflow = {}) {

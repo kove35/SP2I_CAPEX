@@ -19,7 +19,7 @@ import {
 export const sidebarQuickActions = [
   { label: "Importer DQE", path: "/app/dqe?tab=import", icon: Upload },
   { label: "Nouveau scénario", path: "/app/simulation?tab=scenarios", icon: GitCompare },
-  { label: "Tester un scénario", path: "/app/simulation", icon: Play },
+  { label: "Simuler stratégie CAPEX", path: "/app/simulation", icon: Play },
 ];
 
 export const sidebarSections = [

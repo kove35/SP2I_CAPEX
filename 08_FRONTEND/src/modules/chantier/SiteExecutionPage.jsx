@@ -10,6 +10,7 @@ import {
 } from "../../services/projectService";
 import ActionsWorkflowBoard from "./ActionsWorkflowBoard";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
+import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 import {
   SpatialDrilldownPanel,
   SpatialKpiBand,
@@ -557,6 +558,14 @@ export default function SiteExecutionPage() {
         </div>
       </section>
 
+      <SmartWorkflowActions
+        workflow={workflow}
+        module="execution"
+        simulation={currentSimulation}
+        execution={{ ...executionSummary, blockedLots, critical_lots_count: blockedLots, eta_to_watch_count: watchedEta }}
+        onNavigate={navigate}
+      />
+
       {spatialEnabled ? (
         <>
           <SpatialDrilldownPanel
@@ -584,7 +593,7 @@ export default function SiteExecutionPage() {
         <WorkflowGuardEmptyState
           title="Simulation à lancer"
           message="Lancez une simulation pour calculer l’impact planning avant de préparer l’exécution chantier."
-          actionLabel="Tester un scénario"
+          actionLabel="Simuler la stratégie CAPEX"
           actionRoute="/app/simulation"
           currentStep={context.scenarioStatusLabel}
           requiredStep="Scénario exploitable"
@@ -594,7 +603,7 @@ export default function SiteExecutionPage() {
         <WorkflowGuardEmptyState
           title="Approvisionnement à préparer"
           message="Préparez les arbitrages achat avant de suivre l’exécution chantier."
-          actionLabel="Ouvrir Approvisionnement"
+          actionLabel="Analyser les arbitrages achat"
           actionRoute="/app/procurement"
           currentStep={workflow.steps.find((step) => step.id === "procurement")?.status}
           requiredStep="Approvisionnement"
@@ -605,7 +614,7 @@ export default function SiteExecutionPage() {
           <WorkflowGuardEmptyState
             title="Exécution à préparer"
             message="L’approvisionnement est prêt. Préparez les actions chantier avant le suivi opérationnel."
-            actionLabel="Préparer l’exécution"
+            actionLabel="Préparer les actions chantier"
             actionRoute="/app/site?tab=planning"
             currentStep={workflow.steps.find((step) => step.id === "execution")?.status}
             requiredStep="Actions chantier"
@@ -644,7 +653,7 @@ export default function SiteExecutionPage() {
             className="link-button"
             onClick={() => navigate("/app/simulation")}
           >
-            Tester un scénario
+            Simuler la stratégie CAPEX
           </button>
         </div>
       ) : null}
@@ -833,7 +842,7 @@ export default function SiteExecutionPage() {
               className="primary-action secondary-action"
               onClick={() => navigate("/app/procurement")}
             >
-              Ouvrir Approvisionnement
+              Analyser les arbitrages achat
             </button>
           </AnalyticsCard>
 
