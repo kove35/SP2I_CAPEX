@@ -124,6 +124,8 @@ function ModuleStatusCard({ title, step, message, actionLabel, actionRoute, deta
 }
 
 function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state, workflowEvents = [] }) {
+  const projectKey = getProjectWorkspaceKey(project);
+  const currentSimulation = state.lastSimulationProject === projectKey ? state.lastSimulation : null;
   const dqeStep = getStep(workflow, "dqe");
   const budgetStep = getStep(workflow, "budget");
   const scenarioStep = getStep(workflow, "scenarios");
@@ -139,8 +141,8 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
   const directionKpis = [
     ["Budget local", displayMoney(kpis.capex_local || kpis.budget_local)],
     ["Budget optimise", displayMoney(kpis.capex_optimise || kpis.budget_optimise)],
-    ["Economie nette", displayMoney(kpis.economie_nette || state.lastSimulation?.kpi?.economie_nette)],
-    ["Taux economie", displayPercent(kpis.taux_economie || kpis.roi || state.lastSimulation?.kpi?.taux_economie)],
+    ["Economie nette", displayMoney(kpis.economie_nette || currentSimulation?.kpi?.economie_nette)],
+    ["Taux economie", displayPercent(kpis.taux_economie || kpis.roi || currentSimulation?.kpi?.taux_economie)],
     ["Trust score DQE", dqe.trust_score ? `${dqe.trust_score}/100` : "-"],
     ["Lignes DQE", dqe.normalized_lines_count ? dqe.normalized_lines_count.toLocaleString("fr-FR") : "-"],
     ["Scénario actif", scenarioName],

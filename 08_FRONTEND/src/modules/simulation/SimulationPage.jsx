@@ -283,6 +283,10 @@ function buildSimulationFromPreview(preview, scenarioName) {
   };
 }
 
+function getCurrentProjectKey(state) {
+  return state.activeProject || PROJECT_CONTEXT.code;
+}
+
 export default function SimulationPage({ defaultTab = "simulation" }) {
   const [tab, setTab] = React.useState(defaultTab);
   const [scenarioName, setScenarioName] = React.useState(defaultSimulationPayload.scenario_name);
@@ -310,6 +314,11 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
     setSimulation(null);
     setNotice("");
     setError("");
+    setState((current) => {
+      const projectKey = getCurrentProjectKey(current);
+      if (!current.lastSimulation || current.lastSimulationProject === projectKey) return current;
+      return { ...current, lastSimulation: null, lastSimulationProject: null };
+    });
   }, [state.activeProject]);
 
   const runSimulation = async () => {
@@ -334,7 +343,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
       }
 
       setSimulation(result);
-      setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: result }));
+      setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: result, lastSimulationProject: getCurrentProjectKey(current) }));
       setNotice("Simulation du scénario lancée.");
     } catch (apiError) {
       try {
@@ -345,7 +354,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         );
         const fallback = buildSimulationFromPreview(preview, scenarioName);
         setSimulation(fallback);
-        setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: fallback }));
+        setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: fallback, lastSimulationProject: getCurrentProjectKey(current) }));
         setNotice(apiError.message || "Simulation du scénario lancée depuis les dernières données synchronisées.");
       } catch (previewError) {
         setError(previewError.message || apiError.message);

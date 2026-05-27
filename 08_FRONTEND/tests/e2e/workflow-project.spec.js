@@ -280,7 +280,9 @@ test("budget synchronise debloque Tester un scenario", async ({ page }) => {
 test("simulation reste en attente tant que l'utilisateur ne lance pas le scenario", async ({ page }) => {
   await openConfiguredProjectWorkspace(page, "Projet simulation manuelle");
   await setSyncedDqe(page);
+  let simulateRequests = 0;
   await page.route("**/simulation/simulate", async (route) => {
+    simulateRequests += 1;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -324,12 +326,14 @@ test("simulation reste en attente tant que l'utilisateur ne lance pas le scenari
   await expect(page.getByText(/simulation non lanc[eé]e/i).first()).toBeVisible();
   await expect(page.getByText(/roi import/i)).toHaveCount(0);
   await expect(page.getByText(/sc[eé]nario viable/i)).toHaveCount(0);
+  expect(simulateRequests).toBe(0);
 
   await page.getByRole("button", { name: /lancer simulation/i }).click();
 
   await expect(page.getByText(/simulation du sc[eé]nario lanc[eé]e/i)).toBeVisible();
   await expect(page.getByText(/roi import/i)).toBeVisible();
   await expect(page.getByText(/sc[eé]nario viable|validation requise/i)).toBeVisible();
+  expect(simulateRequests).toBe(1);
 });
 
 test("procurement page without scenario shows guided empty state", async ({ page }) => {

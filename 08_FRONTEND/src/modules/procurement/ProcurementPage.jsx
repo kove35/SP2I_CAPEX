@@ -817,9 +817,10 @@ export default function ProcurementPage() {
   const localLines = rows.filter((row) => normalizeDecision(row.decision_import) === "LOCAL").length;
   const importLines = rows.filter((row) => normalizeDecision(row.decision_import) === "IMPORT").length;
   const hybridLines = rows.filter((row) => ["HYBRIDE", "MIXTE"].includes(normalizeDecision(row.decision_import))).length;
+  const currentSimulation = state.lastSimulationProject === (state.activeProject || PROJECT_CONTEXT.code) ? state.lastSimulation : null;
   const sourceContext = React.useMemo(
-    () => getProcurementSourceContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, state.lastSimulation),
-    [state.activeProject, state.activeScenario, state.lastSimulation]
+    () => getProcurementSourceContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, currentSimulation),
+    [state.activeProject, state.activeScenario, currentSimulation]
   );
   const activeScopeLabel = displayScope(filters.lot || filters.famille || filters.importLocal || "Projet complet");
   const totalCost = costRows.reduce((sum, row) => sum + row.value, 0);
@@ -839,7 +840,7 @@ export default function ProcurementPage() {
 
   const handleProcurementExport = async () => {
     setExportingWorkbook(true);
-    if (!sourceContext.hasActiveDqe || !state.lastSimulation) {
+    if (!sourceContext.hasActiveDqe || !currentSimulation) {
       setExportNotice("Dossier exportable en version provisoire. Certaines references necessitent encore validation DQE ou scenario.");
     } else {
       setExportNotice("Dossier achat exporte avec source DQE, scenario actif, hypotheses et validations en attente.");

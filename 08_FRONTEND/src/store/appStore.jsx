@@ -9,6 +9,7 @@ export function AppStoreProvider({ children }) {
     activeProjectDetails: null,
     activeScenario: SCENARIO_OPTIONS[0].code,
     lastSimulation: null,
+    lastSimulationProject: null,
   });
 
   const value = React.useMemo(() => ({ state, setState }), [state]);
@@ -24,6 +25,7 @@ export function useAppStore() {
         activeProjectDetails: null,
         activeScenario: SCENARIO_OPTIONS[0].code,
         lastSimulation: null,
+        lastSimulationProject: null,
       },
       setState: () => {},
     };
