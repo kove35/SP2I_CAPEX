@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.analytics.routes import router as analytics_router
+from app.approval.routes.approvals import router as approvals_router
 from app.auth.routes import router as auth_router
 from app.cloud_migrations import ensure_powerbi_schema
 from app.database import Base, SessionLocal, engine
@@ -22,6 +23,7 @@ logger = logging.getLogger("sp2i-capex-api")
 
 import_routes = import_module("app.routes.import")
 import_module("app.models")
+import_module("app.approval.models")
 import_module("app.auth.models")
 import_module("app.projects.models")
 
@@ -74,6 +76,7 @@ app.include_router(simulation.router, prefix="/simulation", tags=["Simulation CA
 app.include_router(decision.router, prefix="/decision", tags=["Decision Engine"])
 app.include_router(procurement.router, prefix="/procurement", tags=["Procurement Analytics"])
 app.include_router(logistics.router, prefix="/logistics", tags=["Logistics Analytics"])
+app.include_router(approvals_router, prefix="/approvals", tags=["Approval Engine"])
 app.include_router(analytics_router, prefix="/analytics", tags=["SP2I Analytics Engine"])
 app.include_router(capex.router, tags=["BI"])
 app.include_router(monitoring.router, tags=["Monitoring"])
@@ -161,6 +164,9 @@ def root() -> dict:
             "procurement_lead_time": "/procurement/lead-time/{simulation_id}",
             "procurement_cashflow": "/procurement/cashflow/{simulation_id}",
             "procurement_import_complexity": "/procurement/import-complexity/{simulation_id}",
+            "approvals": "/approvals",
+            "approval_statuses": "/approvals/statuses",
+            "approval_summary": "/approvals/summary/{project_id}",
             "logistics_container_plan": "/logistics/container-plan/{simulation_id}",
             "logistics_shipment_analysis": "/logistics/shipment-analysis/{simulation_id}",
             "logistics_freight_cost": "/logistics/freight-cost/{simulation_id}",
