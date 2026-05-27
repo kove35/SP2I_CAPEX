@@ -376,6 +376,38 @@ test("pilotage approvisionnement cockpit orchestrates existing workflow", async 
   await expect(page.getByText(/copilote approvisionnement sp2i/i)).toBeVisible();
 });
 
+test("procurement bulk arbitrage validates selected lines", async ({ page }) => {
+  const projectName = "Projet procurement arbitrage bulk";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setSyncedDqe(page);
+  await updateLocalProject(page, projectName, {
+    workflow_status: "SCENARIO_READY",
+    scenario_ready: true,
+    procurement_ready: false,
+    procurement_status: "REVIEW_REQUIRED",
+  });
+
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+  const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
+  await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
+  await navigateSpa(page, "/app/procurement");
+
+  await expect(page.getByRole("heading", { name: /arbitrer local, import, fournisseurs/i })).toBeVisible();
+  await expect(page.getByText(/arbitrage fournisseur par ligne/i)).toBeVisible();
+
+  const rowChecks = page.getByRole("checkbox");
+  await expect(rowChecks.nth(1)).toBeVisible();
+  await rowChecks.nth(1).click();
+  await rowChecks.nth(2).click();
+
+  const toolbar = page.getByTestId("procurement-bulk-toolbar");
+  await expect(toolbar).toBeVisible();
+  await expect(toolbar).toContainText(/2 ligne/i);
+  await toolbar.getByRole("button", { name: /valider import/i }).click();
+  await expect(page.getByText(/workflow approval d[eé]clench[eé]/i)).toBeVisible();
+  await expect(page.getByText(/valid[eé] achat - import fournisseur/i).first()).toBeVisible();
+});
+
 test("scenario pret sans approvisionnement affiche CTA arbitrages achat", async ({ page }) => {
   const projectName = "Projet scenario pret sans achat";
   await openConfiguredProjectWorkspace(page, projectName);
