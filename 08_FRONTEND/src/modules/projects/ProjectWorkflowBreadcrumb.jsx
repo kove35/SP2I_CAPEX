@@ -35,10 +35,11 @@ function normalizeStatus(workflow, step) {
 
 function nextWorkflowStep(workflow) {
   const steps = workflow?.steps || [];
-  return steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || steps[steps.length - 1];
+  return workflow?.active_step || steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || steps[steps.length - 1];
 }
 
 function actionLabel(workflow, nextStep) {
+  if (workflow?.next_action?.label) return workflow.next_action.label;
   if (workflow?.primary_action?.label) return workflow.primary_action.label;
   if (nextStep?.id === "execution") {
     const status = workflow?.execution?.status;

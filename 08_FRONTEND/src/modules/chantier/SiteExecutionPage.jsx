@@ -612,9 +612,9 @@ export default function SiteExecutionPage() {
       ) : !executionReady && executionStatus === "REQUIRED" ? (
         <div>
           <WorkflowGuardEmptyState
-            title="Exécution à préparer"
-            message="L’approvisionnement est prêt. Préparez les actions chantier avant le suivi opérationnel."
-            actionLabel="Préparer les actions chantier"
+            title="Préparation chantier par lot"
+            message="L’approvisionnement est prêt. Générez les actions par lot, affectez les responsables et confirmez les ETA avant le suivi opérationnel."
+            actionLabel="Préparer les actions chantier par lot"
             actionRoute="/app/site?tab=planning"
             currentStep={workflow.steps.find((step) => step.id === "execution")?.status}
             requiredStep="Actions chantier"
@@ -626,7 +626,7 @@ export default function SiteExecutionPage() {
             className="primary-action secondary-action"
             onClick={handleGenerateExecutionActions}
           >
-            Générer actions chantier
+            Générer actions chantier par lot
           </button>
         </div>
       ) : null}

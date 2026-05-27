@@ -10,6 +10,7 @@ const stateIcon = {
 };
 
 function compactActionLabel(workflow, nextStep) {
+  if (workflow?.next_action?.label) return workflow.next_action.label;
   if (nextStep?.id === "scenarios") return "Simuler la stratégie CAPEX";
   if (nextStep?.id === "procurement") {
     return workflow?.procurement?.status === "REVIEW_REQUIRED" ? "Valider les décisions import critiques" : "Analyser les arbitrages achat";
@@ -36,7 +37,7 @@ function compactStepStatus(workflow, step) {
 export default function ProjectWorkflowStepper({ workflow, compact = false, variant = "card", onNavigate, onSetup }) {
   const steps = workflow?.steps || [];
   const doneCount = steps.filter((step) => step.state === "done").length;
-  const nextStep = steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || steps[steps.length - 1];
+  const nextStep = workflow?.active_step || steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || steps[steps.length - 1];
   const visibleSteps = steps.filter((step) => step.state !== "blocked").slice(-3);
 
   if (compact && variant === "inline") {
@@ -67,7 +68,7 @@ export default function ProjectWorkflowStepper({ workflow, compact = false, vari
         <header className="project-workflow-compact-header">
           <div>
             <span>Parcours projet</span>
-            <strong>{workflow?.completion || 0}%</strong>
+            <strong>{workflow?.global_state_label || workflow?.label || "Workflow"}</strong>
           </div>
           <div>
             <span>Étapes terminées</span>
@@ -77,6 +78,7 @@ export default function ProjectWorkflowStepper({ workflow, compact = false, vari
         <button
           type="button"
           className={`project-workflow-compact-action ${nextStep?.state || "todo"}`}
+          aria-label="Ouvrir l'etape active du workflow"
           onClick={() => {
             if (nextStep?.id === "configuration") onSetup?.();
             else onNavigate?.(nextStep?.route);
@@ -100,8 +102,8 @@ export default function ProjectWorkflowStepper({ workflow, compact = false, vari
     <section className="project-workflow-stepper" aria-label="Parcours projet" data-testid="project-workflow-stepper">
       <header>
         <div>
-          <span>Parcours projet</span>
-          <strong>{workflow?.label || "Configuration requise"}</strong>
+          <span>Etat global workflow</span>
+          <strong>{workflow?.global_state_label || workflow?.label || "Configuration requise"}</strong>
         </div>
         <b>{workflow?.completion || 0}%</b>
       </header>

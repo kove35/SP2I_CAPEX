@@ -44,6 +44,7 @@ export const demoProjects = [
 
 export const projectStatusLabels = {
   DRAFT: "Brouillon",
+  CONFIGURATION: "Configuration projet",
   CONFIG_REQUIRED: "Configuration requise",
   CONFIGURED: "Projet configuré",
   DQE_REQUIRED: "DQE à importer",
@@ -54,9 +55,13 @@ export const projectStatusLabels = {
   BUDGET_SYNCED: "Budget synchronisé",
   SCENARIO_REQUIRED: "Scénario à lancer",
   SCENARIO_READY: "Scénario disponible",
+  SCENARIO_SIMULATED: "Scénario simulé",
   PROCUREMENT_REVIEW_REQUIRED: "Arbitrages achat à valider",
   PROCUREMENT_READY: "Approvisionnement prêt",
+  EXECUTION_PREPARATION: "Préparation chantier",
   EXECUTION_READY: "Exécution prête",
+  EXECUTION_ACTIVE: "Exécution active",
+  PROJECT_CLOSED: "Projet clôturé",
   ACTIVE: "Actif",
   ARCHIVED: "Archive",
 };
@@ -111,6 +116,146 @@ function hasMinimumSetup(project = {}) {
 function getScopedSimulation(project = {}, appState = {}) {
   const projectKey = getProjectWorkspaceKey(project);
   return appState.lastSimulationProject === projectKey ? appState.lastSimulation : null;
+}
+
+function toCount(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function buildBlockers({
+  configured,
+  activeDqe,
+  dqeReady,
+  budgetSynced,
+  scenarioReady,
+  procurementReady,
+  procurementReviewRequired,
+  procurementRequired,
+  executionStatusOverride,
+  executionReady,
+  project,
+}) {
+  const blockers = [];
+  if (!configured) blockers.push({ label: "Configuration projet requise", severity: "blocked" });
+  if (configured && !activeDqe) blockers.push({ label: "DQE non importe", severity: "blocked" });
+  if (activeDqe && !dqeReady) blockers.push({ label: "Validation DQE requise", severity: "risk" });
+  if (dqeReady && !budgetSynced) blockers.push({ label: "Budget non synchronise", severity: "blocked" });
+  if (budgetSynced && !scenarioReady) blockers.push({ label: "Simulation CAPEX non lancee", severity: "waiting" });
+  if (procurementReviewRequired) blockers.push({ label: "Validation direction requise", severity: "risk" });
+  if (procurementRequired) blockers.push({ label: "Fournisseur non confirme", severity: "risk" });
+  if (executionStatusOverride === "AT_RISK" || toCount(project.execution_eta_to_watch_count) > 0) blockers.push({ label: "ETA critique", severity: "risk" });
+  if (executionStatusOverride === "BLOCKED" || toCount(project.execution_blocked_count) > 0) blockers.push({ label: "Lots chantier bloques", severity: "blocked" });
+  if (procurementReady && !executionReady && toCount(project.execution_actions_count) === 0) blockers.push({ label: "Actions chantier a generer", severity: "waiting" });
+  return blockers;
+}
+
+function buildWorkflowTimeline({
+  configured,
+  dqeReady,
+  budgetSynced,
+  scenarioReady,
+  procurementReady,
+  procurementReviewRequired,
+  executionRequired,
+  executionReady,
+  executionStatusOverride,
+  project,
+}) {
+  const procurementLines = toCount(project.procurement_decisions_count);
+  const validatedLines = toCount(project.procurement_validated_decisions_count) || (procurementReady ? procurementLines : 0);
+  const commandsGenerated = toCount(project.procurement_orders_count) || (procurementReady ? Math.max(1, Math.ceil(Math.max(validatedLines, 1) / 25)) : 0);
+  const activeContainers = toCount(project.active_containers_count) || toCount(project.execution_deliveries_to_watch_count);
+  const etaAverageDays = toCount(project.average_eta_days) || (activeContainers ? 24 : 0);
+  const upstreamBlocked = configured && dqeReady && budgetSynced ? "waiting" : "blocked";
+
+  return [
+    {
+      id: "simulation",
+      label: "Simulation",
+      state: scenarioReady ? "done" : budgetSynced ? "active" : upstreamBlocked,
+      metric: scenarioReady ? "Scenario calcule" : "A lancer",
+    },
+    {
+      id: "arbitrage",
+      label: "Arbitrage",
+      state: procurementReady ? "done" : scenarioReady ? "active" : "waiting",
+      metric: `${procurementLines.toLocaleString("fr-FR")} lignes`,
+    },
+    {
+      id: "validation",
+      label: "Validation",
+      state: procurementReady ? "done" : procurementReviewRequired ? "risk" : "waiting",
+      metric: `${validatedLines.toLocaleString("fr-FR")} validees`,
+    },
+    {
+      id: "commande",
+      label: "Commande",
+      state: procurementReady ? (executionRequired ? "active" : "done") : "waiting",
+      metric: `${commandsGenerated.toLocaleString("fr-FR")} commandes`,
+    },
+    {
+      id: "transport",
+      label: "Transport",
+      state: executionReady ? (executionStatusOverride === "AT_RISK" || toCount(project.execution_eta_to_watch_count) ? "risk" : "active") : "waiting",
+      metric: etaAverageDays ? `ETA moy. ${etaAverageDays} j` : "ETA a confirmer",
+    },
+    {
+      id: "reception",
+      label: "Reception",
+      state: executionReady && executionStatusOverride === "ACTIVE" ? "active" : "waiting",
+      metric: `${activeContainers.toLocaleString("fr-FR")} containers actifs`,
+    },
+    {
+      id: "execution",
+      label: "Execution",
+      state: executionStatusOverride === "AT_RISK" ? "risk" : executionStatusOverride === "BLOCKED" ? "blocked" : executionReady ? "active" : executionRequired ? "waiting" : "blocked",
+      metric: `${toCount(project.execution_actions_count).toLocaleString("fr-FR")} actions`,
+    },
+  ];
+}
+
+function getUnifiedWorkflowState({
+  configured,
+  activeDqe,
+  dqeReady,
+  budgetSynced,
+  scenarioReady,
+  procurementReady,
+  procurementReviewRequired,
+  executionRequired,
+  executionReady,
+  executionStatusOverride,
+  project,
+}) {
+  if (project.workflow_status === "PROJECT_CLOSED" || project.status === "ARCHIVED") return "PROJECT_CLOSED";
+  if (!configured) return "CONFIGURATION";
+  if (!activeDqe || !dqeReady) return "DQE_CERTIFIED";
+  if (!budgetSynced) return "BUDGET_SYNCED";
+  if (!scenarioReady) return "SCENARIO_SIMULATED";
+  if (procurementReviewRequired || !procurementReady) return "PROCUREMENT_READY";
+  if (executionStatusOverride === "ACTIVE" || executionStatusOverride === "AT_RISK" || executionReady) return "EXECUTION_ACTIVE";
+  if (executionRequired) return "EXECUTION_PREPARATION";
+  return "PROCUREMENT_READY";
+}
+
+function buildNextAction(workflowContext) {
+  const { activeStep, procurementReviewRequired, executionStatusOverride } = workflowContext;
+  if (activeStep?.id === "configuration") return { label: "Configurer le projet", route: "/app/projects", mode: "setup" };
+  if (activeStep?.id === "dqe") return { label: "Importer le DQE budget", route: "/app/dqe?tab=import" };
+  if (activeStep?.id === "budget") return { label: "Synchroniser le budget CAPEX", route: "/app/dqe?tab=sync" };
+  if (activeStep?.id === "scenarios") return { label: "Simuler la strategie CAPEX", route: "/app/simulation" };
+  if (activeStep?.id === "procurement") {
+    return procurementReviewRequired
+      ? { label: "Valider les decisions import critiques", route: "/app/procurement" }
+      : { label: "Analyser les arbitrages achat", route: "/app/procurement" };
+  }
+  if (activeStep?.id === "execution") {
+    if (executionStatusOverride === "ACTIVE") return { label: "Piloter l'execution chantier", route: "/app/site?tab=planning" };
+    if (executionStatusOverride === "AT_RISK") return { label: "Traiter les lots chantier a risque", route: "/app/site?tab=planning" };
+    return { label: "Preparer actions chantier par lot", route: "/app/site?tab=planning" };
+  }
+  return { label: "Piloter le workspace projet", route: "/app" };
 }
 
 export function getProjectWorkflow(project = {}, appState = {}) {
@@ -200,10 +345,74 @@ export function getProjectWorkflow(project = {}, appState = {}) {
                 ? "EXECUTION_READY"
                 : "PROCUREMENT_READY";
 
+  const globalState = getUnifiedWorkflowState({
+    configured,
+    activeDqe,
+    dqeReady,
+    budgetSynced,
+    scenarioReady,
+    procurementReady,
+    procurementReviewRequired,
+    executionRequired,
+    executionReady,
+    executionStatusOverride,
+    project,
+  });
+  const activeStep = steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || steps[steps.length - 1];
+  const blockers = buildBlockers({
+    configured,
+    activeDqe,
+    dqeReady,
+    budgetSynced,
+    scenarioReady,
+    procurementReady,
+    procurementReviewRequired,
+    procurementRequired,
+    executionStatusOverride,
+    executionReady,
+    project,
+  });
+  const timeline = buildWorkflowTimeline({
+    configured,
+    dqeReady,
+    budgetSynced,
+    scenarioReady,
+    procurementReady,
+    procurementReviewRequired,
+    executionRequired,
+    executionReady,
+    executionStatusOverride,
+    project,
+  });
+  const workflowMetrics = {
+    progress_percent: Math.round((timeline.filter((item) => item.state === "done").length / timeline.length) * 100),
+    validated_lines_count: toCount(project.procurement_validated_decisions_count) || (procurementReady ? toCount(project.procurement_decisions_count) : 0),
+    procurement_lines_count: toCount(project.procurement_decisions_count),
+    orders_generated_count: toCount(project.procurement_orders_count) || (procurementReady ? Math.max(1, Math.ceil(Math.max(toCount(project.procurement_validated_decisions_count) || toCount(project.procurement_decisions_count), 1) / 25)) : 0),
+    average_eta_days: toCount(project.average_eta_days) || (toCount(project.execution_deliveries_to_watch_count) ? 24 : 0),
+    active_containers_count: toCount(project.active_containers_count) || toCount(project.execution_deliveries_to_watch_count),
+  };
+  const nextAction = buildNextAction({ activeStep, procurementReviewRequired, executionStatusOverride });
+
   return {
     status,
-    label: projectStatusLabels[status],
+    global_state: globalState,
+    global_state_label: projectStatusLabels[globalState],
+    label: projectStatusLabels[globalState] || projectStatusLabels[status],
+    legacy_label: projectStatusLabels[status],
     steps,
+    active_step: {
+      id: activeStep?.id,
+      label: activeStep?.label,
+      status: activeStep?.status,
+      action: activeStep?.action,
+      route: activeStep?.route,
+      state: activeStep?.state,
+    },
+    next_action: nextAction,
+    blockers,
+    timeline,
+    metrics: workflowMetrics,
     completion: Math.round((steps.filter((step) => step.state === "done").length / steps.length) * 100),
     activeDqe,
     scenario: {
@@ -258,7 +467,7 @@ export function getProjectWorkflow(project = {}, appState = {}) {
 export function getProjectPrimaryAction(project = {}, appState = {}) {
   const workflow = getProjectWorkflow(project, appState);
   if (workflow.primary_action) {
-    if (workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier par lot", route: "/app/site?tab=planning" };
     if (workflow.execution?.status === "READY") return { label: "Suivre les lots prêts à exécuter", route: "/app/site?tab=planning" };
     if (workflow.execution?.status === "ACTIVE") return { label: "Piloter l’exécution chantier", route: "/app/site?tab=planning" };
     if (workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
@@ -268,14 +477,14 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
     return workflow.primary_action;
   }
 
-  const nextStep = workflow.steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || workflow.steps[workflow.steps.length - 1];
+  const nextStep = workflow.active_step || workflow.steps.find((step) => ["blocking", "todo", "progress"].includes(step.state)) || workflow.steps[workflow.steps.length - 1];
   if (nextStep.id === "configuration") return { label: "Configurer le projet", route: "/app/projects", mode: "setup" };
   if (nextStep.id === "dqe") return { label: workflow.activeDqe ? "Auditer le DQE projet" : "Importer le DQE budget", route: "/app/dqe?tab=import" };
   if (nextStep.id === "budget") return { label: "Synchroniser le budget CAPEX", route: "/app/dqe?tab=sync" };
   if (nextStep.id === "scenarios") return { label: "Simuler la stratégie CAPEX", route: "/app/simulation" };
   if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les décisions import critiques", route: "/app/procurement" };
   if (nextStep.id === "procurement") return { label: "Analyser les arbitrages achat", route: "/app/procurement" };
-  if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier par lot", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Piloter l’exécution chantier", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution" && workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution") return { label: "Suivre les lots prêts à exécuter", route: "/app/site?tab=planning" };
