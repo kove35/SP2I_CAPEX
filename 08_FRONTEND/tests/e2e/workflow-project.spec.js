@@ -277,6 +277,61 @@ test("budget synchronise debloque Tester un scenario", async ({ page }) => {
   await expect(testerButton).toBeEnabled();
 });
 
+test("simulation reste en attente tant que l'utilisateur ne lance pas le scenario", async ({ page }) => {
+  await openConfiguredProjectWorkspace(page, "Projet simulation manuelle");
+  await setSyncedDqe(page);
+  await page.route("**/simulation/simulate", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "SUCCESS",
+        scenario_name: "IMPORT_OPTIMIZATION",
+        kpi: {
+          capex_local: 100000000,
+          capex_optimise: 75000000,
+          economie_nette: 25000000,
+          lignes_dqe: 130,
+          lignes_simulees: 130,
+          lignes_importables: 24,
+          lignes_retenues: 2,
+          lignes_arbitrees: 130,
+        },
+        lignes: [
+          {
+            id_ligne: "test-import-1",
+            designation: "Luminaire Shanghai",
+            decision_finale: "IMPORT",
+            risk_level: "MEDIUM",
+            economie_nette: 25000000,
+          },
+        ],
+        metadata: {
+          line_counts: {
+            dqe: 130,
+            simulees: 130,
+            importables: 24,
+            retenues: 2,
+            arbitrees: 130,
+          },
+        },
+      }),
+    });
+  });
+
+  await navigateSpa(page, "/app/simulation");
+
+  await expect(page.getByText(/simulation non lanc[eé]e/i).first()).toBeVisible();
+  await expect(page.getByText(/roi import/i)).toHaveCount(0);
+  await expect(page.getByText(/sc[eé]nario viable/i)).toHaveCount(0);
+
+  await page.getByRole("button", { name: /lancer simulation/i }).click();
+
+  await expect(page.getByText(/simulation du sc[eé]nario lanc[eé]e/i)).toBeVisible();
+  await expect(page.getByText(/roi import/i)).toBeVisible();
+  await expect(page.getByText(/sc[eé]nario viable|validation requise/i)).toBeVisible();
+});
+
 test("procurement page without scenario shows guided empty state", async ({ page }) => {
   await openConfiguredProjectWorkspace(page, "Projet approvisionnement sans scenario");
   await navigateSpa(page, "/app/procurement");
