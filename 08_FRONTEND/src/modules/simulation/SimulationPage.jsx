@@ -11,7 +11,7 @@ import { useAppStore } from "../../store/appStore.jsx";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getProjectWorkflow, getBudgetStatus, isBudgetSynced } from "../../services/projectService";
+import { getProjectWorkflow, getBudgetStatus, isBudgetSynced, patchLocalProject } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const SIMULATION_TIMEOUT_MS = Number(import.meta.env.VITE_ANALYTICS_TIMEOUT_MS || 18000);
@@ -287,6 +287,11 @@ function getCurrentProjectKey(state) {
   return state.activeProject || PROJECT_CONTEXT.code;
 }
 
+function numericProjectId(project) {
+  const value = Number(project?.id);
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
 export default function SimulationPage({ defaultTab = "simulation" }) {
   const [tab, setTab] = React.useState(defaultTab);
   const [scenarioName, setScenarioName] = React.useState(defaultSimulationPayload.scenario_name);
@@ -330,9 +335,40 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
     setLoading(true);
     setError("");
     setNotice("");
+    const projectId = numericProjectId(state.activeProjectDetails);
+    const simulationPayload = {
+      ...defaultSimulationPayload,
+      scenario_name: scenarioName,
+      persist: Boolean(projectId),
+      ...(projectId ? { project_id: projectId } : {}),
+    };
+    const applySimulationWorkflowState = (result) => {
+      setState((current) => {
+        const projectKey = getCurrentProjectKey(current);
+        const lineCount = Number(result?.kpi?.lignes_simulees || result?.metadata?.line_counts?.simulees || result?.lignes?.length || 0);
+        const patch = {
+          workflow_status: "SCENARIO_READY",
+          scenario_ready: true,
+          procurement_ready: false,
+          active_scenario: scenarioName,
+          last_scenario_id: result?.metadata?.scenario_id || scenarioName,
+          simulation_line_count: lineCount,
+          backendWorkflow: null,
+          backend_workflow: null,
+        };
+        patchLocalProject(projectKey, patch);
+        return {
+          ...current,
+          activeScenario: scenarioName,
+          lastSimulation: result,
+          lastSimulationProject: projectKey,
+          activeProjectDetails: current.activeProjectDetails ? { ...current.activeProjectDetails, ...patch } : current.activeProjectDetails,
+        };
+      });
+    };
     try {
       const result = await withTimeout(
-        simulateCapex({ ...defaultSimulationPayload, scenario_name: scenarioName, persist: false }),
+        simulateCapex(simulationPayload),
         SIMULATION_TIMEOUT_MS,
         "La simulation temps reel"
       );
@@ -343,7 +379,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
       }
 
       setSimulation(result);
-      setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: result, lastSimulationProject: getCurrentProjectKey(current) }));
+      applySimulationWorkflowState(result);
       setNotice("Simulation du scénario lancée.");
     } catch (apiError) {
       try {
@@ -354,7 +390,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         );
         const fallback = buildSimulationFromPreview(preview, scenarioName);
         setSimulation(fallback);
-        setState((current) => ({ ...current, activeScenario: scenarioName, lastSimulation: fallback, lastSimulationProject: getCurrentProjectKey(current) }));
+        applySimulationWorkflowState(fallback);
         setNotice(apiError.message || "Simulation du scénario lancée depuis les dernières données synchronisées.");
       } catch (previewError) {
         setError(previewError.message || apiError.message);

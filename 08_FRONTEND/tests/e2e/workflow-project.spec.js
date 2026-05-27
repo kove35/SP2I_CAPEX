@@ -333,7 +333,12 @@ test("simulation reste en attente tant que l'utilisateur ne lance pas le scenari
   await expect(page.getByText(/simulation du sc[eé]nario lanc[eé]e/i)).toBeVisible();
   await expect(page.getByText(/roi import/i)).toBeVisible();
   await expect(page.getByText(/sc[eé]nario viable|validation requise/i)).toBeVisible();
+  await expect(page.getByTestId("project-workflow-breadcrumb")).toContainText(/sc.nario simul/i);
   expect(simulateRequests).toBe(1);
+
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
+  const projectCard = page.getByTestId("project-card").filter({ hasText: /projet simulation manuelle/i }).first();
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/parer l.*approvisionnement/i);
 });
 
 test("procurement page without scenario shows guided empty state", async ({ page }) => {
