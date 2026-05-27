@@ -89,6 +89,10 @@ function ScenarioDecisionCopilot({
   savingsRate,
   analyzedLines,
   importLineCount,
+  dqeLineCount,
+  simulatedLineCount,
+  importableLineCount,
+  retainedLineCount,
   criticalLines,
   scenarioRisk,
   simulation,
@@ -126,7 +130,7 @@ function ScenarioDecisionCopilot({
           <CopilotMetric label="Économie nette" value={formatMoney(savings)} tone="success" />
           <CopilotMetric label="ROI import" value={formatPercent(roi)} detail="économie / CAPEX local" />
           <CopilotMetric label="Taux économie" value={formatPercent(savingsRate)} />
-          <CopilotMetric label="Lignes analysées" value={analyzedLines || "-"} detail={`${importLineCount} orientées import`} />
+          <CopilotMetric label="DQE / simulées" value={`${dqeLineCount || "-"} / ${simulatedLineCount || "-"}`} detail={`${importableLineCount} importables · ${retainedLineCount} retenues`} />
         </div>
         <div className="copilot-ops-grid">
           <span><Clock3 size={15} /> Délai logistique <strong>{estimatedLeadTime}</strong></span>
@@ -348,8 +352,14 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
 
   const kpi = simulation?.kpi || {};
   const lines = simulation?.lignes || [];
-  const analyzedLines = Number(kpi.lignes || lines.length || 0);
-  const importLineCount = Number(kpi.lignes_import || lines.filter((row) => String(row.decision_finale || row.decision_import || "").toUpperCase() === "IMPORT").length);
+  const lineCounts = simulation?.metadata?.line_counts || {};
+  const dqeLineCount = Number(kpi.lignes_dqe || lineCounts.dqe || dqeSummary.lines || 0);
+  const simulatedLineCount = Number(kpi.lignes_simulees || lineCounts.simulees || kpi.lignes || lines.length || 0);
+  const importableLineCount = Number(kpi.lignes_importables || lineCounts.importables || kpi.procurement?.LIGNES_IMPORTABLES || 0);
+  const retainedLineCount = Number(kpi.lignes_retenues || lineCounts.retenues || kpi.lignes_import || lines.filter((row) => String(row.decision_finale || row.decision_import || "").toUpperCase() === "IMPORT").length);
+  const arbitratedLineCount = Number(kpi.lignes_arbitrees || lineCounts.arbitrees || lines.filter((row) => row.decision_finale || row.decision_import).length);
+  const analyzedLines = simulatedLineCount || Number(kpi.lignes || lines.length || 0);
+  const importLineCount = retainedLineCount;
   const criticalLines = lines.filter((line) => String(line.risk_level || "").toLowerCase().includes("eleve") || String(line.risk_level || "").toLowerCase().includes("high")).length;
   const localBudget = Number(kpi.capex_local || 0);
   const optimizedBudget = Number(kpi.capex_optimise || 0);
@@ -451,7 +461,11 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
             <KpiCard label="Budget optimise" value={formatMoney(optimizedBudget)} tone="success" />
             <KpiCard label="Economie nette" value={formatMoney(savings)} tone="warning" />
             <KpiCard label="Taux economie" value={formatPercent(savingsRate)} />
-            <KpiCard label="Lignes analysees" value={analyzedLines || "-"} />
+            <KpiCard label="Lignes DQE" value={dqeLineCount || "-"} />
+            <KpiCard label="Lignes simulées" value={simulatedLineCount || "-"} />
+            <KpiCard label="Importables" value={importableLineCount || "-"} />
+            <KpiCard label="Retenues" value={retainedLineCount || "-"} />
+            <KpiCard label="Arbitrées" value={arbitratedLineCount || "-"} />
             <KpiCard label="Risque scenario" value={scenarioRisk} tone={scenarioRisk === "Eleve" ? "warning" : "success"} />
           </section>
           <section className="cockpit-split">
@@ -473,6 +487,10 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
               savingsRate={savingsRate}
               analyzedLines={analyzedLines}
               importLineCount={importLineCount}
+              dqeLineCount={dqeLineCount}
+              simulatedLineCount={simulatedLineCount}
+              importableLineCount={importableLineCount}
+              retainedLineCount={retainedLineCount}
               criticalLines={criticalLines}
               scenarioRisk={scenarioRisk}
               simulation={simulation}

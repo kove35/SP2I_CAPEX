@@ -18,7 +18,15 @@ function decisionLabel(value) {
   const decision = String(value || "").toUpperCase();
   if (decision === "IMPORT") return "Importer";
   if (decision === "LOCAL") return "Acheter local";
-  if (decision === "MIXTE") return "A arbitrer";
+  if (decision === "MIXTE" || decision === "HYBRIDE" || decision === "HYBRID" || decision === "A_ARBITRER") return "À arbitrer";
+  if (decision === "VALIDATION_DIRECTION") return "Validation direction";
+  if (decision === "VALIDE" || decision === "VALIDATED") return "Validé";
+  if (decision === "REFUSE" || decision === "REJECTED") return "Refusé";
+  if (decision === "COMMANDE") return "Commandé";
+  if (decision === "EN_TRANSIT") return "En transit";
+  if (decision === "EN_DOUANE") return "En douane";
+  if (decision === "LIVRE") return "Livré";
+  if (decision === "RECEPTIONNE") return "Réceptionné";
   if (decision === "REVIEW_REQUIRED") return "Validation requise";
   if (decision === "BLOCKED") return "Bloquant";
   return value || "A analyser";
@@ -26,7 +34,9 @@ function decisionLabel(value) {
 
 function decisionClass(value) {
   const decision = String(value || "").toLowerCase().replaceAll("_", "-");
-  if (decision === "mixte") return "review-required";
+  if (["mixte", "hybride", "hybrid", "a-arbitrer", "validation-direction"].includes(decision)) return "review-required";
+  if (["valide", "validated", "commande", "en-transit", "en-douane", "livre", "receptionne"].includes(decision)) return "import";
+  if (["refuse", "rejected"].includes(decision)) return "blocked";
   return decision || "pending";
 }
 
@@ -35,7 +45,7 @@ function buildJustification(row, savingRate) {
   const risk = String(row.risk_level || "").toLowerCase();
   if (decision === "IMPORT") return "Import recommande car l'economie nette est superieure au seuil.";
   if (decision === "LOCAL") return "Achat local recommande car le gain import reste insuffisant ou trop risque.";
-  if (decision === "MIXTE") return "A arbitrer : economie positive mais delai ou risque logistique a confirmer.";
+  if (decision === "MIXTE" || decision === "HYBRIDE" || decision === "A_ARBITRER") return "À arbitrer : economie positive mais delai ou risque logistique a confirmer.";
   if (decision === "REVIEW_REQUIRED") return "Validation requise avant decision projet.";
   if (risk.includes("eleve") || risk.includes("high")) return "Risque eleve : controle achat ou technique recommande.";
   if (savingRate > 0) return "Economie detectee, decision a confirmer par l'equipe projet.";

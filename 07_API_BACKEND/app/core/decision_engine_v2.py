@@ -81,8 +81,8 @@ class DecisionEngineV2(DecisionEngine):
             decision = "IMPORT"
             decision_type = "IMPORT_AGRESSIF" if savings["score"] >= 70 else "IMPORT_CONTROLE"
         elif final_score >= self.profile["min_mixed_score"]:
-            decision = "MIXTE"
-            decision_type = "MIXTE_OPTIMISE"
+            decision = "HYBRIDE"
+            decision_type = "A_ARBITRER"
         else:
             decision = "LOCAL"
             decision_type = "LOCAL_SECURISE"

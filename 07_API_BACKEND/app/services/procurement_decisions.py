@@ -10,13 +10,48 @@ from sqlalchemy.orm import Session
 
 READY_SCENARIO_STATUSES = {"READY", "SIMULATED", "VALIDATED"}
 READY_PROCUREMENT_STATUSES = {"READY", "EXPORTABLE"}
-VALIDATION_STATUSES = {"PENDING", "VALIDATED", "REJECTED", "TO_ARBITRATE", "REVIEW_REQUIRED", "BLOCKED"}
-DECISION_VALUES = {"IMPORT", "LOCAL", "HYBRID", "HYBRIDE", "MIXTE", "REVIEW_REQUIRED", "BLOCKED"}
+VALIDATION_STATUSES = {
+    "PENDING",
+    "VALIDATED",
+    "REJECTED",
+    "TO_ARBITRATE",
+    "REVIEW_REQUIRED",
+    "BLOCKED",
+    "A_ARBITRER",
+    "VALIDATION_DIRECTION",
+    "VALIDE",
+    "REFUSE",
+    "COMMANDE",
+    "EN_TRANSIT",
+    "EN_DOUANE",
+    "LIVRE",
+    "RECEPTIONNE",
+}
+DECISION_VALUES = {
+    "IMPORT",
+    "LOCAL",
+    "HYBRID",
+    "HYBRIDE",
+    "MIXTE",
+    "A_ARBITRER",
+    "VALIDATION_DIRECTION",
+    "VALIDE",
+    "REFUSE",
+    "COMMANDE",
+    "EN_TRANSIT",
+    "EN_DOUANE",
+    "LIVRE",
+    "RECEPTIONNE",
+    "REVIEW_REQUIRED",
+    "BLOCKED",
+}
 
 
 def normalize_decision(value: Any) -> str:
     decision = str(value or "").strip().upper()
-    if decision in {"HYBRIDE", "MIXTE"}:
+    if decision in {"MIXTE"}:
+        return "HYBRIDE"
+    if decision in {"HYBRID"}:
         return "HYBRID"
     if decision in DECISION_VALUES:
         return decision
@@ -110,14 +145,14 @@ def procurement_decision_status(
                 f"""
                 SELECT
                     COUNT(*) AS decisions_count,
-                    COUNT(*) FILTER (WHERE validation_status = 'VALIDATED') AS validated_decisions_count,
+                    COUNT(*) FILTER (WHERE validation_status IN ('VALIDATED', 'VALIDE')) AS validated_decisions_count,
                     COUNT(*) FILTER (WHERE validation_status = 'PENDING') AS pending_decisions_count,
-                    COUNT(*) FILTER (WHERE validation_status = 'TO_ARBITRATE') AS to_arbitrate_count,
+                    COUNT(*) FILTER (WHERE validation_status IN ('TO_ARBITRATE', 'A_ARBITRER', 'VALIDATION_DIRECTION')) AS to_arbitrate_count,
                     COUNT(*) FILTER (WHERE validation_status = 'REVIEW_REQUIRED') AS review_required_count,
                     COUNT(*) FILTER (WHERE validation_status = 'BLOCKED') AS blocked_decisions_count,
                     COUNT(*) FILTER (
                         WHERE risk_level IN ('HIGH', 'CRITICAL')
-                          AND validation_status NOT IN ('VALIDATED', 'REJECTED')
+                          AND validation_status NOT IN ('VALIDATED', 'VALIDE', 'REJECTED', 'REFUSE')
                     ) AS critical_pending_count,
                     COUNT(*) FILTER (
                         WHERE COALESCE(NULLIF(validated_decision, ''), NULLIF(proposed_decision, ''), ai_decision, purchase_mode) = 'IMPORT'
@@ -325,7 +360,7 @@ def update_procurement_decision(
     if "purchase_mode" in updates:
         updates["purchase_mode"] = normalize_decision(updates["purchase_mode"])
 
-    if updates.get("validation_status") in {"VALIDATED", "REJECTED", "TO_ARBITRATE"}:
+    if updates.get("validation_status") in {"VALIDATED", "VALIDE", "REJECTED", "REFUSE", "TO_ARBITRATE", "A_ARBITRER", "VALIDATION_DIRECTION"}:
         updates["validated_at"] = datetime.now(timezone.utc)
 
     if not updates:
