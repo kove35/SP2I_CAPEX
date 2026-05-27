@@ -67,6 +67,7 @@ class SimulationMetadata(BaseModel):
     mode: Literal["strict", "tolerant"]
     lignes_entree: int
     lignes_calculees: int
+    line_counts: dict[str, int] = Field(default_factory=dict)
     temps_calcul_secondes: float
     persist: bool = False
 
@@ -153,6 +154,11 @@ class SimulationLineResult(BaseModel):
 
 class SimulationKPI(BaseModel):
     lignes: int
+    lignes_dqe: int = 0
+    lignes_simulees: int = 0
+    lignes_importables: int = 0
+    lignes_retenues: int = 0
+    lignes_arbitrees: int = 0
     capex_local: float
     capex_import: float
     capex_optimise: float

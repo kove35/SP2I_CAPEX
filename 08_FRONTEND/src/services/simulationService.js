@@ -3,38 +3,7 @@ import { buildAnalyticsParams } from "./analyticsQueryBuilder";
 import { SCENARIO_OPTIONS } from "../utils/businessContext";
 
 export const defaultSimulationPayload = {
-  items: [
-    {
-      id_ligne: "FRONT-001",
-      designation: "Luminaire Shanghai",
-      quantite: 500,
-      prix_total_ht: 25000000,
-      famille: "luminaire",
-      lot: "Lot Electricite",
-      volume_unitaire_m3: 0.03,
-      poids_unitaire_kg: 4,
-      supplier_city: "Shanghai",
-      shipment_status: "AT_SEA",
-      project_criticality: "MEDIUM",
-      supplier_moq: 200,
-      cashflow_tension: "MEDIUM",
-    },
-    {
-      id_ligne: "FRONT-002",
-      designation: "Groupe electrogene",
-      quantite: 1,
-      prix_total_ht: 100000000,
-      famille: "equipement_technique",
-      lot: "Lot Technique",
-      volume_unitaire_m3: 18,
-      poids_unitaire_kg: 8500,
-      supplier_city: "Ningbo",
-      shipment_status: "READY",
-      project_criticality: "HIGH",
-      supplier_moq: 1,
-      cashflow_tension: "HIGH",
-    },
-  ],
+  items: [],
   parameters: {
     taux_landed_cost: {
       transport_maritime: 0.12,

@@ -35,4 +35,6 @@ DECISION_RULES = {
     "IMPORT": "Import recommande : l'economie compense les risques identifies.",
     "LOCAL": "Local recommande : le risque, le delai ou le faible gain ne justifie pas l'import.",
     "MIXTE": "Decision mixte : gain interessant mais conditions a securiser avant arbitrage final.",
+    "HYBRIDE": "Decision hybride : gain interessant mais conditions a securiser avant arbitrage final.",
+    "A_ARBITRER": "Arbitrage requis : la decision doit etre confirmee avant engagement achat.",
 }

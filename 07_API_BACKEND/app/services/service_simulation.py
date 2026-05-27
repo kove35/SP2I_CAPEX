@@ -7,6 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.core.audit_trail_engine import AuditTrailEngine
 from app.core.calculator import CalculateurCAPEX
@@ -52,6 +53,8 @@ class ServiceSimulation:
 
     def simuler(self, demande: SimulationRequest) -> dict[str, Any]:
         lignes_entree = [item.model_dump(exclude_none=True) for item in demande.items]
+        if not lignes_entree:
+            lignes_entree = self._load_fact_metre_for_simulation()
         parametres = demande.parameters.model_dump(exclude_none=True)
 
         try:
@@ -158,6 +161,7 @@ class ServiceSimulation:
 
         kpi = calculateur.calculer_kpi(lignes_calculees)
         kpi["procurement"] = KPIEngine().compute_procurement_kpi(lignes_calculees)
+        self._enrichir_kpi_lignes(kpi, lignes_entree, lignes_normalisees, lignes_calculees)
 
         sensibilite = []
         if inclure_sensibilite:
@@ -193,6 +197,13 @@ class ServiceSimulation:
                 "mode": mode,
                 "lignes_entree": len(lignes_entree),
                 "lignes_calculees": len(lignes_calculees),
+                "line_counts": {
+                    "dqe": kpi.get("lignes_dqe", len(lignes_entree)),
+                    "simulees": kpi.get("lignes_simulees", len(lignes_calculees)),
+                    "importables": kpi.get("lignes_importables", 0),
+                    "retenues": kpi.get("lignes_retenues", 0),
+                    "arbitrees": kpi.get("lignes_arbitrees", 0),
+                },
                 "temps_calcul_secondes": duration,
                 "persist": persist,
             },
@@ -210,6 +221,55 @@ class ServiceSimulation:
                 created_by=created_by,
             )
         return response
+
+    def _load_fact_metre_for_simulation(self) -> list[dict[str, Any]]:
+        if self.db is None:
+            return self.repository_bpu.lire_lignes_dqe()
+        rows = self.db.execute(
+            text(
+                """
+                SELECT
+                    id_ligne,
+                    designation,
+                    quantite,
+                    COALESCE(capex_local, prix_total_ht, 0) AS prix_total_ht,
+                    COALESCE(pu_local, 0) AS prix_unitaire_ht,
+                    COALESCE(famille, 'default') AS famille,
+                    lot,
+                    batiment,
+                    niveau,
+                    unite,
+                    COALESCE(pu_import, 0) AS prix_fob,
+                    COALESCE(risque, '') AS project_criticality
+                FROM fact_metre
+                WHERE COALESCE(designation, '') <> ''
+                ORDER BY id_ligne
+                LIMIT 5000
+                """
+            )
+        ).mappings().all()
+        return [dict(row) for row in rows]
+
+    def _enrichir_kpi_lignes(
+        self,
+        kpi: dict[str, Any],
+        lignes_entree: list[dict[str, Any]],
+        lignes_normalisees: list[dict[str, Any]],
+        lignes_calculees: list[dict[str, Any]],
+    ) -> None:
+        procurement = kpi.get("procurement") or {}
+        lignes_importables = int(procurement.get("LIGNES_IMPORTABLES") or 0)
+        lignes_retenues = sum(1 for ligne in lignes_calculees if str(ligne.get("DECISION_FINALE") or ligne.get("DECISION_IMPORT") or "").upper() == "IMPORT")
+        lignes_arbitrees = sum(1 for ligne in lignes_calculees if str(ligne.get("DECISION_FINALE") or ligne.get("DECISION_IMPORT") or "").strip())
+        kpi.update(
+            {
+                "lignes_dqe": len(lignes_entree),
+                "lignes_simulees": len(lignes_normalisees),
+                "lignes_importables": lignes_importables,
+                "lignes_retenues": lignes_retenues,
+                "lignes_arbitrees": lignes_arbitrees,
+            }
+        )
 
     def _reponse_erreur(
         self,
