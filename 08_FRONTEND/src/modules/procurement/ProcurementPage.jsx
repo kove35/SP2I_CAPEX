@@ -86,10 +86,10 @@ function decisionUiLabel(value) {
   const decision = String(value || "").toUpperCase();
   if (decision === "IMPORT") return "Importer";
   if (decision === "LOCAL") return "Acheter local";
-  if (decision === "HYBRIDE" || decision === "MIXTE") return "Hybride / a arbitrer";
-  if (decision === "REVIEW_REQUIRED") return "A verifier";
+  if (decision === "HYBRIDE" || decision === "HYBRID" || decision === "MIXTE") return "Hybride";
+  if (decision === "ESCALATED" || decision === "REVIEW_REQUIRED") return "Escalade direction";
   if (decision === "BLOCKED") return "Bloquant";
-  return value || "A verifier";
+  return value || "A arbitrer";
 }
 
 function decisionUiClass(value) {
@@ -99,6 +99,7 @@ function decisionUiClass(value) {
 }
 
 function decisionJustification(row) {
+  if (row?.justification_humaine) return row.justification_humaine;
   const decision = String(row?.decision_ia || row?.decision_import || "").toUpperCase();
   const roi = Number(row?.roi_import || 0);
   const risk = Number(row?.risque || 0);
@@ -108,6 +109,16 @@ function decisionJustification(row) {
   if (risk >= 70) return "Validation requise : risque achat ou logistique eleve.";
   if (roi > 0) return "Decision a verifier : gain detecte mais validation achat necessaire.";
   return "Validation achat requise avant decision finale.";
+}
+
+function procurementRowKey(row, index = 0) {
+  return String(
+    row?.id_ligne ||
+    row?.procurement_action_id ||
+    row?.article_id ||
+    row?.ifc_guid ||
+    `${row?.lot || "lot"}-${row?.designation || "ligne"}-${index}`
+  );
 }
 
 function rowValue(row) {
@@ -504,29 +515,60 @@ function GainDetailDrawer({ analysis, filters, currency, onClose }) {
   );
 }
 
-function ProcurementLineArbitrage({ data, currency, onSelect }) {
+function ProcurementLineArbitrage({ data, currency, storageKey, onSelect }) {
   const [quickSearch, setQuickSearch] = React.useState("");
   const [selectedRow, setSelectedRow] = React.useState(null);
+  const [selectedRows, setSelectedRows] = React.useState([]);
+  const [manualOverrides, setManualOverrides] = React.useState({});
+  const [bulkNotice, setBulkNotice] = React.useState("");
+  const [gridApi, setGridApi] = React.useState(null);
   const rows = data?.table || [];
   const kpis = data?.kpis || {};
+  React.useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      setManualOverrides(stored ? JSON.parse(stored) : {});
+    } catch {
+      setManualOverrides({});
+    }
+  }, [storageKey]);
+  const decisionRows = React.useMemo(
+    () => rows.map((row, index) => {
+      const key = procurementRowKey(row, index);
+      return {
+        ...row,
+        __sp2i_key: key,
+        ...(manualOverrides[key] || {}),
+      };
+    }),
+    [rows, manualOverrides]
+  );
+  const selectedImpact = React.useMemo(() => selectedRows.reduce((acc, row) => {
+    acc.gain += Number(row.gain_net || row.economie || row.economie_nette || 0);
+    acc.value += rowValue(row);
+    acc.risk = Math.max(acc.risk, Number(row.risque || 0));
+    acc.lots.add(row.lot || row.famille || "Lot a qualifier");
+    return acc;
+  }, { gain: 0, value: 0, risk: 0, lots: new Set() }), [selectedRows]);
   const columns = React.useMemo(() => [
-    { field: "designation", headerName: "Designation", minWidth: 280, pinned: "left", tooltipField: "designation", filter: "agTextColumnFilter" },
-    { field: "quantite", headerName: "Quantite", width: 110, type: "numericColumn" },
-    { field: "unite", headerName: "Unite", width: 90 },
+    { field: "designation", headerName: "Désignation travaux", minWidth: 280, pinned: "left", tooltipField: "designation", filter: "agTextColumnFilter" },
+    { field: "quantite", headerName: "Quantité DQE", width: 120, type: "numericColumn" },
+    { field: "unite", headerName: "Unité", width: 90 },
     { field: "fournisseur_local", headerName: "Fournisseur local", minWidth: 190, filter: "agSetColumnFilter" },
-    { field: "pays_local", headerName: "Pays local", minWidth: 150 },
+    { field: "pays_local", headerName: "Pays achat local", minWidth: 150, filter: "agSetColumnFilter" },
     { field: "prix_local", headerName: "Prix local", minWidth: 140, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
     { field: "fournisseur_chine", headerName: "Fournisseur Chine", minWidth: 210, filter: "agSetColumnFilter" },
-    { field: "port_chine", headerName: "Port Chine", minWidth: 130, filter: "agSetColumnFilter" },
+    { field: "port_chine", headerName: "Port d'embarquement", minWidth: 160, filter: "agSetColumnFilter" },
     { field: "fob_chine", headerName: "FOB Chine", minWidth: 130, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
-    { field: "landed_cost_chine", headerName: "Cout rendu chantier", minWidth: 170, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
-    { field: "gain_net", headerName: "Gain net", minWidth: 130, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
+    { field: "landed_cost_chine", headerName: "Coût rendu chantier", minWidth: 170, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
+    { field: "gain_net", headerName: "Économie nette", minWidth: 140, valueFormatter: ({ value }) => formatCurrency(value, currency), type: "numericColumn" },
     { field: "roi_import", headerName: "ROI import", minWidth: 120, valueFormatter: ({ value }) => formatPercent(value), type: "numericColumn" },
-    { field: "risque", headerName: "Risque", minWidth: 105, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
-    { field: "delai", headerName: "Delai", minWidth: 95, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))} j`, type: "numericColumn" },
+    { field: "risque", headerName: "Risque achat", minWidth: 120, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
+    { field: "delai", headerName: "Délai estimé", minWidth: 115, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))} j`, type: "numericColumn" },
     {
       field: "decision_ia",
-      headerName: "Decision IA",
+      headerName: "Décision proposée",
       minWidth: 130,
       pinned: "right",
       cellRenderer: ({ value }) => <span className={`decision-badge ${decisionUiClass(value)}`}>{decisionUiLabel(value)}</span>,
@@ -534,13 +576,14 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
     },
     {
       field: "validation_achat",
-      headerName: "Decision validee",
+      headerName: "Validation humaine",
       minWidth: 145,
       pinned: "right",
       valueGetter: ({ data: row }) => row?.validation_achat || "En attente",
-      cellRenderer: ({ value }) => <span className="validation-badge pending">{value || "En attente"}</span>,
+      cellRenderer: ({ value }) => <span className={`validation-badge ${String(value || "").includes("Validé") ? "approved" : String(value || "").includes("Escalade") ? "escalated" : "pending"}`}>{value || "En attente"}</span>,
       filter: "agSetColumnFilter",
     },
+    { field: "approval_status", headerName: "Workflow approval", minWidth: 150, valueGetter: ({ data: row }) => row?.approval_status || "Non déclenché", filter: "agSetColumnFilter" },
     { field: "score_confiance_ia", headerName: "Confiance IA", minWidth: 130, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
     {
       field: "decision_reasons",
@@ -555,6 +598,33 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
     setSelectedRow(row);
     onSelect?.(row);
   };
+  const clearSelection = React.useCallback(() => {
+    gridApi?.deselectAll?.();
+    setSelectedRows([]);
+    setBulkNotice("");
+  }, [gridApi]);
+  const applyBulkDecision = React.useCallback((decision, label, approvalStatus, justification) => {
+    if (!selectedRows.length) return;
+    const selectedKeys = new Set(selectedRows.map((row) => row.__sp2i_key));
+    setManualOverrides((current) => {
+      const next = { ...current };
+      decisionRows.forEach((row) => {
+        if (!selectedKeys.has(row.__sp2i_key)) return;
+        next[row.__sp2i_key] = {
+          decision_ia: decision,
+          decision_import: decision,
+          validation_achat: label,
+          approval_status: approvalStatus,
+          justification_humaine: justification,
+        };
+      });
+      if (storageKey) {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      }
+      return next;
+    });
+    setBulkNotice(`${selectedRows.length} ligne(s) arbitrée(s) : ${label}. Workflow approval déclenché.`);
+  }, [decisionRows, selectedRows, storageKey]);
 
   return (
     <section className="line-arbitrage-shell">
@@ -562,18 +632,33 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
         <div>
           <span>Vue strategique par famille</span>
           <strong>Arbitrage fournisseur ligne par ligne</strong>
-          <small>{Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} lignes | Gain apres cout rendu chantier {formatCurrency(kpis.gain_net_total, currency)} | ROI scenario {formatPercent(kpis.roi_moyen)}</small>
+          <small>{Number(kpis.nb_lignes || decisionRows.length || 0).toLocaleString("fr-FR")} lignes | Gain après coût rendu chantier {formatCurrency(kpis.gain_net_total, currency)} | ROI scénario {formatPercent(kpis.roi_moyen)}</small>
         </div>
         <div className="line-arbitrage-kpis">
           <i>IMPORT {kpis.nb_import || 0}</i>
         <i>HYBRIDE / A ARBITRER {kpis.nb_hybride || 0}</i>
           <i>Risque {Math.round(Number(kpis.risque_moyen || 0))}/100</i>
         </div>
-        <input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Rechercher une ligne, un fournisseur, un port..." />
+        <input value={quickSearch} onChange={(event) => setQuickSearch(event.target.value)} placeholder="Filtrer par lot, fournisseur, désignation ou port..." />
       </header>
 
+      {selectedRows.length ? (
+        <div className="procurement-bulk-toolbar" data-testid="procurement-bulk-toolbar">
+          <div>
+            <strong>{selectedRows.length} ligne(s) sélectionnée(s)</strong>
+            <span>{formatCurrency(selectedImpact.gain, currency)} d'économie potentielle | {selectedImpact.lots.size} lot(s) | risque max {Math.round(selectedImpact.risk)}/100</span>
+          </div>
+          <button type="button" onClick={() => applyBulkDecision("IMPORT", "Validé achat - Import fournisseur", "Approval procurement déclenché", "Validation humaine : importer les lignes sélectionnées pour sécuriser le gain CAPEX.")}>Valider import</button>
+          <button type="button" onClick={() => applyBulkDecision("LOCAL", "Validé achat - Garder local", "Approval procurement déclenché", "Validation humaine : conserver les lignes sélectionnées en achat local pour protéger le planning chantier.")}>Garder local</button>
+          <button type="button" onClick={() => applyBulkDecision("HYBRIDE", "Validé achat - Mode hybride", "Approval procurement déclenché", "Validation humaine : basculer les lignes sélectionnées en stratégie hybride local/import.")}>Passer en hybride</button>
+          <button type="button" className="danger" onClick={() => applyBulkDecision("ESCALATED", "Escalade direction requise", "Validation direction requise", "Escalade humaine : arbitrage direction requis avant engagement fournisseur.")}>Escalader direction</button>
+          <button type="button" className="ghost" onClick={clearSelection}>Annuler sélection</button>
+        </div>
+      ) : null}
+      {bulkNotice ? <div className="procurement-bulk-notice">{bulkNotice}</div> : null}
+
       <SmartDataGrid
-        rows={rows}
+        rows={decisionRows}
         columns={columns}
         height={430}
         quickFilterText={quickSearch}
@@ -582,6 +667,23 @@ function ProcurementLineArbitrage({ data, currency, onSelect }) {
         rowClassRules={{
           "sp2i-row-import": ({ data: row }) => row?.decision_ia === "IMPORT",
           "sp2i-row-risk": ({ data: row }) => Number(row?.risque || 0) >= 70,
+        }}
+        gridOptions={{
+          onGridReady: (event) => setGridApi(event.api),
+          getRowId: ({ data }) => data.__sp2i_key,
+          rowSelection: {
+            mode: "multiRow",
+            checkboxes: true,
+            headerCheckbox: true,
+            enableClickSelection: false,
+          },
+          selectionColumnDef: {
+            pinned: "left",
+            width: 56,
+          },
+          onSelectionChanged: (event) => {
+            setSelectedRows(event.api.getSelectedRows());
+          },
         }}
       />
 
@@ -1032,6 +1134,7 @@ export default function ProcurementPage() {
               <ProcurementLineArbitrage
                 data={procurementLines}
                 currency={activeCurrency}
+                storageKey={`sp2i:procurementManualArbitrage:${state.activeProject || PROJECT_CONTEXT.code}:${workflow.scenario?.scenario_id || state.activeScenario || "default"}`}
                 onSelect={(row) => {
                   applyFilters({ famille: row.famille, lot: row.lot });
                   applyDrilldown({ famille: row.famille, lot: row.lot }, {
