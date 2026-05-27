@@ -11,6 +11,7 @@ import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import ProjectQuickActions from "../../components/ProjectQuickActions";
 import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
+import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 import { useAppStore } from "../../store/appStore.jsx";
 import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey } from "../../services/projectService";
 import { getScenarioContext } from "../../utils/businessContext";
@@ -123,13 +124,21 @@ export default function CockpitPage() {
 
         <ProjectWorkflowStepper workflow={workflow} onNavigate={navigateTo} onSetup={() => navigateTo("/app/projects")} />
 
+        <SmartWorkflowActions
+          workflow={workflow}
+          module="dashboard"
+          kpis={{ ...kpis, economie_nette: estimatedSavings || procurementGain }}
+          simulation={currentSimulation}
+          onNavigate={navigateTo}
+        />
+
         <section className="workspace-module-grid">
           <article className={`workspace-module-card ${moduleTone(dqeStep.state)}`}>
             <span>DQE & donnees</span>
             <strong>{dqeStep.status || "A importer"}</strong>
             <p>{activeDqe ? `DQE v${activeDqe.version_number} · ${activeDqe.normalized_lines_count ?? "-"} lignes exploitables` : "Importez un DQE pour analyser le budget du projet."}</p>
             <small>Trust score : {activeDqe?.trust_score ?? "-"}/100</small>
-            <button type="button" onClick={() => navigateTo("/app/dqe?tab=import")}>{activeDqe ? "Voir le DQE" : "Importer le DQE"}</button>
+            <button type="button" onClick={() => navigateTo("/app/dqe?tab=import")}>{activeDqe ? "Auditer le DQE projet" : "Importer le DQE budget"}</button>
           </article>
 
           <article className={`workspace-module-card ${moduleTone(scenarioStep.state)}`}>
@@ -137,7 +146,7 @@ export default function CockpitPage() {
             <strong>{scenarioStep.status || "Bloque"}</strong>
             <p>{currentSimulation ? `${scenario.label} · économie estimée ${formatMoney(estimatedSavings)}` : "Lancez une simulation pour comparer les stratégies CAPEX."}</p>
             <small>Budget : {budgetStep.status || "Bloque"}</small>
-            <button type="button" onClick={() => navigateTo("/app/simulation")}>Tester un scénario</button>
+            <button type="button" onClick={() => navigateTo("/app/simulation")}>Simuler la stratégie CAPEX</button>
           </article>
 
           <article className={`workspace-module-card ${moduleTone(procurementStep.state)}`}>
@@ -145,7 +154,7 @@ export default function CockpitPage() {
             <strong>{procurementStep.status || "Bloque"}</strong>
             <p>{procurementStep.state === "done" ? "Decisions achat disponibles." : "Preparez les arbitrages achat apres simulation."}</p>
             <small>Gain net securisable : {procurementGain ? formatMoney(procurementGain) : "-"}</small>
-            <button type="button" onClick={() => navigateTo("/app/procurement")}>Ouvrir approvisionnement</button>
+            <button type="button" onClick={() => navigateTo("/app/procurement")}>Analyser les arbitrages achat</button>
           </article>
 
           <article className={`workspace-module-card ${moduleTone(executionStep.state)}`}>
@@ -153,7 +162,7 @@ export default function CockpitPage() {
             <strong>{executionStep.status || "Bloqué"}</strong>
             <p>{executionStep.state === "done" ? "Le suivi chantier peut démarrer." : "En attente des arbitrages achat et logistique."}</p>
             <small>Lots critiques : {executionStep.state === "done" ? "à surveiller" : "-"}</small>
-            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Ouvrir Exécution</button>
+            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Suivre les lots prêts à exécuter</button>
           </article>
         </section>
 

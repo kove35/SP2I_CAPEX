@@ -78,7 +78,7 @@ export default function ApprovisionnementDashboard() {
         <WorkflowGuardEmptyState
           title="Scénario CAPEX requis"
           message="Lancez une simulation avant de consolider le pilotage approvisionnement."
-          actionLabel="Tester un scénario"
+          actionLabel="Simuler la stratégie CAPEX"
           actionRoute="/app/simulation"
           currentStep={workflow.steps?.find((step) => step.id === "scenarios")?.status}
           requiredStep="Simulation CAPEX"

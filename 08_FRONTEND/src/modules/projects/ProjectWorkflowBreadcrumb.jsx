@@ -42,17 +42,17 @@ function actionLabel(workflow, nextStep) {
   if (workflow?.primary_action?.label) return workflow.primary_action.label;
   if (nextStep?.id === "execution") {
     const status = workflow?.execution?.status;
-    if (status === "REQUIRED") return "Préparer l’exécution";
-    if (status === "READY") return "Ouvrir Exécution";
-    if (status === "ACTIVE") return "Suivre l’exécution";
-    if (status === "AT_RISK") return "Suivre l’exécution à risque";
+    if (status === "REQUIRED") return "Préparer les actions chantier";
+    if (status === "READY") return "Suivre les lots prêts à exécuter";
+    if (status === "ACTIVE") return "Piloter l’exécution chantier";
+    if (status === "AT_RISK") return "Traiter les lots chantier à risque";
   }
   if (nextStep?.id === "configuration") return "Configurer le projet";
-  if (nextStep?.id === "dqe") return "Importer le DQE";
-  if (nextStep?.id === "budget") return "Synchroniser le budget";
-  if (nextStep?.id === "scenarios") return "Tester un scénario";
-  if (nextStep?.id === "procurement") return workflow?.procurement?.status === "REVIEW_REQUIRED" ? "Valider les arbitrages achat" : "Préparer l’approvisionnement";
-  return nextStep?.action || "Ouvrir";
+  if (nextStep?.id === "dqe") return "Importer le DQE budget";
+  if (nextStep?.id === "budget") return "Synchroniser le budget CAPEX";
+  if (nextStep?.id === "scenarios") return "Simuler la stratégie CAPEX";
+  if (nextStep?.id === "procurement") return workflow?.procurement?.status === "REVIEW_REQUIRED" ? "Valider les décisions import critiques" : "Analyser les arbitrages achat";
+  return nextStep?.action || "Piloter le workspace projet";
 }
 
 function moduleFromPath(path = "") {

@@ -177,10 +177,18 @@ export function buildApprovisionnementDashboard(sources = {}) {
   const riskScore = orders.length ? Math.min(100, Math.round((criticalOrders / orders.length) * 100 + averageEta * 0.25)) : 0;
   const workflow = sources.workflow || {};
   const recommendations = [
-    containers > 1 ? "Mutualiser les containers des lots import à forte densité CAPEX." : "Conserver une consolidation logistique légère sur les lots import.",
-    criticalOrders ? "Prioriser la revue fournisseur sur les commandes critiques avant engagement." : "Les commandes critiques restent limitées sur le périmètre actif.",
-    workflow.procurement?.status === "REVIEW_REQUIRED" ? "Valider les arbitrages achat pour fiabiliser le dossier approvisionnement." : "Maintenir le suivi des validations achat et des ETA chantier.",
-    workflow.execution?.status === "REQUIRED" ? "Préparer les actions chantier associées aux livraisons sensibles." : "Partager les risques logistiques avec le pilotage chantier.",
+    containers > 1
+      ? `${importOrders} lignes import peuvent etre consolidees dans ${containers} container(s). Gain logistique estime : 8-12%. Reduction delai cible : -6 a -8 jours.`
+      : `${importOrders} lignes import restent compatibles avec une consolidation legere. Maintenir un pilotage LCL par fournisseur avant commande.`,
+    criticalOrders
+      ? `${criticalOrders} commande(s) critique(s) presentent un risque fournisseur ou douane. Validation direction recommandee avant engagement achat.`
+      : "Les commandes critiques restent limitees sur le perimetre actif. Decision procurement securisee si les ETA fournisseurs sont confirmes.",
+    workflow.procurement?.status === "REVIEW_REQUIRED"
+      ? "Les arbitrages achat generes doivent etre valides humainement pour figer le dossier procurement direction."
+      : "Maintenir le suivi des validations achat, fournisseurs retenus et ETA chantier jusqu'a reception.",
+    workflow.execution?.status === "REQUIRED"
+      ? "Les livraisons sensibles doivent etre converties en actions chantier avant lancement approvisionnement."
+      : `${blockingLots} lot(s) chantier peuvent etre impactes par ETA, douane ou stockage. Coordination chantier recommandee avant lancement fournisseur.`,
   ];
 
   return {

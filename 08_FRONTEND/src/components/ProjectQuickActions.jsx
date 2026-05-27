@@ -33,10 +33,14 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const actions = needsSetup
     ? [{ label: "Configurer le projet", path: "/app/projects", icon: Settings }]
     : sidebarQuickActions.map((action) => {
-        if (action.label === "Tester un scénario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de tester un scénario" };
-        if (action.label === "Nouveau scénario" && !budgetSynced) return { ...action, disabled: true, title: "Synchroniser le budget avant de créer un scénario" };
-        if (procurementReady && action.label === "Tester un scénario") return { ...action, label: "Exécution", path: "/app/site?tab=planning", icon: HardHat };
-        if (scenarioReady && action.label === "Tester un scénario") return { ...action, label: "Approvisionnement", path: "/app/procurement" };
+        const isSimulation = /tester|simuler/i.test(action.label);
+        const isScenarioCreate = /nouveau|comparer/i.test(action.label);
+        if (isSimulation && !budgetSynced) return { ...action, label: "Simuler stratégie CAPEX", disabled: true, title: "Synchroniser le budget avant de simuler la stratégie CAPEX" };
+        if (isScenarioCreate && !budgetSynced) return { ...action, label: "Comparer stratégies CAPEX", disabled: true, title: "Synchroniser le budget avant de comparer les scénarios" };
+        if (procurementReady && isSimulation) return { ...action, label: "Suivre les lots chantier", path: "/app/site?tab=planning", icon: HardHat };
+        if (scenarioReady && isSimulation) return { ...action, label: "Analyser arbitrages achat", path: "/app/procurement" };
+        if (isSimulation) return { ...action, label: "Simuler stratégie CAPEX" };
+        if (isScenarioCreate) return { ...action, label: "Comparer stratégies CAPEX" };
         return action;
       });
 
@@ -46,7 +50,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
       return;
     }
 
-    if (action.label === "Tester un scénario" && !hasActiveDqeVersion(state.activeProject)) {
+    if (/simuler|tester/i.test(action.label) && !hasActiveDqeVersion(state.activeProject)) {
       onNavigate?.("/app/dqe?tab=import&notice=dqe-required");
       return;
     }

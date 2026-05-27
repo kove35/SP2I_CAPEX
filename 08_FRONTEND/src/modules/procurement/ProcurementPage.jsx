@@ -14,6 +14,7 @@ import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
 import { exportProcurementWorkbook, getProjectWorkflow } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
+import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 
 const LANDED_COST_RATES = [
   ["Transport maritime", 0.15],
@@ -650,7 +651,7 @@ function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
         </div>
         <div className="family-cockpit-actions">
           <button type="button" onClick={onOpenGain}>Detail du gain</button>
-          <button type="button" onClick={onExport}>Exporter dossier {activeTitle}</button>
+          <button type="button" onClick={onExport}>Générer le dossier procurement direction {activeTitle}</button>
         </div>
       </header>
 
@@ -890,7 +891,7 @@ export default function ProcurementPage() {
             </select>
           </label>
           <button type="button" onClick={handleProcurementExport} disabled={exportingWorkbook}>
-            {exportingWorkbook ? "Export en cours..." : "Exporter dossier achat"}
+            {exportingWorkbook ? "Génération en cours..." : "Générer le dossier procurement direction"}
           </button>
         </div>
       </section>
@@ -936,11 +937,26 @@ export default function ProcurementPage() {
           <span>Projet FCFA · Sourcing {activeCurrency} · taux a confirmer si USD/EUR</span>
         </div>
       </section>
+      <SmartWorkflowActions
+        workflow={workflow}
+        module="procurement"
+        simulation={currentSimulation}
+        procurement={{
+          ...procurementValidation,
+          decisions_count: procurementValidation.decisions_count || rows.length,
+          review_required_count: procurementValidation.review_required_count || procurementValidation.to_arbitrate_count,
+        }}
+        kpis={{ ...kpis, gainSecurisable, nb_lignes: rows.length }}
+        onNavigate={(route) => {
+          window.history.pushState({}, "", route);
+          window.dispatchEvent(new PopStateEvent("popstate"));
+        }}
+      />
       {setupDone && !scenarioReady ? (
         <WorkflowGuardEmptyState
           title="Aucun scenario actif"
           message="Aucun scénario actif. Lancez une simulation avant de préparer l’approvisionnement."
-          actionLabel="Tester un scénario"
+          actionLabel="Simuler la stratégie CAPEX"
           actionRoute="/app/simulation"
           currentStep={workflow.steps.find((step) => step.id === "scenarios")?.status}
           requiredStep="Scenario CAPEX"
@@ -1146,8 +1162,8 @@ export default function ProcurementPage() {
               <li>Recommandation IA : importer les lots a ROI positif sous reserve de validation achat.</li>
               <li>Decision validee : en attente pour les lignes non revues humainement.</li>
               <li>Conserver en local les familles sensibles au delai chantier.</li>
-              <li>Mutualiser les containers sur les lots a forte densite CAPEX.</li>
-              <li>Remonter les risques critiques vers le cockpit direction.</li>
+              <li>Consolider les lignes import à forte densité CAPEX en container prioritaire pour réduire le coût logistique.</li>
+              <li>Remonter les lots à risque douane ou ETA vers le cockpit direction avant commande.</li>
             </ul>
           </AnalyticsCard>
         </aside>

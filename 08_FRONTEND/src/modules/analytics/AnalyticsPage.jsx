@@ -189,11 +189,11 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
       </section>
 
       <section className="workspace-module-grid">
-        <ModuleStatusCard title="DQE" step={dqeStep} message={dqe.file_name ? `${dqe.file_name} · ${dqe.certification_status || dqe.status}` : "Controle de certification DQE requis."} detail={`Trust score : ${dqe.trust_score ? `${dqe.trust_score}/100` : "-"}`} actionLabel="Ouvrir DQE" actionRoute="/app/dqe?tab=import" />
-        <ModuleStatusCard title="Budget" step={budgetStep} message={workflow.budget?.message || "Etat de synchronisation budget projet."} detail={displayMoney(workflow.budget?.total_amount)} actionLabel="Voir budget" actionRoute="/app/dqe?tab=sync" />
-        <ModuleStatusCard title="Scénarios" step={scenarioStep} message={scenario.message || "Scénario CAPEX utilisé pour l’arbitrage."} detail={`${scenario.line_count || "-"} lignes simulées`} actionLabel="Ouvrir scénarios" actionRoute="/app/simulation" />
-        <ModuleStatusCard title="Approvisionnement" step={procurementStep} message={procurement.message || "Etat des arbitrages achat."} detail={`${procurement.decisions_count || "-"} decisions achat`} actionLabel="Ouvrir approvisionnement" actionRoute="/app/procurement" />
-        <ModuleStatusCard title="Exécution" step={executionStep} message={execution.message || "État des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Ouvrir Exécution" actionRoute="/app/site?tab=planning" />
+        <ModuleStatusCard title="DQE" step={dqeStep} message={dqe.file_name ? `${dqe.file_name} · ${dqe.certification_status || dqe.status}` : "Controle de certification DQE requis."} detail={`Trust score : ${dqe.trust_score ? `${dqe.trust_score}/100` : "-"}`} actionLabel="Auditer le DQE projet" actionRoute="/app/dqe?tab=import" />
+        <ModuleStatusCard title="Budget" step={budgetStep} message={workflow.budget?.message || "Etat de synchronisation budget projet."} detail={displayMoney(workflow.budget?.total_amount)} actionLabel="Synchroniser le budget CAPEX" actionRoute="/app/dqe?tab=sync" />
+        <ModuleStatusCard title="Scénarios" step={scenarioStep} message={scenario.message || "Scénario CAPEX utilisé pour l’arbitrage."} detail={`${scenario.line_count || "-"} lignes simulées`} actionLabel="Simuler la stratégie CAPEX" actionRoute="/app/simulation" />
+        <ModuleStatusCard title="Approvisionnement" step={procurementStep} message={procurement.message || "Etat des arbitrages achat."} detail={`${procurement.decisions_count || "-"} decisions achat`} actionLabel="Analyser les arbitrages achat" actionRoute="/app/procurement" />
+        <ModuleStatusCard title="Exécution" step={executionStep} message={execution.message || "État des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Suivre les lots prêts à exécuter" actionRoute="/app/site?tab=planning" />
       </section>
 
       <section className="workspace-summary-footer">
