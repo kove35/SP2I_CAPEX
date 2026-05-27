@@ -70,6 +70,7 @@ class SimulationMetadata(BaseModel):
     line_counts: dict[str, int] = Field(default_factory=dict)
     temps_calcul_secondes: float
     persist: bool = False
+    project_id: int | None = None
 
 
 class SimulationWarning(BaseModel):
@@ -92,6 +93,7 @@ class SimulationErrorResponse(BaseModel):
 class SimulationRequest(BaseModel):
     """Contrat d'entree pour lancer une simulation CAPEX."""
 
+    project_id: int | None = Field(default=None, description="Projet SP2I a synchroniser avec le workflow.")
     items: list[SimulationItem] = Field(default_factory=list)
     parameters: SimulationParameters = Field(default_factory=SimulationParameters)
     inclure_sensibilite: bool = Field(default=False)

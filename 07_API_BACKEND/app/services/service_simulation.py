@@ -24,6 +24,7 @@ from app.core.scenario_engine import ScenarioEngine
 from app.core.scenario_persistence_engine import ScenarioPersistenceEngine
 from app.repositories import RepositoryBPU, RepositoryMapping
 from app.schemas import ScenarioRequest, SimulationRequest
+from app.services.workflow_events import log_workflow_event
 
 
 RACINE = Path(__file__).resolve().parents[3]
@@ -54,7 +55,7 @@ class ServiceSimulation:
     def simuler(self, demande: SimulationRequest) -> dict[str, Any]:
         lignes_entree = [item.model_dump(exclude_none=True) for item in demande.items]
         if not lignes_entree:
-            lignes_entree = self._load_fact_metre_for_simulation()
+            lignes_entree = self._load_fact_metre_for_simulation(project_id=demande.project_id)
         parametres = demande.parameters.model_dump(exclude_none=True)
 
         try:
@@ -70,6 +71,7 @@ class ServiceSimulation:
                 scenario_type=demande.scenario_type,
                 scenario_description=demande.scenario_description,
                 created_by=demande.created_by,
+                project_id=demande.project_id,
             )
         except SP2ICapexError as erreur:
             if self.db is not None:
@@ -130,6 +132,7 @@ class ServiceSimulation:
         scenario_type: str = "BASELINE",
         scenario_description: str = "",
         created_by: str = "system",
+        project_id: int | None = None,
     ) -> dict[str, Any]:
         start = perf_counter()
         simulation_id = f"sim_{uuid4().hex}"
@@ -206,6 +209,7 @@ class ServiceSimulation:
                 },
                 "temps_calcul_secondes": duration,
                 "persist": persist,
+                "project_id": project_id,
             },
             "warnings": cleaner.warnings,
             "errors": [],
@@ -219,15 +223,17 @@ class ServiceSimulation:
                 scenario_type=scenario_type,
                 scenario_description=scenario_description,
                 created_by=created_by,
+                project_id=project_id,
             )
         return response
 
-    def _load_fact_metre_for_simulation(self) -> list[dict[str, Any]]:
+    def _load_fact_metre_for_simulation(self, project_id: int | None = None) -> list[dict[str, Any]]:
         if self.db is None:
             return self.repository_bpu.lire_lignes_dqe()
+        where_sql = "AND projet_id = :project_id" if project_id is not None else ""
         rows = self.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     id_ligne,
                     designation,
@@ -240,15 +246,20 @@ class ServiceSimulation:
                     niveau,
                     unite,
                     COALESCE(pu_import, 0) AS prix_fob,
-                    COALESCE(risque, '') AS project_criticality
+                    COALESCE(risque, '') AS project_criticality,
+                    projet_id
                 FROM fact_metre
                 WHERE COALESCE(designation, '') <> ''
+                  {where_sql}
                 ORDER BY id_ligne
                 LIMIT 5000
                 """
-            )
+            ),
+            {"project_id": project_id} if project_id is not None else {},
         ).mappings().all()
-        return [dict(row) for row in rows]
+        if rows or project_id is None:
+            return [dict(row) for row in rows]
+        return self._load_fact_metre_for_simulation(project_id=None)
 
     def _enrichir_kpi_lignes(
         self,
@@ -316,6 +327,7 @@ class ServiceSimulation:
         scenario_type: str,
         scenario_description: str,
         created_by: str,
+        project_id: int | None = None,
     ) -> None:
         if self.db is None:
             raise SimulationError(
@@ -343,7 +355,25 @@ class ServiceSimulation:
             errors=response["errors"],
             duration_ms=int(metadata["temps_calcul_secondes"] * 1000),
             status=response["status"],
+            project_id=project_id,
         )
+        if project_id is not None:
+            log_workflow_event(
+                self.db,
+                project_id=project_id,
+                event_type="SIMULATION_COMPLETED",
+                entity_type="fact_simulation",
+                entity_id=metadata["scenario_id"],
+                previous_status="A_SIMULER",
+                new_status="SIMULE",
+                message="Simulation CAPEX executee et rattachee au workflow projet.",
+                metadata={
+                    "simulation_id": metadata["simulation_id"],
+                    "run_id": metadata["run_id"],
+                    "scenario_id": metadata["scenario_id"],
+                    "lignes_calculees": metadata["lignes_calculees"],
+                },
+            )
 
     def _formater_ligne_api(self, ligne: dict[str, Any]) -> dict[str, Any]:
         return {

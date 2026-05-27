@@ -334,6 +334,21 @@ export function saveLocalProjects(projects = []) {
   }
 }
 
+export function patchLocalProject(projectKey, patch = {}) {
+  const projects = readLocalProjects();
+  if (!Array.isArray(projects)) return null;
+  let updatedProject = null;
+  const next = projects.map((project) => {
+    if (String(getProjectWorkspaceKey(project)) !== String(projectKey) && String(project.id) !== String(projectKey)) {
+      return project;
+    }
+    updatedProject = { ...project, ...patch };
+    return updatedProject;
+  });
+  if (updatedProject) saveLocalProjects(next);
+  return updatedProject;
+}
+
 export async function listProjects() {
   const session = getStoredSession();
   if (!session || session.token_type === "demo") return { projects: readLocalProjects() || demoProjects };

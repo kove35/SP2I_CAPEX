@@ -34,6 +34,7 @@ class ScenarioPersistenceEngine:
         errors: list[Any] | None = None,
         duration_ms: int = 0,
         status: str = "SUCCESS",
+        project_id: int | None = None,
     ) -> dict[str, Any]:
         self._scenario_repo.create_scenario(
             scenario_id=scenario_id,
@@ -55,6 +56,7 @@ class ScenarioPersistenceEngine:
             scenario_id=scenario_id,
             run_id=run_id,
             lignes=lignes,
+            projet_id=project_id,
         )
         self._run_repo.complete_run(
             run_id=run_id,
