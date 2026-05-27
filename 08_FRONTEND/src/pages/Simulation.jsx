@@ -33,10 +33,6 @@ export default function Simulation() {
     }
   };
 
-  React.useEffect(() => {
-    runSimulation();
-  }, []);
-
   const kpi = result?.kpi || {};
   const rows = result?.lignes || [];
   const averageRisk = rows.length
@@ -62,24 +58,36 @@ export default function Simulation() {
 
       {error ? <div className="analytics-error">{error}</div> : null}
 
-      <section className="analytics-grid four">
-        <KpiCard label="CAPEX local" value={money(kpi.capex_local)} />
-        <KpiCard label="CAPEX optimise" value={money(kpi.capex_optimise)} tone="success" />
-        <KpiCard label="Economies" value={money(kpi.economie_nette)} tone="warning" />
-        <KpiCard label="ETA moyen" value={`${averageEta} j`} help="Simulation backend" />
-      </section>
+      {result ? (
+        <>
+          <section className="analytics-grid four">
+            <KpiCard label="CAPEX local" value={money(kpi.capex_local)} />
+            <KpiCard label="CAPEX optimise" value={money(kpi.capex_optimise)} tone="success" />
+            <KpiCard label="Economies" value={money(kpi.economie_nette)} tone="warning" />
+            <KpiCard label="ETA moyen" value={`${averageEta} j`} help="Simulation backend" />
+          </section>
 
-      <section className="analytics-grid two">
-        <RiskCard title="Risque global" level={averageRisk >= 60 ? "HIGH" : averageRisk >= 30 ? "MEDIUM" : "LOW"} score={`${averageRisk}/100`} />
-        <SimpleBarChart
-          title="CAPEX"
-          data={[
-            { label: "Local", value: kpi.capex_local, display: money(kpi.capex_local) },
-            { label: "Optimise", value: kpi.capex_optimise, display: money(kpi.capex_optimise) },
-            { label: "Economie", value: kpi.economie_nette, display: money(kpi.economie_nette) },
-          ]}
-        />
-      </section>
+          <section className="analytics-grid two">
+            <RiskCard title="Risque global" level={averageRisk >= 60 ? "HIGH" : averageRisk >= 30 ? "MEDIUM" : "LOW"} score={`${averageRisk}/100`} />
+            <SimpleBarChart
+              title="CAPEX"
+              data={[
+                { label: "Local", value: kpi.capex_local, display: money(kpi.capex_local) },
+                { label: "Optimise", value: kpi.capex_optimise, display: money(kpi.capex_optimise) },
+                { label: "Economie", value: kpi.economie_nette, display: money(kpi.economie_nette) },
+              ]}
+            />
+          </section>
+        </>
+      ) : (
+        <section className="analytics-card">
+          <div className="section-title">
+            <h2>Simulation non lancée</h2>
+            <span>En attente action utilisateur</span>
+          </div>
+          <p>Lancez explicitement une simulation pour calculer les KPI CAPEX, risques et arbitrages.</p>
+        </section>
+      )}
 
       <section className="analytics-card">
         <div className="section-title">
