@@ -837,6 +837,90 @@ def ensure_powerbi_schema(engine: Engine) -> None:
 
     CREATE INDEX IF NOT EXISTS ix_workflow_events_project_type
         ON workflow_events (project_id, event_type);
+
+    CREATE TABLE IF NOT EXISTS fact_approvals (
+        approval_id BIGSERIAL PRIMARY KEY,
+        project_id BIGINT NOT NULL,
+        simulation_id VARCHAR(100) NOT NULL DEFAULT '',
+        procurement_action_id BIGINT NULL,
+        article_id VARCHAR(150) NOT NULL DEFAULT '',
+        lot_id VARCHAR(150) NOT NULL DEFAULT '',
+        sous_lot_id VARCHAR(150) NOT NULL DEFAULT '',
+        niveau_id VARCHAR(150) NOT NULL DEFAULT '',
+        appartement_id VARCHAR(150) NOT NULL DEFAULT '',
+        piece_id VARCHAR(150) NOT NULL DEFAULT '',
+        ifc_guid VARCHAR(150) NOT NULL DEFAULT '',
+        approval_type VARCHAR(80) NOT NULL DEFAULT 'PROCUREMENT_ARBITRATION',
+        decision VARCHAR(80) NOT NULL DEFAULT 'A_ARBITRER',
+        status VARCHAR(80) NOT NULL DEFAULT 'PENDING',
+        priority VARCHAR(40) NOT NULL DEFAULT 'MEDIUM',
+        risk_level VARCHAR(40) NOT NULL DEFAULT 'MEDIUM',
+        roi DOUBLE PRECISION NULL,
+        estimated_saving DOUBLE PRECISION NULL,
+        eta TIMESTAMPTZ NULL,
+        justification_ai TEXT NOT NULL DEFAULT '',
+        justification_human TEXT NOT NULL DEFAULT '',
+        requested_by VARCHAR(255) NOT NULL DEFAULT '',
+        assigned_to VARCHAR(255) NOT NULL DEFAULT '',
+        approved_by VARCHAR(255) NOT NULL DEFAULT '',
+        rejected_by VARCHAR(255) NOT NULL DEFAULT '',
+        role_required VARCHAR(120) NOT NULL DEFAULT 'PROCUREMENT_MANAGER',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        approved_at TIMESTAMPTZ NULL,
+        rejected_at TIMESTAMPTZ NULL,
+        deadline TIMESTAMPTZ NULL
+    );
+
+    ALTER TABLE fact_approvals
+        ADD COLUMN IF NOT EXISTS project_id BIGINT NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS simulation_id VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS procurement_action_id BIGINT NULL,
+        ADD COLUMN IF NOT EXISTS article_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS lot_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS sous_lot_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS niveau_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS appartement_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS piece_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS ifc_guid VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS approval_type VARCHAR(80) NOT NULL DEFAULT 'PROCUREMENT_ARBITRATION',
+        ADD COLUMN IF NOT EXISTS decision VARCHAR(80) NOT NULL DEFAULT 'A_ARBITRER',
+        ADD COLUMN IF NOT EXISTS status VARCHAR(80) NOT NULL DEFAULT 'PENDING',
+        ADD COLUMN IF NOT EXISTS priority VARCHAR(40) NOT NULL DEFAULT 'MEDIUM',
+        ADD COLUMN IF NOT EXISTS risk_level VARCHAR(40) NOT NULL DEFAULT 'MEDIUM',
+        ADD COLUMN IF NOT EXISTS roi DOUBLE PRECISION NULL,
+        ADD COLUMN IF NOT EXISTS estimated_saving DOUBLE PRECISION NULL,
+        ADD COLUMN IF NOT EXISTS eta TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS justification_ai TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS justification_human TEXT NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS requested_by VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS approved_by VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS rejected_by VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS role_required VARCHAR(120) NOT NULL DEFAULT 'PROCUREMENT_MANAGER',
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ NULL,
+        ADD COLUMN IF NOT EXISTS deadline TIMESTAMPTZ NULL;
+
+    CREATE INDEX IF NOT EXISTS ix_fact_approvals_project_status
+        ON fact_approvals (project_id, status);
+
+    CREATE INDEX IF NOT EXISTS ix_fact_approvals_project_type
+        ON fact_approvals (project_id, approval_type);
+
+    CREATE INDEX IF NOT EXISTS ix_fact_approvals_project_deadline
+        ON fact_approvals (project_id, deadline);
+
+    CREATE INDEX IF NOT EXISTS ix_fact_approvals_governance_queue
+        ON fact_approvals (project_id, role_required, status, priority);
+
+    CREATE INDEX IF NOT EXISTS ix_fact_approvals_procurement_action
+        ON fact_approvals (procurement_action_id);
+
+    CREATE INDEX IF NOT EXISTS ix_fact_approvals_ifc_guid
+        ON fact_approvals (ifc_guid);
     """
 
     with engine.begin() as connection:
