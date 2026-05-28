@@ -8,7 +8,7 @@ const stepLabels = {
   budget: "Budget",
   scenarios: "Scénario",
   procurement: "Approvisionnement",
-  execution: "Exécution",
+  execution: "Préparation Chantier",
 };
 
 const currentModuleByPath = {
@@ -44,8 +44,8 @@ function actionLabel(workflow, nextStep) {
   if (nextStep?.id === "execution") {
     const status = workflow?.execution?.status;
     if (status === "REQUIRED") return "Préparer les actions chantier";
-    if (status === "READY") return "Suivre les lots prêts à exécuter";
-    if (status === "ACTIVE") return "Piloter l’exécution chantier";
+    if (status === "READY") return "Suivre la préparation des lots";
+    if (status === "ACTIVE") return "Piloter la préparation chantier";
     if (status === "AT_RISK") return "Traiter les lots chantier à risque";
   }
   if (nextStep?.id === "configuration") return "Configurer le projet";

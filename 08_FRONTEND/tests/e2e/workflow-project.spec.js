@@ -345,13 +345,13 @@ test("procurement page without scenario shows guided empty state", async ({ page
   await openConfiguredProjectWorkspace(page, "Projet approvisionnement sans scenario");
   await navigateSpa(page, "/app/procurement");
 
-  await expect(page.getByRole("heading", { name: /arbitrer local, import, fournisseurs/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /que faut-il d[eé]cider maintenant/i })).toBeVisible();
   const emptyState = page.getByTestId("procurement-empty-state").first();
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/aucun sc[eé]nario actif|lancez une simulation/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/simuler.*capex/i);
-  await expect(page.getByRole("button", { name: /^g[eé]n[eé]rer le dossier procurement direction$/i })).toBeVisible();
-  await expect(page.getByTestId("procurement-validation-summary")).toContainText(/d[eé]cisions achat/i);
+  await expect(page.getByRole("button", { name: /^exporter le dossier direction$/i })).toBeVisible();
+  await expect(page.getByTestId("procurement-validation-summary")).toContainText(/d[eé]cisions/i);
 });
 
 test("pilotage approvisionnement cockpit orchestrates existing workflow", async ({ page }) => {
@@ -392,7 +392,7 @@ test("procurement bulk arbitrage validates selected lines", async ({ page }) => 
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   await navigateSpa(page, "/app/procurement");
 
-  await expect(page.getByRole("heading", { name: /arbitrer local, import, fournisseurs/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /que faut-il d[eé]cider maintenant/i })).toBeVisible();
   await expect(page.getByText(/arbitrage fournisseur par ligne/i)).toBeVisible();
 
   const rowChecks = page.getByRole("checkbox");
@@ -424,8 +424,8 @@ test("scenario pret sans approvisionnement affiche CTA arbitrages achat", async 
   await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/analyser.*arbitrages achat/i);
 });
 
-test("approvisionnement pret sans actions chantier affiche CTA Preparer l'execution", async ({ page }) => {
-  const projectName = "Projet achat pret execution a preparer";
+test("approvisionnement pret sans actions chantier affiche CTA Preparation Chantier", async ({ page }) => {
+  const projectName = "Projet achat pret preparation chantier";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSyncedDqe(page);
   await updateLocalProject(page, projectName, {
@@ -443,7 +443,7 @@ test("approvisionnement pret sans actions chantier affiche CTA Preparer l'execut
 
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
-  await expect(quickActions.getByRole("button", { name: /suivre.*lots chantier/i })).toBeVisible();
+  await expect(quickActions.getByRole("button", { name: /pr[eé]parer.*lots chantier/i })).toBeVisible();
   await navigateSpa(page, "/app/site?tab=planning");
   await expect(page.getByTestId("execution-actions-summary")).toContainText(/actions chantier/i);
   await expect(page.getByText(/Actions chantier prioritaires/i)).toBeVisible();
@@ -470,12 +470,12 @@ test("page Scenarios affiche le fil d'Ariane workflow compact", async ({ page })
   await expect(breadcrumb).toBeVisible();
   await expect(breadcrumb).toContainText(/sc[eé]nario simul[eé]/i);
   await expect(breadcrumb).toContainText(/approvisionnement pr[eê]t/i);
-  await expect(breadcrumb).toContainText(/ex[eé]cution [àa] pr[eé]parer/i);
+  await expect(breadcrumb).toContainText(/pr[eé]paration chantier [àa] pr[eé]parer/i);
   await expect(breadcrumb.getByTestId("workflow-breadcrumb-action")).toHaveText(/pr[eé]parer.*actions chantier/i);
 });
 
-test("execution prete affiche CTA lots prets a executer", async ({ page }) => {
-  const projectName = "Projet execution prete";
+test("preparation chantier prete affiche CTA preparation des lots", async ({ page }) => {
+  const projectName = "Projet preparation chantier prete";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSyncedDqe(page);
   await updateLocalProject(page, projectName, {
@@ -493,15 +493,15 @@ test("execution prete affiche CTA lots prets a executer", async ({ page }) => {
 
   const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
   await expect(projectCard).toBeVisible();
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/suivre.*lots.*ex[eé]cuter/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/suivre.*pr[eé]paration.*lots/i);
 
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
-  await expect(quickActions.getByRole("button", { name: /suivre.*lots chantier/i })).toBeVisible();
+  await expect(quickActions.getByRole("button", { name: /pr[eé]parer.*lots chantier/i })).toBeVisible();
 });
 
-test("execution without scenario shows simulation CTA", async ({ page }) => {
-  await openConfiguredProjectWorkspace(page, "Projet execution sans scenario");
+test("preparation chantier without scenario shows simulation CTA", async ({ page }) => {
+  await openConfiguredProjectWorkspace(page, "Projet preparation chantier sans scenario");
   await navigateSpa(page, "/app/site?tab=planning");
 
   const emptyState = page.getByTestId("execution-empty-state").first();
@@ -515,8 +515,8 @@ test("execution without scenario shows simulation CTA", async ({ page }) => {
   await expect(emptyState).not.toContainText(/pr[eé]parez les arbitrages achat/i);
 });
 
-test("execution avec approvisionnement pret demande preparation chantier", async ({ page }) => {
-  const projectName = "Projet execution a preparer";
+test("preparation chantier avec approvisionnement pret demande readiness chantier", async ({ page }) => {
+  const projectName = "Projet preparation chantier a preparer";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSyncedDqe(page);
   await updateLocalProject(page, projectName, {
@@ -539,7 +539,7 @@ test("execution avec approvisionnement pret demande preparation chantier", async
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/pr[eé]parer.*actions chantier/i);
 });
 
-test("execution BIM-lite shows spatial drilldown and spatial tab", async ({ page }) => {
+test("preparation chantier BIM-lite shows spatial drilldown and spatial tab", async ({ page }) => {
   const projectName = "Projet execution spatial";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSpatialSyncedDqe(page);
@@ -611,8 +611,8 @@ test("Pilotage with scenario ready shows arbitrages achat", async ({ page }) => 
   await expect(page.getByTestId("pilotage-alerts")).toContainText(/approvisionnement [àa] pr[eé]parer/i);
 });
 
-test("Pilotage with execution at risk shows alert", async ({ page }) => {
-  const projectName = "Projet pilotage execution risque";
+test("Pilotage with preparation chantier at risk shows alert", async ({ page }) => {
+  const projectName = "Projet pilotage preparation chantier risque";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSyncedDqe(page);
   await updateLocalProject(page, projectName, {
@@ -634,7 +634,7 @@ test("Pilotage with execution at risk shows alert", async ({ page }) => {
   const summary = page.getByTestId("pilotage-summary");
   await expect(summary).toBeVisible();
   await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/traiter.*lots chantier [àa] risque/i);
-  await expect(page.getByTestId("pilotage-alerts")).toContainText(/ex[eé]cution [àa] risque/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/pr[eé]paration chantier [àa] risque/i);
 });
 
 test("responsive project workflow minimal layout", async ({ page }) => {

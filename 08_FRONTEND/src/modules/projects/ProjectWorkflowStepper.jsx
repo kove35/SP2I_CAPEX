@@ -18,9 +18,9 @@ function compactActionLabel(workflow, nextStep) {
   if (nextStep?.id !== "execution") return nextStep?.action || workflow?.primary_action?.label || "Piloter";
   const status = workflow?.execution?.status;
   if (status === "REQUIRED") return "Préparer les actions chantier";
-  if (status === "ACTIVE") return "Piloter l’exécution chantier";
+  if (status === "ACTIVE") return "Piloter la préparation chantier";
   if (status === "AT_RISK") return "Traiter les lots chantier à risque";
-  if (status === "READY") return "Suivre les lots prêts à exécuter";
+  if (status === "READY") return "Suivre la préparation des lots";
   return workflow?.primary_action?.label || nextStep?.action || "Piloter";
 }
 

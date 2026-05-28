@@ -150,7 +150,7 @@ export function buildApprovisionnementTimeline(orders = [], actions = []) {
     { date: "J+14", jalon: "Fabrication", scenario: "Approvisionnement", capex: orders.length, economie: 0, roi: 0.04, risque: 42 },
     { date: `J+${Math.max(30, Math.round(averageEta * 0.55))}`, jalon: "Maritime", scenario: "Import", capex: orders.length, economie: 0, roi: 0.07, risque: 55 },
     { date: `J+${Math.max(45, Math.round(averageEta * 0.78))}`, jalon: "Port / douane", scenario: "Logistique", capex: orders.length, economie: 0, roi: 0.08, risque: 58 },
-    { date: `J+${Math.max(60, Math.round(averageEta))}`, jalon: "Livraison chantier", scenario: "Exécution", capex: orders.length, economie: 0, roi: 0.1, risque: blocked ? 72 : 48 },
+    { date: `J+${Math.max(60, Math.round(averageEta))}`, jalon: "Livraison chantier", scenario: "Préparation Chantier", capex: orders.length, economie: 0, roi: 0.1, risque: blocked ? 72 : 48 },
   ];
 }
 

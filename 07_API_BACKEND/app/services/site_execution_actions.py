@@ -29,7 +29,7 @@ def summarize_execution_action_counts(counts: dict[str, int], procurement_ready:
         return {
             "status": "BLOCKED",
             "is_ready": False,
-            "message": "Preparez l'approvisionnement avant de suivre l'execution chantier.",
+            "message": "Preparez l'approvisionnement avant de lancer la preparation chantier.",
         }
 
     total = int(counts.get("actions_count") or 0)
@@ -48,20 +48,20 @@ def summarize_execution_action_counts(counts: dict[str, int], procurement_ready:
         return {
             "status": "AT_RISK",
             "is_ready": True,
-            "message": "Execution prete avec alertes chantier a surveiller.",
+            "message": "Preparation chantier prete avec alertes a surveiller.",
         }
 
     if open_count > 0:
         return {
             "status": "READY",
             "is_ready": True,
-            "message": "Execution prete pour suivi chantier.",
+            "message": "Preparation chantier prete pour coordination terrain.",
         }
 
     return {
         "status": "ACTIVE",
         "is_ready": True,
-        "message": "Actions chantier traitees. Execution active.",
+        "message": "Actions chantier traitees. Preparation chantier active.",
     }
 
 

@@ -499,7 +499,7 @@ def _resolve_project_procurement_status(
             hybrid_lines_count=hybrid_lines_count,
             validated_decisions_count=decisions_count,
             export_available=True,
-            message="Approvisionnement pret pour execution.",
+            message="Approvisionnement pret pour preparation chantier.",
         ).model_dump()
 
     return ProcurementStatus(
@@ -509,7 +509,7 @@ def _resolve_project_procurement_status(
         import_lines_count=import_lines_count,
         local_lines_count=local_lines_count,
         hybrid_lines_count=hybrid_lines_count,
-        message="Arbitrages achat generes. Validation humaine requise avant execution.",
+        message="Arbitrages achat generes. Validation humaine requise avant preparation chantier.",
     ).model_dump()
 
 
@@ -524,7 +524,7 @@ def _resolve_project_execution_status(
         return ExecutionStatus(
             status="BLOCKED",
             is_ready=False,
-            message="Preparez l'approvisionnement avant de suivre l'execution chantier.",
+            message="Preparez l'approvisionnement avant de lancer la preparation chantier.",
         ).model_dump()
 
     if db is None:
@@ -607,7 +607,7 @@ def _resolve_project_execution_status(
         critical_lots_count=critical_lots_count,
         deliveries_to_watch_count=deliveries_to_watch_count,
         eta_to_watch_count=eta_to_watch_count,
-        message="Execution prete pour suivi chantier." if status == "READY" else "Execution prete avec alertes chantier a surveiller.",
+        message="Preparation chantier prete pour coordination terrain." if status == "READY" else "Preparation chantier prete avec alertes a surveiller.",
     ).model_dump()
 
 
@@ -793,7 +793,7 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
         ),
         WorkflowStep(
             id="execution",
-            label="Execution",
+            label="Preparation Chantier",
             status=(
                 "Pret"
                 if execution_ready
@@ -869,21 +869,21 @@ def compute_project_workflow_status(project: Project, db: Session | None = None)
             status = "PROCUREMENT_READY"
             label = "Approvisionnement pret"
             primary_action = WorkflowAction(
-                label="Preparer l'execution",
+                label="Preparer le chantier",
                 route="/app/site?tab=planning",
             )
         elif execution_status["status"] in {"READY", "ACTIVE", "AT_RISK"}:
             status = "EXECUTION_READY"
-            label = "Execution prete"
+            label = "Preparation chantier prete"
             primary_action = WorkflowAction(
-                label="Ouvrir Execution",
+                label="Ouvrir Preparation Chantier",
                 route="/app/site?tab=planning",
             )
         else:
             status = "PROCUREMENT_READY"
             label = "Approvisionnement pret"
             primary_action = WorkflowAction(
-                label="Preparer l'execution",
+                label="Preparer le chantier",
                 route="/app/site?tab=planning",
             )
     else:

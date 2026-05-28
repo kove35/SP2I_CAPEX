@@ -47,7 +47,7 @@ export const sidebarSections = [
       { label: "Scénarios", path: "/app/simulation", icon: Play },
       { label: "Approvisionnement", path: "/app/procurement?tab=import", icon: PackageSearch },
       { label: "Pilotage appro.", path: "/app/approvisionnement", icon: Truck },
-      { label: "Exécution", path: "/app/site?tab=planning", icon: Workflow },
+      { label: "Préparation Chantier", path: "/app/site?tab=planning", icon: Workflow },
       { label: "Pilotage", path: "/app/analytics?dashboard=direction", icon: BarChart3 },
       { label: "Documents", path: "/app/dqe?tab=history", icon: Database, badge: "audit" },
     ],

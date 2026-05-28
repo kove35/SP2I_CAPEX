@@ -13,7 +13,7 @@ export default function SpatialExecutionBoard({ summary, filters }) {
     <section className="spatial-panel" data-testid="spatial-execution-board">
       <div className="spatial-panel-header">
         <div>
-          <p className="eyebrow">Exécution spatiale</p>
+          <p className="eyebrow">Préparation chantier spatiale</p>
           <h3>Actions par zone</h3>
         </div>
       </div>

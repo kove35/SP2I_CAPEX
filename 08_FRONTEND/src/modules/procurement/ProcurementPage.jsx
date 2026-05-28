@@ -732,6 +732,93 @@ function ProcurementLineArbitrage({ data, currency, storageKey, onSelect }) {
   );
 }
 
+function DecisionAssistantSummary({ workflow, kpis, rows, procurementValidation, currency, onExport, exporting }) {
+  const pending = Number(procurementValidation.pending_decisions_count || procurementValidation.to_arbitrate_count || rows.length || 0);
+  const validated = Number(procurementValidation.validated_decisions_count || 0);
+  const blocked = Number(procurementValidation.blocked_decisions_count || 0);
+  const gain = Number(kpis.economie_nette || kpis.gain_net_total || 0);
+  const risk = Math.round(Number(kpis.risque_moyen || 0));
+  const importCount = rows.filter((row) => normalizeDecision(row.decision_import) === "IMPORT").length;
+  const localCount = rows.filter((row) => normalizeDecision(row.decision_import) === "LOCAL").length;
+  const hybridCount = rows.filter((row) => ["HYBRIDE", "MIXTE"].includes(normalizeDecision(row.decision_import))).length;
+  const nextAction = workflow?.procurement?.status === "REVIEW_REQUIRED"
+    ? "Valider les décisions import critiques"
+    : pending
+      ? "Sélectionner les lignes à arbitrer"
+      : "Exporter le dossier achat";
+
+  return (
+    <section className="procurement-decision-assistant">
+      <div className="decision-focus-main">
+        <p className="eyebrow">Assistant de décision achat</p>
+        <h1>Que faut-il décider maintenant ?</h1>
+        <p>{nextAction}. SP2I affiche uniquement les impacts nécessaires pour valider, conserver en local ou escalader.</p>
+        <div className="decision-focus-actions">
+          <button type="button" onClick={onExport} disabled={exporting}>
+            {exporting ? "Génération..." : "Exporter le dossier direction"}
+          </button>
+          <span>{pending.toLocaleString("fr-FR")} décision(s) en attente</span>
+        </div>
+      </div>
+      <div className="decision-focus-metrics" data-testid="procurement-decision-summary">
+        <article className={pending ? "warning" : "ready"}>
+          <span>À décider</span>
+          <strong>{pending.toLocaleString("fr-FR")}</strong>
+          <small>{validated.toLocaleString("fr-FR")} validée(s)</small>
+        </article>
+        <article>
+          <span>Gain sécurisable</span>
+          <strong>{formatCurrency(gain, currency)}</strong>
+          <small>après coût rendu chantier</small>
+        </article>
+        <article className={risk >= 70 || blocked ? "danger" : "neutral"}>
+          <span>Risque max</span>
+          <strong>{blocked ? `${blocked} blocage(s)` : `${risk}/100`}</strong>
+          <small>à surveiller avant commande</small>
+        </article>
+        <article>
+          <span>Orientation</span>
+          <strong>{importCount} import · {localCount} local</strong>
+          <small>{hybridCount} hybride / à arbitrer</small>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function DecisionGuide({ rows, kpis, lotRows, currency, onLotClick }) {
+  const riskyRows = rows.filter((row) => Number(row.risque || 0) >= 70).length;
+  const importRows = rows.filter((row) => normalizeDecision(row.decision_import) === "IMPORT").length;
+  const gain = Number(kpis.economie_nette || kpis.gain_net_total || 0);
+  const topLots = lotRows.slice(0, 3);
+
+  return (
+    <section className="procurement-decision-guide">
+      <article>
+        <span>Décision proposée</span>
+        <strong>{gain > 0 ? "Valider l'import sur les lignes à ROI positif" : "Revoir les lignes avant engagement"}</strong>
+        <p>{importRows} ligne(s) orientée(s) import. Sélectionnez les lignes dans la table, puis appliquez une décision humaine en lot.</p>
+      </article>
+      <article className={riskyRows ? "warning" : ""}>
+        <span>Point d'attention</span>
+        <strong>{riskyRows ? `${riskyRows} ligne(s) à risque élevé` : "Aucun blocage critique détecté"}</strong>
+        <p>Escaladez uniquement les lignes avec risque douane, ETA ou fournisseur non confirmé.</p>
+      </article>
+      <article>
+        <span>Priorités</span>
+        <div className="decision-priority-list">
+          {topLots.map((lot) => (
+            <button type="button" key={lot.lot} onClick={() => onLotClick(lot.lot)}>
+              {lot.lot} · {formatCurrency(lot.gain, currency)}
+            </button>
+          ))}
+          {!topLots.length ? <small>Synchronisez le DQE pour calculer les priorités achat.</small> : null}
+        </div>
+      </article>
+    </section>
+  );
+}
+
 function FamilyStrategicCockpit({ data, currency, onOpenGain, onExport }) {
   const kpis = data?.kpis || {};
   const charts = data?.charts || {};
@@ -974,41 +1061,10 @@ export default function ProcurementPage() {
   };
 
   return (
-    <main className="cockpit-page cockpit-page-fit procurement-center">
-      <section className="page-hero compact procurement-hero">
-        <p className="eyebrow">Approvisionnement strategique</p>
-        <h1>Arbitrer local, import, fournisseurs et logistique pour proteger le budget travaux</h1>
-        <p>Centre decisionnel achat connecte aux donnees DQE, aux economies CAPEX et au risque chantier.</p>
-        <div className="procurement-command-row">
-          <label>
-            Devise active
-            <select value={activeCurrency} onChange={(event) => applyFilter("devise", event.target.value)}>
-              {(currencyData?.charts?.currencies || [
-                { code: "FCFA", label: "Franc CFA" },
-                { code: "USD", label: "Dollar americain" },
-                { code: "EUR", label: "Euro" },
-              ]).map((currency) => (
-                <option key={currency.code} value={currency.code}>{currency.code} - {currency.label}</option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={handleProcurementExport} disabled={exportingWorkbook}>
-            {exportingWorkbook ? "Génération en cours..." : "Générer le dossier procurement direction"}
-          </button>
-        </div>
-      </section>
-
-      <div className="tab-row">
-        <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Arbitrage</button>
-        <button className={tab === "costs" || tab === "cashflow" ? "active" : ""} onClick={() => setTab("costs")} type="button">Cout rendu chantier</button>
-        <button className={tab === "suppliers" ? "active" : ""} onClick={() => setTab("suppliers")} type="button">Fournisseurs</button>
-        <button className={tab === "containers" ? "active" : ""} onClick={() => setTab("containers")} type="button">Logistique</button>
-        <button className={tab === "risks" ? "active" : ""} onClick={() => setTab("risks")} type="button">Risques</button>
-        <button className={tab === "strategy" || tab === "moq" ? "active" : ""} onClick={() => setTab("strategy")} type="button">Strategie achat</button>
-      </div>
-
+    <main className="cockpit-page cockpit-page-fit procurement-center procurement-decision-page">
       {analytics.error ? <div className="app-error">Approvisionnement indisponible : {analytics.error.message}</div> : null}
       {exportNotice ? <div className="app-warning">{exportNotice}</div> : null}
+
       {!setupDone ? (
         <WorkflowGuardEmptyState
           title="Configuration projet requise"
@@ -1021,24 +1077,42 @@ export default function ProcurementPage() {
           testId="procurement-empty-state"
         />
       ) : null}
-      <section className={`procurement-context-strip ${sourceContext.hasActiveDqe ? "ready" : "blocked"}`}>
+
+      <DecisionAssistantSummary
+        workflow={workflow}
+        kpis={kpis}
+        rows={rows}
+        procurementValidation={procurementValidation}
+        currency={activeCurrency}
+        onExport={handleProcurementExport}
+        exporting={exportingWorkbook}
+      />
+
+      <section className="procurement-decision-context">
         <div>
-          <strong>Source DQE : {sourceContext.dqeLabel}</strong>
-          <span>{sourceContext.hasActiveDqe ? `${sourceContext.dqeStatus} · Trust score ${sourceContext.trustScore ?? "-"}/100 · ${sourceContext.lines ?? "-"} lignes exploitables` : "Importez et validez un DQE avant de préparer l’approvisionnement."}</span>
+          <span>Source</span>
+          <strong>{sourceContext.dqeLabel}</strong>
+          <small>{sourceContext.hasActiveDqe ? `${sourceContext.dqeStatus} - ${sourceContext.lines ?? "-"} lignes exploitables` : "DQE a valider"}</small>
         </div>
         <div>
-          <strong>Scenario actif : {sourceContext.scenarioLabel}</strong>
-          <span>{sourceContext.scenarioStatus} · Perimetre : {activeScopeLabel}</span>
+          <span>Scenario</span>
+          <strong>{sourceContext.scenarioLabel}</strong>
+          <small>{sourceContext.scenarioStatus} - {activeScopeLabel}</small>
         </div>
-        <div>
-          <strong>Gouvernance</strong>
-          <span>{sourceContext.hasActiveDqe ? `${sourceContext.dataLoss ?? 0} perte stricte · ${sourceContext.reviewRequired ?? 0} validation bloquante` : "Gouvernance indisponible"}</span>
-        </div>
-        <div>
-          <strong>Devises</strong>
-          <span>Projet FCFA · Sourcing {activeCurrency} · taux a confirmer si USD/EUR</span>
-        </div>
+        <label>
+          Devise
+          <select value={activeCurrency} onChange={(event) => applyFilter("devise", event.target.value)}>
+            {(currencyData?.charts?.currencies || [
+              { code: "FCFA", label: "Franc CFA" },
+              { code: "USD", label: "Dollar americain" },
+              { code: "EUR", label: "Euro" },
+            ]).map((currency) => (
+              <option key={currency.code} value={currency.code}>{currency.code} - {currency.label}</option>
+            ))}
+          </select>
+        </label>
       </section>
+
       <SmartWorkflowActions
         workflow={workflow}
         module="procurement"
@@ -1054,11 +1128,12 @@ export default function ProcurementPage() {
           window.dispatchEvent(new PopStateEvent("popstate"));
         }}
       />
+
       {setupDone && !scenarioReady ? (
         <WorkflowGuardEmptyState
           title="Aucun scenario actif"
-          message="Aucun scénario actif. Lancez une simulation avant de préparer l’approvisionnement."
-          actionLabel="Simuler la stratégie CAPEX"
+          message="Aucun scenario actif. Lancez une simulation avant de preparer l'approvisionnement."
+          actionLabel="Simuler la strategie CAPEX"
           actionRoute="/app/simulation"
           currentStep={workflow.steps.find((step) => step.id === "scenarios")?.status}
           requiredStep="Scenario CAPEX"
@@ -1069,19 +1144,20 @@ export default function ProcurementPage() {
         <div className="app-warning">Le scenario est disponible. Preparez les arbitrages achat pour generer les decisions import/local.</div>
       ) : null}
       {setupDone && scenarioReady && procurementStatus === "REVIEW_REQUIRED" ? (
-        <div className="app-warning">Arbitrages achat générés. Validation humaine requise avant exécution chantier.</div>
+        <div className="app-warning">Arbitrages achat generes. Validation humaine requise avant preparation chantier.</div>
       ) : null}
       {setupDone && scenarioReady && ["READY", "EXPORTABLE"].includes(procurementStatus) ? (
-        <div className="app-success">Approvisionnement prêt pour exécution. Le dossier achat peut être exploité.</div>
+        <div className="app-success">Approvisionnement pret pour preparation chantier. Le dossier achat peut etre exploite.</div>
       ) : null}
 
-      <section className="procurement-scope-note" data-testid="procurement-validation-summary">
-        <span>Décisions achat : {Number(procurementValidation.decisions_count || 0).toLocaleString("fr-FR")}</span>
-        <span>Validées : {Number(procurementValidation.validated_decisions_count || 0).toLocaleString("fr-FR")}</span>
+      <DecisionGuide rows={rows} kpis={kpis} lotRows={lotRows} currency={activeCurrency} onLotClick={handleLotClick} />
+
+      <section className="procurement-scope-note compact" data-testid="procurement-validation-summary">
+        <span>Decisions : {Number(procurementValidation.decisions_count || rows.length || 0).toLocaleString("fr-FR")}</span>
+        <span>Validees : {Number(procurementValidation.validated_decisions_count || 0).toLocaleString("fr-FR")}</span>
         <span>En attente : {Number(procurementValidation.pending_decisions_count || 0).toLocaleString("fr-FR")}</span>
-        <span>À arbitrer : {Number(procurementValidation.to_arbitrate_count || 0).toLocaleString("fr-FR")}</span>
-        <span>Bloquées : {Number(procurementValidation.blocked_decisions_count || 0).toLocaleString("fr-FR")}</span>
-        <span>Source : {procurementValidation.source || "fact_simulation"}</span>
+        <span>A arbitrer : {Number(procurementValidation.to_arbitrate_count || 0).toLocaleString("fr-FR")}</span>
+        <span>Bloquees : {Number(procurementValidation.blocked_decisions_count || 0).toLocaleString("fr-FR")}</span>
       </section>
 
       {hasActiveAnalysis ? (
@@ -1095,61 +1171,43 @@ export default function ProcurementPage() {
         />
       ) : null}
 
-      <section className="metric-grid">
-        <KpiCard label="Gain net securisable" value={formatCurrency(gainSecurisable, activeCurrency)} tone="success" />
-        <KpiCard label="ROI scenario" value={formatPercent(roiImport)} tone={roiImport > 0.1 ? "success" : "neutral"} />
-        <GainPotentialCard gainAnalysis={gainAnalysisData} fallbackGain={kpis.economie_nette} currency={activeCurrency} onOpen={() => setGainDrawerOpen(true)} />
-        <KpiCard label="Taux importable" value={formatPercent(importRate)} />
-        <KpiCard label="Budget optimise" value={formatMoney(kpis.capex_optimise)} />
-        <KpiCard label="Lignes achat" value={`${Number(kpis.nb_lignes || rows.length || 0).toLocaleString("fr-FR")} lignes`} tone="warning" />
-      </section>
-      <section className="procurement-scope-note">
-        <span>Perimetre KPI : {activeScopeLabel}</span>
-        <span>Orientation import : {importLines} ligne(s)</span>
-        <span>Achat local : {localLines} ligne(s)</span>
-        <span>Hybride / a arbitrer : {hybridLines} ligne(s)</span>
-        <span title="ROI import = economie nette / CAPEX local">ROI import = economie nette / CAPEX local</span>
-      </section>
-
       {gainDrawerOpen ? <GainDetailDrawer analysis={gainAnalysisData} filters={filters} currency={activeCurrency} onClose={() => setGainDrawerOpen(false)} /> : null}
 
-      <section className="procurement-insights">
-        <article>Sourcing Chine V1 : ports Ningbo, Shanghai, Shenzhen et Guangzhou, devise fournisseur USD.</article>
-        {insights.map((insight) => <article key={insight}>{insight}</article>)}
+      <section className="procurement-decision-workbench">
+        <AnalyticsCard title="Arbitrage fournisseur par ligne" eyebrow="Decision humaine">
+          <ProcurementLineArbitrage
+            data={procurementLines}
+            currency={activeCurrency}
+            storageKey={`sp2i:procurementManualArbitrage:${state.activeProject || PROJECT_CONTEXT.code}:${workflow.scenario?.scenario_id || state.activeScenario || "default"}`}
+            onSelect={(row) => {
+              applyFilters({ famille: row.famille, lot: row.lot });
+              applyDrilldown({ famille: row.famille, lot: row.lot }, {
+                source: "procurement-lines",
+                title: `${row.decision_ia} - ${row.designation}`,
+                metric: formatCurrency(row.gain_net, activeCurrency),
+              });
+            }}
+          />
+        </AnalyticsCard>
       </section>
 
-      <section className="cockpit-split">
+      <details className="procurement-evidence-panel">
+        <summary>Voir les preuves avancees</summary>
+        <div className="tab-row compact">
+          <button className={tab === "import" ? "active" : ""} onClick={() => setTab("import")} type="button">Repartition</button>
+          <button className={tab === "costs" || tab === "cashflow" ? "active" : ""} onClick={() => setTab("costs")} type="button">Cout rendu</button>
+          <button className={tab === "suppliers" ? "active" : ""} onClick={() => setTab("suppliers")} type="button">Fournisseurs</button>
+          <button className={tab === "containers" ? "active" : ""} onClick={() => setTab("containers")} type="button">Logistique</button>
+          <button className={tab === "risks" ? "active" : ""} onClick={() => setTab("risks")} type="button">Risques</button>
+          <button className={tab === "strategy" || tab === "moq" ? "active" : ""} onClick={() => setTab("strategy")} type="button">Strategie</button>
+        </div>
         {tab === "import" ? (
-          <>
-            <FamilyStrategicCockpit
-              data={procurementLines}
-              currency={activeCurrency}
-              onOpenGain={() => setGainDrawerOpen(true)}
-              onExport={handleProcurementExport}
-            />
-            <AnalyticsCard title="Repartition des achats" eyebrow="Lots vers fournisseurs et arbitrage">
-              <ImportDecisionSankey rows={rows} sankeyRows={sankeyRows} />
-            </AnalyticsCard>
-            <AnalyticsCard title="Arbitrage fournisseur par ligne" eyebrow="Local vs Chine">
-              <ProcurementLineArbitrage
-                data={procurementLines}
-                currency={activeCurrency}
-                storageKey={`sp2i:procurementManualArbitrage:${state.activeProject || PROJECT_CONTEXT.code}:${workflow.scenario?.scenario_id || state.activeScenario || "default"}`}
-                onSelect={(row) => {
-                  applyFilters({ famille: row.famille, lot: row.lot });
-                  applyDrilldown({ famille: row.famille, lot: row.lot }, {
-                    source: "procurement-lines",
-                    title: `${row.decision_ia} - ${row.designation}`,
-                    metric: formatCurrency(row.gain_net, activeCurrency),
-                  });
-                }}
-              />
-            </AnalyticsCard>
-          </>
+          <AnalyticsCard title="Repartition des achats" eyebrow="Preuve">
+            <ImportDecisionSankey rows={rows} sankeyRows={sankeyRows} />
+          </AnalyticsCard>
         ) : null}
-
         {tab === "suppliers" ? (
-          <AnalyticsCard title="Portefeuille fournisseurs" eyebrow="Mini ERP sourcing">
+          <AnalyticsCard title="Portefeuille fournisseurs" eyebrow="Preuve">
             <div className="data-table-wrap panel-scroll">
               <table className="data-table">
                 <thead><tr><th>Fournisseur / famille</th><th>Pays / port</th><th>Score</th><th>Confiance</th><th>Delai</th><th>FOB / ROI</th><th>Budget</th></tr></thead>
@@ -1170,26 +1228,24 @@ export default function ProcurementPage() {
             </div>
           </AnalyticsCard>
         ) : null}
-
         {tab === "containers" ? (
-          <AnalyticsCard title="Logistique import a consolider" eyebrow="Mutualisation, capacite et delais">
-            <p className="procurement-prudent-note">Estimation logistique provisoire. Les containers doivent etre consolides par lot, fournisseur et volume CBM avant decision achat.</p>
+          <AnalyticsCard title="Logistique import a consolider" eyebrow="Preuve">
+            <p className="procurement-prudent-note">Estimation provisoire : a consolider par lot, fournisseur et volume CBM avant commande.</p>
             <div className="procurement-card-grid">
               {containerRows.map((container) => (
                 <article className="procurement-mini-card" key={container.id}>
                   <span>{container.id}</span>
                   <strong>{container.lot}</strong>
-                  <p>Remplissage estime {Math.round(container.fill * 100)}% | ETA {container.eta}</p>
+                  <p>Remplissage estime {Math.round(container.fill * 100)}% - ETA {container.eta}</p>
                   <div className="procurement-progress"><i style={{ width: `${Math.round(container.fill * 100)}%` }} /></div>
-                  <small>{container.status} · a confirmer par le responsable logistique</small>
+                  <small>{container.status} - a confirmer logistique</small>
                 </article>
               ))}
             </div>
           </AnalyticsCard>
         ) : null}
-
         {tab === "costs" || tab === "cashflow" ? (
-          <AnalyticsCard title="Cout rendu chantier" eyebrow="Maritime, douane, port et livraison locale">
+          <AnalyticsCard title="Cout rendu chantier" eyebrow="Preuve">
             <div className="data-table-wrap panel-scroll">
               <table className="data-table">
                 <thead><tr><th>Poste logistique</th><th>Taux</th><th>Impact estime</th></tr></thead>
@@ -1201,25 +1257,20 @@ export default function ProcurementPage() {
                       <td>{formatMoney(cost.value)}</td>
                     </tr>
                   ))}
-                  <tr>
-                    <td><strong>Total couts import</strong></td>
-                    <td>-</td>
-                    <td><strong>{formatMoney(totalCost)}</strong></td>
-                  </tr>
+                  <tr><td><strong>Total couts import</strong></td><td>-</td><td><strong>{formatMoney(totalCost)}</strong></td></tr>
                 </tbody>
               </table>
             </div>
           </AnalyticsCard>
         ) : null}
-
         {tab === "risks" ? (
-          <AnalyticsCard title="Cartographie des risques import" eyebrow="Fournisseur, douane, maritime, qualite">
+          <AnalyticsCard title="Risques import" eyebrow="Preuve">
             <div className="procurement-risk-list">
               {(importRiskData?.table || []).map((risk) => (
                 <article key={risk.label}>
                   <span>{risk.label}</span>
                   <strong>{formatMoney(risk.impact)}</strong>
-                  <small>Probabilite {formatPercent(risk.probability)} | Criticite {risk.criticite}/100</small>
+                  <small>Probabilite {formatPercent(risk.probability)} - Criticite {risk.criticite}/100</small>
                   <p>{risk.action}</p>
                 </article>
               ))}
@@ -1227,50 +1278,26 @@ export default function ProcurementPage() {
             {importRiskData?.table?.length ? null : <RiskMatrix rows={riskRows} />}
           </AnalyticsCard>
         ) : null}
-
         {tab === "strategy" || tab === "moq" ? (
-          <AnalyticsCard title="Simulation strategique achat" eyebrow="Comparer les politiques d'approvisionnement">
+          <AnalyticsCard title="Strategies achat" eyebrow="Preuve">
             <div className="procurement-card-grid">
               {(scenarioData?.table?.length ? scenarioData.table : STRATEGIES).map((strategy) => {
                 const estimatedGain = strategy.gain_net ?? Number(kpis.economie_nette || 0) * strategy.importShare;
                 return (
                   <article className="procurement-mini-card strategy" key={strategy.label || strategy.code}>
-                    <span>{strategy.risk} | Qualite {strategy.quality || "-"}</span>
+                    <span>{strategy.risk} - Qualite {strategy.quality || "-"}</span>
                     <strong>{strategy.label}</strong>
-                    <p>{strategy.description || `Scenario Chine avec cout rendu chantier ${formatCurrency(strategy.budget, activeCurrency)}.`}</p>
+                    <p>{strategy.description || `Scenario achat avec cout rendu chantier ${formatCurrency(strategy.budget, activeCurrency)}.`}</p>
                     <b>{formatCurrency(estimatedGain, activeCurrency)} de gain cible</b>
-                    <small>Delai moyen {strategy.lead || strategy.lead_time} j | ROI {formatPercent(strategy.roi || 0)}</small>
+                    <small>Delai moyen {strategy.lead || strategy.lead_time} j - ROI {formatPercent(strategy.roi || 0)}</small>
                   </article>
                 );
               })}
             </div>
           </AnalyticsCard>
         ) : null}
-
-        <aside className="context-panel">
-          <AnalyticsCard title="Priorites achat" eyebrow="Decision intelligence">
-            <ul className="signal-list">
-              {lotRows.slice(0, 5).map((lot) => (
-                <li key={lot.lot}>
-                  <button className="link-button" type="button" onClick={() => handleLotClick(lot.lot)}>
-                    {lot.lot} - {formatMoney(lot.gain)} de gain - {lot.importRate > 0.4 ? "Import recommande" : "Arbitrage selectif"} - Risque {lot.importRate > 0.65 ? "eleve" : "moyen"} - Valider fournisseur.
-                  </button>
-                </li>
-              ))}
-              {!lotRows.length ? <li>Synchroniser le DQE pour alimenter les priorites achat.</li> : null}
-            </ul>
-          </AnalyticsCard>
-          <AnalyticsCard title="Recommandation SP2I" eyebrow="Storytelling IA">
-            <ul className="signal-list">
-              <li>Recommandation IA : importer les lots a ROI positif sous reserve de validation achat.</li>
-              <li>Decision validee : en attente pour les lignes non revues humainement.</li>
-              <li>Conserver en local les familles sensibles au delai chantier.</li>
-              <li>Consolider les lignes import à forte densité CAPEX en container prioritaire pour réduire le coût logistique.</li>
-              <li>Remonter les lots à risque douane ou ETA vers le cockpit direction avant commande.</li>
-            </ul>
-          </AnalyticsCard>
-        </aside>
-      </section>
+      </details>
     </main>
   );
+
 }

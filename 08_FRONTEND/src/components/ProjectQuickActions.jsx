@@ -37,7 +37,7 @@ export default function ProjectQuickActions({ onNavigate, disabled = false }) {
         const isScenarioCreate = /nouveau|comparer/i.test(action.label);
         if (isSimulation && !budgetSynced) return { ...action, label: "Simuler stratégie CAPEX", disabled: true, title: "Synchroniser le budget avant de simuler la stratégie CAPEX" };
         if (isScenarioCreate && !budgetSynced) return { ...action, label: "Comparer stratégies CAPEX", disabled: true, title: "Synchroniser le budget avant de comparer les scénarios" };
-        if (procurementReady && isSimulation) return { ...action, label: "Suivre les lots chantier", path: "/app/site?tab=planning", icon: HardHat };
+        if (procurementReady && isSimulation) return { ...action, label: "Préparer les lots chantier", path: "/app/site?tab=planning", icon: HardHat };
         if (scenarioReady && isSimulation) return { ...action, label: "Analyser arbitrages achat", path: "/app/procurement" };
         if (isSimulation) return { ...action, label: "Simuler stratégie CAPEX" };
         if (isScenarioCreate) return { ...action, label: "Comparer stratégies CAPEX" };

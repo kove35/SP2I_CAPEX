@@ -105,8 +105,8 @@ function buildPilotageAlerts(workflow) {
   if (budget.state === "done" && scenarios.state !== "done") alerts.push("Aucun scénario actif pour arbitrage CAPEX.");
   if (procurement.status === "REVIEW_REQUIRED") alerts.push("Arbitrages achat generes mais validation humaine requise.");
   if (procurement.status === "REQUIRED") alerts.push("Approvisionnement à préparer depuis le scénario actif.");
-  if (execution.status === "REQUIRED") alerts.push("Exécution à préparer : actions chantier non encore générées.");
-  if (execution.status === "AT_RISK") alerts.push("Exécution à risque : lots critiques ou livraisons à surveiller.");
+  if (execution.status === "REQUIRED") alerts.push("Préparation chantier à lancer : actions chantier non encore générées.");
+  if (execution.status === "AT_RISK") alerts.push("Préparation chantier à risque : lots critiques ou livraisons à surveiller.");
   if (!alerts.length) alerts.push("Projet prêt pour pilotage direction avec données disponibles.");
   return alerts;
 }
@@ -193,7 +193,7 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
         <ModuleStatusCard title="Budget" step={budgetStep} message={workflow.budget?.message || "Etat de synchronisation budget projet."} detail={displayMoney(workflow.budget?.total_amount)} actionLabel="Synchroniser le budget CAPEX" actionRoute="/app/dqe?tab=sync" />
         <ModuleStatusCard title="Scénarios" step={scenarioStep} message={scenario.message || "Scénario CAPEX utilisé pour l’arbitrage."} detail={`${scenario.line_count || "-"} lignes simulées`} actionLabel="Simuler la stratégie CAPEX" actionRoute="/app/simulation" />
         <ModuleStatusCard title="Approvisionnement" step={procurementStep} message={procurement.message || "Etat des arbitrages achat."} detail={`${procurement.decisions_count || "-"} decisions achat`} actionLabel="Analyser les arbitrages achat" actionRoute="/app/procurement" />
-        <ModuleStatusCard title="Exécution" step={executionStep} message={execution.message || "État des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Suivre les lots prêts à exécuter" actionRoute="/app/site?tab=planning" />
+        <ModuleStatusCard title="Préparation Chantier" step={executionStep} message={execution.message || "État des actions chantier."} detail={`${execution.actions_count || "-"} actions · ${execution.eta_to_watch_count || "-"} ETA`} actionLabel="Suivre la préparation des lots" actionRoute="/app/site?tab=planning" />
       </section>
 
       <section className="workspace-summary-footer">
