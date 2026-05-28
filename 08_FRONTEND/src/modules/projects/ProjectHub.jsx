@@ -23,10 +23,10 @@ function projectCardBadge(workflow, primaryAction) {
     [/tester.*scenario|tester.*scénario/i, "Scénario à lancer"],
     [/preparer.*approvisionnement|préparer.*approvisionnement/i, "Approvisionnement à préparer"],
     [/valider.*arbitrages/i, "Arbitrages à valider"],
-    [/preparer.*execution|préparer.*exécution/i, "Exécution à préparer"],
-    [/suivre.*execution.*risque|suivre.*exécution.*risque/i, "Exécution à risque"],
-    [/suivre.*execution|suivre.*exécution/i, "Exécution active"],
-    [/ouvrir.*execution|ouvrir.*exécution/i, "Exécution prête"],
+    [/preparer.*execution|préparer.*exécution|préparation chantier/i, "Préparation chantier à lancer"],
+    [/suivre.*execution.*risque|suivre.*exécution.*risque|lots chantier.*risque/i, "Préparation chantier à risque"],
+    [/suivre.*execution|suivre.*exécution|préparation des lots/i, "Préparation chantier active"],
+    [/ouvrir.*execution|ouvrir.*exécution/i, "Préparation chantier prête"],
   ];
   return mapping.find(([pattern]) => pattern.test(label))?.[1] || workflow?.label || label;
 }

@@ -105,10 +105,10 @@ def summarize_procurement_decision_counts(counts: dict[str, int], scenario_ready
         message = "Des decisions achat sont bloquees ou doivent etre arbitrees."
     elif validated > 0 and critical_pending == 0:
         status = "READY"
-        message = "Approvisionnement pret pour execution."
+        message = "Approvisionnement pret pour preparation chantier."
     elif review > 0 or to_arbitrate > 0 or pending > 0:
         status = "REVIEW_REQUIRED"
-        message = "Arbitrages achat generes. Validation humaine requise avant execution."
+        message = "Arbitrages achat generes. Validation humaine requise avant preparation chantier."
     else:
         status = "REVIEW_REQUIRED"
         message = "Decisions achat a valider."

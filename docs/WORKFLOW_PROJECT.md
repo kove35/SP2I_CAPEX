@@ -18,7 +18,7 @@ Creer projet
 -> Synchroniser budget
 -> Lancer scenario
 -> Preparer approvisionnement
--> Preparer execution
+-> Preparer chantier
 -> Piloter projet
 ```
 
@@ -55,9 +55,9 @@ Le scenario represente une simulation CAPEX exploitable. Il est determine a part
 
 L'approvisionnement represente la transformation du scenario en arbitrages achat : import, local, hybride, validation humaine et dossier achat.
 
-### Execution
+### Preparation Chantier
 
-L'execution represente la preparation chantier : actions, livraisons, ETA, risques logistiques, lots critiques et suivi operationnel.
+La preparation chantier represente la readiness operationnelle : actions, livraisons, ETA, risques logistiques, lots critiques et coordination procurement -> chantier.
 
 ## 4. Regles de blocage
 
@@ -66,8 +66,8 @@ L'execution represente la preparation chantier : actions, livraisons, ETA, risqu
 - Un DQE certifie ne veut pas dire budget synchronise.
 - Un budget synchronise ne veut pas dire scenario disponible.
 - Un scenario disponible ne veut pas dire approvisionnement pret.
-- Un approvisionnement pret ne veut pas dire execution prete.
-- L'execution devient prete uniquement si des signaux chantier ou logistiques existent.
+- Un approvisionnement pret ne veut pas dire preparation chantier prete.
+- La preparation chantier devient prete uniquement si des signaux chantier ou logistiques existent.
 
 Ces regles evitent les faux KPI, faux arbitrages, faux dashboards et decisions prematurees.
 
@@ -80,7 +80,7 @@ Sources actuellement utilisees :
 - Budget : synchronisation FACT / statut de sync.
 - Scenario : `simulation_run`, `dim_scenario`, `fact_simulation`.
 - Procurement : decisions achat dans `fact_simulation` (`decision_import`, `decision_type`, `decision_score`, `procurement_reason`).
-- Execution : champs logistiques de `fact_simulation` (`delivery_risk`, `lead_time_total`, `storage_cost`, `shipment_strategy`, `container_strategy`, `criticality_score`).
+- Preparation Chantier : champs logistiques de `fact_simulation` (`delivery_risk`, `lead_time_total`, `storage_cost`, `shipment_strategy`, `container_strategy`, `criticality_score`).
 
 Le systeme reste volontairement conservateur lorsque la source dediee n'existe pas encore.
 
@@ -147,7 +147,7 @@ Objets metier :
 - `budget` : statut sync, montant total, nombre de lignes, source.
 - `scenario` : statut, scenario id, run id, nombre de lignes simulees.
 - `procurement` : statut, nombre de decisions, lignes import/local/hybride, export disponible.
-- `execution` : statut, actions chantier, lots critiques, livraisons et ETA a surveiller.
+- `execution` : cle technique historique du module Preparation Chantier, statut, actions chantier, lots critiques, livraisons et ETA a surveiller.
 
 ## 8. Frontend
 
@@ -186,7 +186,7 @@ Le fallback conserve les memes principes metier :
 
 - budget synchronise ne veut pas dire scenario pret,
 - scenario pret ne veut pas dire approvisionnement pret,
-- approvisionnement pret ne veut pas dire execution prete.
+- approvisionnement pret ne veut pas dire preparation chantier prete.
 
 ## 10. Tests Playwright
 
@@ -200,8 +200,8 @@ Les tests e2e couvrent notamment :
 - scenario pret sans approvisionnement,
 - approvisionnement absent,
 - approvisionnement pret sans actions chantier,
-- execution prete,
-- execution a risque,
+- preparation chantier prete,
+- preparation chantier a risque,
 - Pilotage decisionnel,
 - responsive minimal.
 
@@ -214,7 +214,7 @@ Limites connues :
 - Pas encore de table chantier dediee.
 - Pas encore de table validation achat dediee.
 - Certains signaux procurement viennent de `fact_simulation`.
-- Certains signaux execution viennent des champs logistiques de `fact_simulation`.
+- Certains signaux preparation chantier viennent des champs logistiques de `fact_simulation`.
 - Le scenario actif est detecte a partir des executions disponibles, mais pas encore versionne comme entite fonctionnelle complete.
 - Le DQE versionne persistant reste a renforcer cote backend.
 - Node `20.16.0` doit etre aligne avec la version recommandee par Vite (`20.19+` ou `22.12+`).
@@ -244,7 +244,7 @@ Projet configure
 -> budget fiable
 -> scenario simule
 -> arbitrages achat prepares
--> execution chantier preparee
+-> preparation chantier prete
 -> pilotage direction fiable
 ```
 

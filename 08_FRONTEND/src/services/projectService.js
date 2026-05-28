@@ -59,8 +59,8 @@ export const projectStatusLabels = {
   PROCUREMENT_REVIEW_REQUIRED: "Arbitrages achat à valider",
   PROCUREMENT_READY: "Approvisionnement prêt",
   EXECUTION_PREPARATION: "Préparation chantier",
-  EXECUTION_READY: "Exécution prête",
-  EXECUTION_ACTIVE: "Exécution active",
+  EXECUTION_READY: "Préparation chantier prête",
+  EXECUTION_ACTIVE: "Préparation chantier active",
   PROJECT_CLOSED: "Projet clôturé",
   ACTIVE: "Actif",
   ARCHIVED: "Archive",
@@ -208,7 +208,7 @@ function buildWorkflowTimeline({
     },
     {
       id: "execution",
-      label: "Execution",
+      label: "Préparation Chantier",
       state: executionStatusOverride === "AT_RISK" ? "risk" : executionStatusOverride === "BLOCKED" ? "blocked" : executionReady ? "active" : executionRequired ? "waiting" : "blocked",
       metric: `${toCount(project.execution_actions_count).toLocaleString("fr-FR")} actions`,
     },
@@ -251,7 +251,7 @@ function buildNextAction(workflowContext) {
       : { label: "Analyser les arbitrages achat", route: "/app/procurement" };
   }
   if (activeStep?.id === "execution") {
-    if (executionStatusOverride === "ACTIVE") return { label: "Piloter l'execution chantier", route: "/app/site?tab=planning" };
+    if (executionStatusOverride === "ACTIVE") return { label: "Piloter la préparation chantier", route: "/app/site?tab=planning" };
     if (executionStatusOverride === "AT_RISK") return { label: "Traiter les lots chantier a risque", route: "/app/site?tab=planning" };
     return { label: "Preparer actions chantier par lot", route: "/app/site?tab=planning" };
   }
@@ -319,7 +319,7 @@ export function getProjectWorkflow(project = {}, appState = {}) {
     },
     {
       id: "execution",
-      label: "Exécution",
+      label: "Préparation Chantier",
       status: executionReady ? "Prêt" : executionRequired ? "À préparer" : "Bloqué",
       state: executionReady ? "done" : executionRequired ? "todo" : "blocked",
       action: "Suivre",
@@ -436,9 +436,9 @@ export function getProjectWorkflow(project = {}, appState = {}) {
       export_available: Boolean(project.procurement_export_available || procurementReady),
       source: "local_demo",
       message: procurementReady
-        ? "Approvisionnement prêt pour exécution."
+        ? "Approvisionnement prêt pour préparation chantier."
         : procurementReviewRequired
-          ? "Arbitrages achat générés. Validation humaine requise avant exécution."
+          ? "Arbitrages achat générés. Validation humaine requise avant préparation chantier."
           : procurementRequired
             ? "Le scénario est disponible. Préparez les arbitrages achat."
             : "Lancez un scénario avant de préparer l’approvisionnement.",
@@ -456,10 +456,10 @@ export function getProjectWorkflow(project = {}, appState = {}) {
       eta_to_watch_count: Number(project.execution_eta_to_watch_count || 0),
       source: "local_demo",
       message: executionReady
-        ? "Exécution prête pour suivi chantier."
+        ? "Préparation chantier prête pour coordination terrain."
         : executionRequired
           ? "L’approvisionnement est prêt. Préparez les actions chantier."
-          : "Préparez l’approvisionnement avant de suivre l’exécution chantier.",
+          : "Préparez l’approvisionnement avant de lancer la préparation chantier.",
     },
   };
 }
@@ -468,8 +468,8 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
   const workflow = getProjectWorkflow(project, appState);
   if (workflow.primary_action) {
     if (workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier par lot", route: "/app/site?tab=planning" };
-    if (workflow.execution?.status === "READY") return { label: "Suivre les lots prêts à exécuter", route: "/app/site?tab=planning" };
-    if (workflow.execution?.status === "ACTIVE") return { label: "Piloter l’exécution chantier", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "READY") return { label: "Suivre la préparation des lots", route: "/app/site?tab=planning" };
+    if (workflow.execution?.status === "ACTIVE") return { label: "Piloter la préparation chantier", route: "/app/site?tab=planning" };
     if (workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
     if (workflow.status === "BUDGET_SYNCED") return { label: "Simuler la stratégie CAPEX", route: "/app/simulation" };
     if (workflow.status === "SCENARIO_READY") return { label: "Analyser les arbitrages achat", route: "/app/procurement" };
@@ -485,9 +485,9 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
   if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les décisions import critiques", route: "/app/procurement" };
   if (nextStep.id === "procurement") return { label: "Analyser les arbitrages achat", route: "/app/procurement" };
   if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier par lot", route: "/app/site?tab=planning" };
-  if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Piloter l’exécution chantier", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Piloter la préparation chantier", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution" && workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
-  if (nextStep.id === "execution") return { label: "Suivre les lots prêts à exécuter", route: "/app/site?tab=planning" };
+  if (nextStep.id === "execution") return { label: "Suivre la préparation des lots", route: "/app/site?tab=planning" };
   return { label: "Piloter le workspace projet", route: "/app" };
 }
 

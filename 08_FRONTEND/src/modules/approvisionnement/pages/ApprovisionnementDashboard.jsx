@@ -50,7 +50,7 @@ export default function ApprovisionnementDashboard() {
           <h1>Commandes, fournisseurs, risques et logistique du projet actif</h1>
           <p>
             Couche d’orchestration SP2I au-dessus des arbitrages achat, du workflow projet,
-            des simulations CAPEX et de l’exécution chantier.
+            des simulations CAPEX et de la préparation chantier.
           </p>
         </div>
         <div className="appro-hero-actions">

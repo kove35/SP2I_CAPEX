@@ -127,11 +127,11 @@ function buildActions({ workflow = {}, module = "dashboard", kpis = {}, simulati
     return [
       {
         role: "Chantier",
-        title: "Préparer les lots prêts à exécuter",
+        title: "Préparer les lots chantier",
         route: "/app/site?tab=planning",
         tone: criticalLots ? "attention" : "validated",
         Icon: ClipboardCheck,
-        why: "Convertir les décisions achat validées en actions terrain.",
+        why: "Convertir les décisions achat validées en prérequis chantier.",
         impact: [`${count(criticalLots)} lots critiques`, `${count(etaWatch)} ETA à surveiller`, "Impact chantier : planning à sécuriser"],
       },
       {
@@ -153,7 +153,7 @@ function buildActions({ workflow = {}, module = "dashboard", kpis = {}, simulati
       route: module === "execution" ? "/app/site?tab=deliveries" : "/app/analytics",
       tone: criticalLots ? "attention" : "validated",
       Icon: module === "execution" ? AlertTriangle : Route,
-      why: "Maintenir le lien entre budget, commande, transport et exécution.",
+      why: "Maintenir le lien entre budget, commande, transport et préparation chantier.",
       impact: [`${count(criticalLots)} lots critiques`, `${count(etaWatch)} ETA à surveiller`, `Économies suivies : ${money(gain)}`],
     },
   ];
@@ -190,7 +190,7 @@ export default function SmartWorkflowActions({
           ) : null}
         </div>
         <ol className="smart-timeline" aria-label="Timeline opérationnelle">
-          {(timeline.length ? timeline : ["Simulation", "Arbitrage", "Validation", "Commande", "Transport", "Reception", "Execution"].map((label) => ({ label, state: "waiting" }))).map((item) => {
+          {(timeline.length ? timeline : ["Simulation", "Arbitrage", "Validation", "Commande", "Transport", "Reception", "Préparation Chantier"].map((label) => ({ label, state: "waiting" }))).map((item) => {
             const Icon = timelineIcons[item.state] || Circle;
             return (
               <li key={item.id || item.label} className={item.state}>

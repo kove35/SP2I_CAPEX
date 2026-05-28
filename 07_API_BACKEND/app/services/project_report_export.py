@@ -360,7 +360,7 @@ def _build_workflow_summary(project: Project, dqe_status: dict[str, Any], budget
         {"id": "budget", "label": "Budget", "status": "Synchronisé" if budget_synced else "À synchroniser", "state": "done" if budget_synced else "todo", "action": "Synchroniser", "route": "/app/dqe?tab=sync"},
         {"id": "scenarios", "label": "Scénarios", "status": "Simulé" if scenario_ready else "Prêt" if budget_synced else "Bloqué", "state": "done" if scenario_ready else "todo" if budget_synced else "blocked", "action": "Tester", "route": "/app/simulation"},
         {"id": "procurement", "label": "Approvisionnement", "status": procurement_status.get("status", EMPTY_VALUE), "state": "done" if procurement_ready else "progress" if procurement_status.get("status") == "REVIEW_REQUIRED" else "todo" if scenario_ready else "blocked", "action": "Préparer", "route": "/app/procurement"},
-        {"id": "execution", "label": "Exécution", "status": execution_status.get("status", EMPTY_VALUE), "state": "done" if execution_ready else "todo" if procurement_ready else "blocked", "action": "Suivre", "route": "/app/site?tab=planning"},
+        {"id": "execution", "label": "Préparation Chantier", "status": execution_status.get("status", EMPTY_VALUE), "state": "done" if execution_ready else "todo" if procurement_ready else "blocked", "action": "Suivre", "route": "/app/site?tab=planning"},
     ]
 
     if not configured:
@@ -390,12 +390,12 @@ def _build_workflow_summary(project: Project, dqe_status: dict[str, Any], budget
     elif procurement_ready:
         if execution_ready:
             status = "EXECUTION_READY"
-            label = "Exécution prête"
-            primary_action = {"label": "Ouvrir Exécution", "route": "/app/site?tab=planning"}
+            label = "Préparation chantier prête"
+            primary_action = {"label": "Ouvrir Préparation Chantier", "route": "/app/site?tab=planning"}
         else:
             status = "PROCUREMENT_READY"
             label = "Approvisionnement prêt"
-            primary_action = {"label": "Préparer l'exécution", "route": "/app/site?tab=planning"}
+            primary_action = {"label": "Préparer le chantier", "route": "/app/site?tab=planning"}
     else:
         status = "ACTIVE"
         label = "Projet actif"
@@ -454,7 +454,7 @@ def _build_report_rows(workflow: dict[str, Any]) -> list[list[str]]:
         ["Budget", workflow.get("steps", [])[2].get("status", EMPTY_VALUE) if workflow.get("steps") else EMPTY_VALUE],
         ["Scénarios", workflow.get("steps", [])[3].get("status", EMPTY_VALUE) if workflow.get("steps") else EMPTY_VALUE],
         ["Approvisionnement", workflow.get("steps", [])[4].get("status", EMPTY_VALUE) if workflow.get("steps") else EMPTY_VALUE],
-        ["Exécution", workflow.get("steps", [])[5].get("status", EMPTY_VALUE) if workflow.get("steps") else EMPTY_VALUE],
+        ["Préparation Chantier", workflow.get("steps", [])[5].get("status", EMPTY_VALUE) if workflow.get("steps") else EMPTY_VALUE],
     ]
 
 
@@ -474,7 +474,7 @@ def _build_alerts(workflow: dict[str, Any]) -> list[dict[str, str]]:
         alerts.append({"level": "warning", "message": "Arbitrages achat à valider.", "recommendation": "Valider les décisions achat."})
     execution = workflow.get("execution", {})
     if execution.get("status") == "AT_RISK":
-        alerts.append({"level": "critical", "message": "Exécution chantier à risque.", "recommendation": "Surveiller les lots critiques et ETA."})
+        alerts.append({"level": "critical", "message": "Préparation chantier à risque.", "recommendation": "Surveiller les lots critiques et ETA."})
     if not alerts:
         alerts.append({"level": "info", "message": "Projet prêt pour pilotage direction.", "recommendation": "Continuer le suivi et la validation."})
     return alerts
@@ -666,8 +666,8 @@ def build_project_report_pdf(project_id: int, db: Session) -> BytesIO:
         elements.append(Paragraph("Aucune décision achat disponible.", styles["normal"]))
     elements.append(PageBreak())
 
-    # Execution
-    elements.append(Paragraph("Exécution chantier", styles["section"]))
+    # Preparation chantier
+    elements.append(Paragraph("Préparation Chantier", styles["section"]))
     if execution:
         elements.append(_build_key_value_table(
             [
@@ -679,7 +679,7 @@ def build_project_report_pdf(project_id: int, db: Session) -> BytesIO:
                 ["Lots critiques", safe_value(execution.get("critical_lots_count"))],
                 ["Livraisons à surveiller", safe_value(execution.get("deliveries_to_watch_count"))],
                 ["ETA à surveiller", safe_value(execution.get("eta_to_watch_count"))],
-                ["Statut exécution", execution.get("status", EMPTY_VALUE)],
+                ["Statut préparation chantier", execution.get("status", EMPTY_VALUE)],
             ],
             styles,
         ))

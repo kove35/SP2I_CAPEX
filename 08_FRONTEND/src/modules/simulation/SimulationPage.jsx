@@ -191,7 +191,7 @@ function ScenarioDecisionCopilot({
 
       <section className="copilot-final-action">
         <div>
-          <span>4 · Exécuter</span>
+          <span>4 · Préparer</span>
           <strong>Décision CAPEX prête pour achat</strong>
           <small>{simulation ? "Transférer les arbitrages vers le cockpit Approvisionnement." : "Lancez une simulation pour débloquer cette étape."}</small>
         </div>

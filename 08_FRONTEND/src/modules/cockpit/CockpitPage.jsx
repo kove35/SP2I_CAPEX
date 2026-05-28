@@ -158,11 +158,11 @@ export default function CockpitPage() {
           </article>
 
           <article className={`workspace-module-card ${moduleTone(executionStep.state)}`}>
-            <span>Exécution</span>
+            <span>Préparation Chantier</span>
             <strong>{executionStep.status || "Bloqué"}</strong>
-            <p>{executionStep.state === "done" ? "Le suivi chantier peut démarrer." : "En attente des arbitrages achat et logistique."}</p>
+            <p>{executionStep.state === "done" ? "Les lots sont prêts pour coordination chantier." : "En attente des arbitrages achat et logistique."}</p>
             <small>Lots critiques : {executionStep.state === "done" ? "à surveiller" : "-"}</small>
-            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Suivre les lots prêts à exécuter</button>
+            <button type="button" onClick={() => navigateTo("/app/site?tab=planning")}>Suivre la préparation des lots</button>
           </article>
         </section>
 

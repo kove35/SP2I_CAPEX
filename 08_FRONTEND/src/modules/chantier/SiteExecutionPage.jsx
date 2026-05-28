@@ -512,11 +512,11 @@ export default function SiteExecutionPage() {
   return (
     <main className="cockpit-page cockpit-page-fit">
       <section className="page-hero compact">
-        <p className="eyebrow">Pilotage chantier</p>
-        <h1>Planning, dépendances, livraisons et stockage chantier</h1>
+        <p className="eyebrow">Préparation Chantier</p>
+        <h1>Readiness lots, ETA fournisseurs et dépendances chantier</h1>
         <p>
-          Piloter les priorités chantier liées aux décisions CAPEX, aux livraisons
-          et aux risques d’exécution.
+          Préparer les priorités chantier liées aux décisions CAPEX, aux livraisons,
+          aux dépendances et aux risques de readiness.
         </p>
       </section>
 
@@ -528,7 +528,7 @@ export default function SiteExecutionPage() {
               ? `${context.dqeStatus} · Trust score ${context.trustScore ?? "-"}/100 · ${
                   context.lines ?? "-"
                 } lignes`
-              : "Importez et validez un DQE avant de piloter l’exécution chantier."}
+              : "Importez et validez un DQE avant de préparer le chantier."}
           </span>
         </div>
 
@@ -592,7 +592,7 @@ export default function SiteExecutionPage() {
       ) : !context.scenarioIsExecutable ? (
         <WorkflowGuardEmptyState
           title="Simulation à lancer"
-          message="Lancez une simulation pour calculer l’impact planning avant de préparer l’exécution chantier."
+          message="Lancez une simulation pour calculer l’impact planning avant de préparer le chantier."
           actionLabel="Simuler la stratégie CAPEX"
           actionRoute="/app/simulation"
           currentStep={context.scenarioStatusLabel}
@@ -602,7 +602,7 @@ export default function SiteExecutionPage() {
       ) : !procurementReady ? (
         <WorkflowGuardEmptyState
           title="Approvisionnement à préparer"
-          message="Préparez les arbitrages achat avant de suivre l’exécution chantier."
+          message="Préparez les arbitrages achat avant de lancer la préparation chantier."
           actionLabel="Analyser les arbitrages achat"
           actionRoute="/app/procurement"
           currentStep={workflow.steps.find((step) => step.id === "procurement")?.status}
@@ -633,7 +633,7 @@ export default function SiteExecutionPage() {
 
       {setupDone && !context.hasActiveDqe ? (
         <div className="app-warning">
-          Aucun DQE actif. Importez et validez un DQE avant de piloter l’exécution chantier.
+          Aucun DQE actif. Importez et validez un DQE avant de préparer le chantier.
           <button
             type="button"
             className="link-button"
@@ -647,7 +647,7 @@ export default function SiteExecutionPage() {
       {setupDone && !context.scenarioIsExecutable ? (
         <div className="app-warning">
           La stratégie est sélectionnée, mais la simulation doit être lancée avant
-          de préparer l’exécution chantier.
+          de préparer le chantier.
           <button
             type="button"
             className="link-button"
@@ -846,7 +846,7 @@ export default function SiteExecutionPage() {
             </button>
           </AnalyticsCard>
 
-          <AnalyticsCard title="Alertes chantier à remonter" eyebrow="Risque exécution">
+          <AnalyticsCard title="Alertes chantier à remonter" eyebrow="Risque readiness">
             <ul className="signal-list">
               <li>
                 Lot bloqué : L01 - Gros œuvre et démolition, cause arbitrage achat à
