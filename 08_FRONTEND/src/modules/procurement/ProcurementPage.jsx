@@ -7,12 +7,13 @@ import RiskMatrix from "../../components/charts/RiskMatrix";
 import SmartDataGrid from "../../components/grids/SmartDataGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
+import { useWorkflow } from "../../hooks/useWorkflow";
 import { exportAnalyticsGainAnalysis, exportAnalyticsProcurementFile } from "../../services/analyticsService";
 import { formatCurrency, formatMoney, formatPercent } from "../../shared/formatters";
 import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
 import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { exportProcurementWorkbook, getProjectWorkflow } from "../../services/projectService";
+import { exportProcurementWorkbook, saveLocalProjects } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 
@@ -515,7 +516,23 @@ function GainDetailDrawer({ analysis, filters, currency, onClose }) {
   );
 }
 
-function ProcurementLineArbitrage({ data, currency, storageKey, onSelect }) {
+function isHumanValidated(row) {
+  const status = String(row?.validation_achat || row?.validation_status || "").toUpperCase();
+  return status.includes("VALID") || status.includes("VALIDÉ") || status.includes("VALIDE");
+}
+
+function countHumanValidationState(rows = []) {
+  const total = rows.length;
+  const validated = rows.filter(isHumanValidated).length;
+  return {
+    total,
+    validated,
+    pending: Math.max(total - validated, 0),
+    completed: total > 0 && validated >= total,
+  };
+}
+
+function ProcurementLineArbitrage({ data, currency, storageKey, onSelect, onDecisionCommitted }) {
   const [quickSearch, setQuickSearch] = React.useState("");
   const [selectedRow, setSelectedRow] = React.useState(null);
   const [selectedRows, setSelectedRows] = React.useState([]);
@@ -608,23 +625,31 @@ function ProcurementLineArbitrage({ data, currency, storageKey, onSelect }) {
     const selectedKeys = new Set(selectedRows.map((row) => row.__sp2i_key));
     setManualOverrides((current) => {
       const next = { ...current };
-      decisionRows.forEach((row) => {
-        if (!selectedKeys.has(row.__sp2i_key)) return;
-        next[row.__sp2i_key] = {
+      const nextRows = decisionRows.map((row) => {
+        if (!selectedKeys.has(row.__sp2i_key)) return row;
+        const override = {
           decision_ia: decision,
           decision_import: decision,
           validation_achat: label,
           approval_status: approvalStatus,
           justification_humaine: justification,
         };
+        next[row.__sp2i_key] = override;
+        return { ...row, ...override };
       });
       if (storageKey) {
         window.localStorage.setItem(storageKey, JSON.stringify(next));
       }
+      onDecisionCommitted?.({
+        decision,
+        label,
+        selectedCount: selectedRows.length,
+        validation: countHumanValidationState(nextRows),
+      });
       return next;
     });
     setBulkNotice(`${selectedRows.length} ligne(s) arbitrée(s) : ${label}. Workflow approval déclenché.`);
-  }, [decisionRows, selectedRows, storageKey]);
+  }, [decisionRows, onDecisionCommitted, selectedRows, storageKey]);
 
   return (
     <section className="line-arbitrage-shell">
@@ -733,8 +758,9 @@ function ProcurementLineArbitrage({ data, currency, storageKey, onSelect }) {
 }
 
 function DecisionAssistantSummary({ workflow, kpis, rows, procurementValidation, currency, onExport, exporting }) {
-  const pending = Number(procurementValidation.pending_decisions_count || procurementValidation.to_arbitrate_count || rows.length || 0);
+  const total = Number(procurementValidation.decisions_count ?? rows.length ?? 0);
   const validated = Number(procurementValidation.validated_decisions_count || 0);
+  const pending = Number(procurementValidation.pending_decisions_count ?? procurementValidation.to_arbitrate_count ?? Math.max(total - validated, 0));
   const blocked = Number(procurementValidation.blocked_decisions_count || 0);
   const gain = Number(kpis.economie_nette || kpis.gain_net_total || 0);
   const risk = Math.round(Number(kpis.risque_moyen || 0));
@@ -965,11 +991,8 @@ export default function ProcurementPage() {
   const [exportingWorkbook, setExportingWorkbook] = React.useState(false);
   const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilter, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
-  const { state } = useAppStore();
-  const workflow = React.useMemo(
-    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
-    [state]
-  );
+  const { state, setState } = useAppStore();
+  const { workflow } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const scenarioReady = workflow.scenario?.is_ready || workflow.steps.find((step) => step.id === "scenarios")?.state === "done";
   const procurementStatus = workflow.procurement?.status || workflow.steps.find((step) => step.id === "procurement")?.status;
@@ -1054,6 +1077,69 @@ export default function ProcurementPage() {
       setExportingWorkbook(false);
     }
   };
+
+  const handleDecisionCommitted = React.useCallback(({ validation, selectedCount, decision, label }) => {
+    const total = Number(validation?.total ?? rows.length ?? 0);
+    const validated = Number(validation?.validated ?? 0);
+    const pending = Math.max(total - validated, 0);
+    const completed = total > 0 && pending === 0;
+    const patch = {
+      procurement_decisions_count: total,
+      procurement_validated_decisions_count: validated,
+      procurement_pending_decisions_count: pending,
+      procurement_to_arbitrate_count: pending,
+      procurement_review_required_count: pending,
+      procurement_ready: completed,
+      procurement_review_required: !completed,
+      procurement_status: completed ? "READY" : "REVIEW_REQUIRED",
+      workflow_status: completed ? "PROCUREMENT_READY" : "PROCUREMENT_REVIEW_REQUIRED",
+      procurement_export_available: completed,
+      procurement_orders_count: 0,
+    };
+
+    setState((current) => {
+      const activeProjectDetails = current.activeProjectDetails
+        ? { ...current.activeProjectDetails, ...patch }
+        : current.activeProjectDetails;
+      const activeProjectId = String(current.activeProjectDetails?.id || "");
+      const activeWorkspaceKey = String(current.activeProject || "");
+
+      try {
+        const stored = window.localStorage.getItem("sp2i:projects");
+        const projects = stored ? JSON.parse(stored) : [];
+        if (Array.isArray(projects)) {
+          saveLocalProjects(projects.map((project) => {
+            const sameProject =
+              String(project.id || "") === activeProjectId ||
+              String(project.workspace_key || project.id || "") === activeWorkspaceKey;
+            return sameProject ? { ...project, ...patch } : project;
+          }));
+        }
+
+        const eventsKey = `sp2i:workflowEvents:${activeWorkspaceKey || activeProjectId || "default"}`;
+        const existingEvents = JSON.parse(window.localStorage.getItem(eventsKey) || "[]");
+        const eventBase = {
+          at: new Date().toISOString(),
+          source: "procurement_page",
+          selected_count: selectedCount,
+          decision,
+          label,
+          validated_decisions_count: validated,
+          decisions_count: total,
+        };
+        const events = [
+          { type: "PROCUREMENT_LINE_VALIDATED", ...eventBase },
+          ...(completed ? [{ type: "PROCUREMENT_ARBITRAGE_COMPLETED", ...eventBase }] : []),
+          ...(Array.isArray(existingEvents) ? existingEvents : []),
+        ];
+        window.localStorage.setItem(eventsKey, JSON.stringify(events.slice(0, 50)));
+      } catch {
+        // Local persistence is best-effort; React state remains authoritative for the current session.
+      }
+
+      return { ...current, activeProjectDetails };
+    });
+  }, [rows.length, setState]);
 
   const handleLotClick = (lot) => {
     applyFilters({ lot });
@@ -1179,6 +1265,7 @@ export default function ProcurementPage() {
             data={procurementLines}
             currency={activeCurrency}
             storageKey={`sp2i:procurementManualArbitrage:${state.activeProject || PROJECT_CONTEXT.code}:${workflow.scenario?.scenario_id || state.activeScenario || "default"}`}
+            onDecisionCommitted={handleDecisionCommitted}
             onSelect={(row) => {
               applyFilters({ famille: row.famille, lot: row.lot });
               applyDrilldown({ famille: row.famille, lot: row.lot }, {

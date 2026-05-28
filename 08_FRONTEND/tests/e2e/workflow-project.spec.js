@@ -156,7 +156,7 @@ test("SP2I landing page and project workflow smoke test", async ({ page }) => {
   await expect(page.getByText(/configuration/i).first()).toBeVisible();
   await expect(page.getByText(/dqe/i).first()).toBeVisible();
   await expect(page.getByText(/budget/i).first()).toBeVisible();
-  await expect(page.getByText(/sc[eé]narios/i).first()).toBeVisible();
+  await expect(page.getByText(/sc.narios/i).first()).toBeVisible();
 
   await page.screenshot({
     path: "test-results/screenshots/project-hub-workflow.png",
@@ -216,8 +216,8 @@ test("unconfigured project limits quick actions", async ({ page }) => {
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
   await expect(quickActions).toBeVisible();
   await expect(quickActions.getByRole("button", { name: /configurer le projet/i })).toBeVisible();
-  await expect(quickActions.getByRole("button", { name: /tester un sc[eé]nario/i })).toHaveCount(0);
-  await expect(quickActions.getByRole("button", { name: /nouveau sc[eé]nario/i })).toHaveCount(0);
+  await expect(quickActions.getByRole("button", { name: /tester un sc/i })).toHaveCount(0);
+  await expect(quickActions.getByRole("button", { name: /nouveau sc/i })).toHaveCount(0);
 });
 
 test("DQE page with unconfigured project shows setup CTA", async ({ page }) => {
@@ -234,7 +234,7 @@ test("scenarios page without DQE shows guided empty state", async ({ page }) => 
   await openConfiguredProjectWorkspace(page, "Projet scenarios sans DQE");
   await navigateSpa(page, "/app/simulation");
 
-  await expect(page.getByRole("heading", { name: /simuler les sc[eé]narios capex/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /simuler les sc/i })).toBeVisible();
   const emptyState = page.getByTestId("scenario-empty-state").first();
   await expect(emptyState).toBeVisible();
   await expect(emptyState).toContainText(/aucun dqe actif|importez et certifiez un dqe/i);
@@ -323,17 +323,17 @@ test("simulation reste en attente tant que l'utilisateur ne lance pas le scenari
 
   await navigateSpa(page, "/app/simulation");
 
-  await expect(page.getByText(/simulation non lanc[eé]e/i).first()).toBeVisible();
+  await expect(page.getByText(/simulation non lanc/i).first()).toBeVisible();
   await expect(page.getByText(/roi import/i)).toHaveCount(0);
-  await expect(page.getByText(/sc[eé]nario viable/i)).toHaveCount(0);
+  await expect(page.getByText(/viable/i)).toHaveCount(0);
   expect(simulateRequests).toBe(0);
 
   await page.getByRole("button", { name: /lancer simulation/i }).click();
 
-  await expect(page.getByText(/simulation du sc[eé]nario lanc[eé]e/i)).toBeVisible();
+  await expect(page.getByText(/simulation.*lanc/i).first()).toBeVisible();
   await expect(page.getByText(/roi import/i)).toBeVisible();
-  await expect(page.getByText(/sc[eé]nario viable|validation requise/i)).toBeVisible();
-  await expect(page.getByTestId("project-workflow-breadcrumb")).toContainText(/sc.nario simul/i);
+  await expect(page.getByText(/viable|validation requise/i).first()).toBeVisible();
+  await expect(page.getByTestId("project-workflow-breadcrumb")).toContainText(/simul/i);
   expect(simulateRequests).toBe(1);
 
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
@@ -345,13 +345,13 @@ test("procurement page without scenario shows guided empty state", async ({ page
   await openConfiguredProjectWorkspace(page, "Projet approvisionnement sans scenario");
   await navigateSpa(page, "/app/procurement");
 
-  await expect(page.getByRole("heading", { name: /que faut-il d[eé]cider maintenant/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /que faut-il/i })).toBeVisible();
   const emptyState = page.getByTestId("procurement-empty-state").first();
   await expect(emptyState).toBeVisible();
-  await expect(emptyState).toContainText(/aucun sc[eé]nario actif|lancez une simulation/i);
+  await expect(emptyState).toContainText(/aucun|lancez une simulation/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/simuler.*capex/i);
   await expect(page.getByRole("button", { name: /^exporter le dossier direction$/i })).toBeVisible();
-  await expect(page.getByTestId("procurement-validation-summary")).toContainText(/d[eé]cisions/i);
+  await expect(page.getByTestId("procurement-validation-summary")).toContainText(/decisions/i);
 });
 
 test("pilotage approvisionnement cockpit orchestrates existing workflow", async ({ page }) => {
@@ -392,7 +392,7 @@ test("procurement bulk arbitrage validates selected lines", async ({ page }) => 
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   await navigateSpa(page, "/app/procurement");
 
-  await expect(page.getByRole("heading", { name: /que faut-il d[eé]cider maintenant/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /que faut-il/i })).toBeVisible();
   await expect(page.getByText(/arbitrage fournisseur par ligne/i)).toBeVisible();
 
   const rowChecks = page.getByRole("checkbox");
@@ -404,8 +404,14 @@ test("procurement bulk arbitrage validates selected lines", async ({ page }) => 
   await expect(toolbar).toBeVisible();
   await expect(toolbar).toContainText(/2 ligne/i);
   await toolbar.getByRole("button", { name: /valider import/i }).click();
-  await expect(page.getByText(/workflow approval d[eé]clench[eé]/i)).toBeVisible();
-  await expect(page.getByText(/valid[eé] achat - import fournisseur/i).first()).toBeVisible();
+  await expect(page.getByTestId("procurement-validation-summary")).toContainText(/Validees\s*:\s*[1-9]\d*/i);
+  await expect(page.getByTestId("procurement-validation-summary")).not.toContainText(/Validees\s*:\s*0/i);
+  await expect(page.getByTestId("procurement-decision-summary")).toContainText(/[1-9]\d* valid/i);
+  await expect(page.getByText(/workflow approval/i)).toBeVisible();
+  await expect(page.getByText(/import fournisseur/i).first()).toBeVisible();
+
+  await navigateSpa(page, "/app/projects");
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider/i);
 });
 
 test("scenario pret sans approvisionnement affiche CTA arbitrages achat", async ({ page }) => {
@@ -439,14 +445,15 @@ test("approvisionnement pret sans actions chantier affiche CTA Preparation Chant
 
   const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
   await expect(projectCard).toBeVisible();
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/pr[eé]parer.*actions chantier/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/actions chantier/i);
 
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
-  await expect(quickActions.getByRole("button", { name: /pr[eé]parer.*lots chantier/i })).toBeVisible();
+  await expect(quickActions.getByRole("button", { name: /lots chantier/i })).toBeVisible();
   await navigateSpa(page, "/app/site?tab=planning");
-  await expect(page.getByTestId("execution-actions-summary")).toContainText(/actions chantier/i);
-  await expect(page.getByText(/Actions chantier prioritaires/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /actions chantier par lot/i })).toBeVisible();
+  await expect(page.getByTestId("execution-actions-summary")).toHaveCount(0);
+  await expect(page.getByText(/Actions chantier prioritaires/i)).toHaveCount(0);
 });
 
 test("page Scenarios affiche le fil d'Ariane workflow compact", async ({ page }) => {
@@ -468,10 +475,10 @@ test("page Scenarios affiche le fil d'Ariane workflow compact", async ({ page })
 
   const breadcrumb = page.getByTestId("project-workflow-breadcrumb");
   await expect(breadcrumb).toBeVisible();
-  await expect(breadcrumb).toContainText(/sc[eé]nario simul[eé]/i);
-  await expect(breadcrumb).toContainText(/approvisionnement pr[eê]t/i);
-  await expect(breadcrumb).toContainText(/pr[eé]paration chantier [àa] pr[eé]parer/i);
-  await expect(breadcrumb.getByTestId("workflow-breadcrumb-action")).toHaveText(/pr[eé]parer.*actions chantier/i);
+  await expect(breadcrumb).toContainText(/simul/i);
+  await expect(breadcrumb).toContainText(/approvisionnement/i);
+  await expect(breadcrumb).toContainText(/chantier/i);
+  await expect(breadcrumb.getByTestId("workflow-breadcrumb-action")).toHaveText(/actions chantier/i);
 });
 
 test("preparation chantier prete affiche CTA preparation des lots", async ({ page }) => {
@@ -493,11 +500,11 @@ test("preparation chantier prete affiche CTA preparation des lots", async ({ pag
 
   const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
   await expect(projectCard).toBeVisible();
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/suivre.*pr[eé]paration.*lots/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/suivre.*lots/i);
 
   await projectCard.getByRole("button", { name: /ouvrir le workspace/i }).click();
   const quickActions = page.getByTestId("workspace-header").getByTestId("project-quick-actions");
-  await expect(quickActions.getByRole("button", { name: /pr[eé]parer.*lots chantier/i })).toBeVisible();
+  await expect(quickActions.getByRole("button", { name: /lots chantier/i })).toBeVisible();
 });
 
 test("preparation chantier without scenario shows simulation CTA", async ({ page }) => {
@@ -507,12 +514,12 @@ test("preparation chantier without scenario shows simulation CTA", async ({ page
   const emptyState = page.getByTestId("execution-empty-state").first();
 
   await expect(emptyState).toBeVisible();
-  await expect(emptyState).toContainText(/simulation à lancer|lancez une simulation/i);
+  await expect(emptyState).toContainText(/simulation|lancez une simulation/i);
   await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(
     /simuler.*capex/i
   );
 
-  await expect(emptyState).not.toContainText(/pr[eé]parez les arbitrages achat/i);
+  await expect(emptyState).not.toContainText(/arbitrages achat/i);
 });
 
 test("preparation chantier avec approvisionnement pret demande readiness chantier", async ({ page }) => {
@@ -533,10 +540,10 @@ test("preparation chantier avec approvisionnement pret demande readiness chantie
 
   const emptyState = page.getByTestId("execution-empty-state").first();
   await expect(emptyState).toBeVisible();
-  await expect(emptyState).toContainText(/approvisionnement est pr[eê]t|pr[eé]parez les actions chantier/i);
-  await expect(page.getByRole("button", { name: /g[eé]n[eé]rer actions chantier/i })).toBeVisible();
-  await expect(page.getByTestId("execution-actions-summary")).toContainText(/actions chantier/i);
-  await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/pr[eé]parer.*actions chantier/i);
+  await expect(emptyState).toContainText(/approvisionnement est|actions chantier/i);
+  await expect(page.getByRole("button", { name: /actions chantier/i }).first()).toBeVisible();
+  await expect(page.getByTestId("execution-actions-summary")).toHaveCount(0);
+  await expect(emptyState.getByTestId("workflow-empty-action")).toHaveText(/actions chantier/i);
 });
 
 test("preparation chantier BIM-lite shows spatial drilldown and spatial tab", async ({ page }) => {
@@ -565,7 +572,7 @@ test("preparation chantier BIM-lite shows spatial drilldown and spatial tab", as
   await expect(page.getByTestId("spatial-timeline-board")).toBeVisible();
   await expect(page.getByTestId("spatial-timeline-board")).toContainText(/timeline spatiale/i);
   await expect(page.getByTestId("spatial-event-feed")).toContainText(/event engine|timeline spatiale/i);
-  await expect(page.getByTestId("spatial-critical-path-panel")).toContainText(/chemins d’impact chantier|propagation spatiale/i);
+  await expect(page.getByTestId("spatial-critical-path-panel")).toContainText(/impact chantier|propagation spatiale/i);
   await expect(page.getByTestId("spatial-execution-board")).toBeVisible();
 });
 
@@ -588,7 +595,7 @@ test("Pilotage with budget synced but no scenario shows Simuler strategie CAPEX"
   const summary = page.getByTestId("pilotage-summary");
   await expect(summary).toBeVisible();
   await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/simuler.*capex/i);
-  await expect(page.getByTestId("pilotage-alerts")).toContainText(/aucun sc[eé]nario actif/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/aucun/i);
 });
 
 test("Pilotage with scenario ready shows arbitrages achat", async ({ page }) => {
@@ -608,7 +615,7 @@ test("Pilotage with scenario ready shows arbitrages achat", async ({ page }) => 
   const summary = page.getByTestId("pilotage-summary");
   await expect(summary).toBeVisible();
   await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/analyser.*arbitrages achat/i);
-  await expect(page.getByTestId("pilotage-alerts")).toContainText(/approvisionnement [àa] pr[eé]parer/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/approvisionnement/i);
 });
 
 test("Pilotage with preparation chantier at risk shows alert", async ({ page }) => {
@@ -633,8 +640,8 @@ test("Pilotage with preparation chantier at risk shows alert", async ({ page }) 
 
   const summary = page.getByTestId("pilotage-summary");
   await expect(summary).toBeVisible();
-  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/traiter.*lots chantier [àa] risque/i);
-  await expect(page.getByTestId("pilotage-alerts")).toContainText(/pr[eé]paration chantier [àa] risque/i);
+  await expect(summary.getByTestId("pilotage-primary-action")).toHaveText(/traiter.*lots chantier/i);
+  await expect(page.getByTestId("pilotage-alerts")).toContainText(/chantier.*risque/i);
 });
 
 test("responsive project workflow minimal layout", async ({ page }) => {

@@ -10,9 +10,10 @@ import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilt
 import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
 import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
+import { useWorkflow } from "../../hooks/useWorkflow";
 import { useAppStore } from "../../store/appStore.jsx";
 import ProjectQuickActions from "../../components/ProjectQuickActions";
-import { demoProjects, getProjectPrimaryAction, getProjectWorkflow, getProjectWorkspaceKey, listProjectWorkflowEvents, exportProjectReportPdf } from "../../services/projectService";
+import { demoProjects, getProjectPrimaryAction, getProjectWorkspaceKey, listProjectWorkflowEvents, exportProjectReportPdf } from "../../services/projectService";
 import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import AnalyticsCard from "../../ui/AnalyticsCard";
@@ -338,11 +339,8 @@ export default function AnalyticsPage() {
   const project = getWorkspaceProject(state);
   const [isExportingReport, setIsExportingReport] = React.useState(false);
   const [exportReportError, setExportReportError] = React.useState("");
-  const workflow = React.useMemo(
-    () => getProjectWorkflow(project, state),
-    [project, state]
-  );
-  const primaryAction = getProjectPrimaryAction(project, state);
+  const { workflow } = useWorkflow(project?.id || getProjectWorkspaceKey(project), project);
+  const primaryAction = getProjectPrimaryAction({ ...project, backendWorkflow: workflow }, state);
   const engine = useAnalyticsEngine(dashboard);
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};

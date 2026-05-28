@@ -10,11 +10,8 @@ import {
   getAnalyticsTimeline,
 } from "../../../services/analyticsService";
 import { buildAnalyticsQueryKey } from "../../../services/analyticsQueryBuilder";
-import {
-  getProjectWorkflow,
-  listProjectExecutionActions,
-  listProjectProcurementDecisions,
-} from "../../../services/projectService";
+import { listProjectExecutionActions, listProjectProcurementDecisions } from "../../../services/projectService";
+import { useWorkflow } from "../../../hooks/useWorkflow";
 import { buildApprovisionnementDashboard } from "../services/approvisionnementAdapter";
 
 async function settle(value) {
@@ -29,7 +26,7 @@ export function useApprovisionnementDashboard() {
   const { state } = useAppStore();
   const crossFiltering = useCrossFiltering();
   const project = state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject };
-  const workflow = getProjectWorkflow(project, state);
+  const { workflow } = useWorkflow(project?.id || state.activeProject, project);
   const projectId = project?.id || state.activeProject;
   const scenarioId = workflow.scenario?.scenario_id || state.activeScenario;
 

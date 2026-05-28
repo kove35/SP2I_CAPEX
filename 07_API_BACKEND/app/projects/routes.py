@@ -59,6 +59,7 @@ from app.services.workflow_events import list_workflow_events, log_workflow_even
 from app.services.service_pipeline import ServicePipeline
 from app.governance.dqe_issue_builder import build_dqe_issue, summarize_dqe_issues
 from app.workflow.project_workflow_state import build_project_workflow_state
+from app.workflow.workflow_state_engine import WorkflowStateEngine
 
 
 router = APIRouter()
@@ -1039,7 +1040,7 @@ def get_project_workflow_state(
     db: Session = Depends(get_db),
 ) -> ProjectWorkflowStateResponse:
     project = _get_owned_project(db, current_user, project_id)
-    return ProjectWorkflowStateResponse(**build_project_workflow_state(db, project.id, setup_status=project.setup_status))
+    return ProjectWorkflowStateResponse(**WorkflowStateEngine(db).recompute_project_workflow(project.id, setup_status=project.setup_status))
 
 
 @router.get("/{project_id}/spatial/summary", response_model=SpatialSummaryResponse)
@@ -1138,18 +1139,53 @@ def patch_project_procurement_decision(
     row = update_procurement_decision(db, project_id, decision_id, payload.model_dump(exclude_unset=True))
     if not row:
         raise HTTPException(status_code=404, detail="Decision achat introuvable.")
+    scenario = _resolve_project_scenario_status(project_id, db)
+    scenario_ready = bool(scenario.get("status") in {"READY", "SIMULATED", "VALIDATED"} and scenario.get("is_ready"))
+    recomputed = WorkflowStateEngine(db).recompute_after_procurement_validation(
+        project_id,
+        scenario_id=row.get("scenario_id") or scenario.get("scenario_id"),
+        setup_status=getattr(row, "setup_status", None),
+        scenario_ready=scenario_ready,
+    )
+    procurement_status = recomputed.get("procurement") or {}
+    validated_decisions_count = int(procurement_status.get("validated_decisions_count") or 0)
+    decisions_count = int(procurement_status.get("decisions_count") or 0)
+    remaining_count = sum(
+        int(procurement_status.get(key) or 0)
+        for key in ("pending_decisions_count", "to_arbitrate_count", "review_required_count", "blocked_decisions_count")
+    )
+    validation_status = str(row.get("validation_status") or "").upper()
+    event_type = "PROCUREMENT_LINE_VALIDATED" if validation_status in {"VALIDATED", "VALIDE"} else "PROCUREMENT_DECISION_UPDATED"
     log_workflow_event(
         db,
         project_id=project_id,
         user_id=current_user.id,
-        event_type="PROCUREMENT_DECISION_UPDATED",
+        event_type=event_type,
         entity_type="procurement_decision",
         entity_id=decision_id,
         previous_status=(previous_row or {}).get("validation_status", ""),
         new_status=row.get("validation_status", ""),
         message="Decision achat mise a jour.",
-        metadata={"validated_decision": row.get("validated_decision"), "supplier_selected": row.get("supplier_selected")},
+        metadata={
+            "validated_decision": row.get("validated_decision"),
+            "supplier_selected": row.get("supplier_selected"),
+            "procurement": procurement_status,
+            "workflow": recomputed.get("workflow") or {},
+        },
     )
+    if decisions_count > 0 and validated_decisions_count >= decisions_count and remaining_count == 0:
+        log_workflow_event(
+            db,
+            project_id=project_id,
+            user_id=current_user.id,
+            event_type="PROCUREMENT_ARBITRAGE_COMPLETED",
+            entity_type="project",
+            entity_id=project_id,
+            previous_status="ARBITRAGE_IN_PROGRESS",
+            new_status="ARBITRAGE_COMPLETED",
+            message="Toutes les decisions achat sont validees.",
+            metadata={"procurement": procurement_status, "workflow": recomputed.get("workflow") or {}},
+        )
     return ProcurementDecisionOut(**row)
 
 
