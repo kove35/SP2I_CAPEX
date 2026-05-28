@@ -5,8 +5,8 @@ import KpiCard from "../../ui/KpiCard";
 import { analyzeExcel, syncExcel, validateAiMapping } from "../../services/excelUploadService";
 import { getAnalyticsDataQuality } from "../../services/analyticsService";
 import { useAppStore } from "../../store/appStore.jsx";
+import { useWorkflow } from "../../hooks/useWorkflow";
 import { PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getProjectWorkflow } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
 const SUPPORTED_UPLOAD_EXTENSIONS = [".xlsx", ".xlsm", ".xls", ".csv"];
@@ -98,7 +98,7 @@ function resolveDqeLineCount(payload, fallbackAnalysis = {}) {
 export default function DqePage() {
   const { state } = useAppStore();
   const projectId = state.activeProject || PROJECT_CONTEXT.code;
-  const workflow = getProjectWorkflow(state.activeProjectDetails || { id: projectId, workspace_key: projectId }, state);
+  const { workflow } = useWorkflow(projectId, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const dqeStep = workflow.steps.find((step) => step.id === "dqe");
   const budgetStep = workflow.steps.find((step) => step.id === "budget");

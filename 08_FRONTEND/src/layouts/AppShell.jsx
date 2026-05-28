@@ -8,16 +8,13 @@ import AlertCenter from "../ui/AlertCenter";
 import ProjectSelector from "../ui/ProjectSelector";
 import ProjectQuickActions from "../components/ProjectQuickActions";
 import ProjectWorkflowBreadcrumb, { moduleFromPath } from "../modules/projects/ProjectWorkflowBreadcrumb";
-import { getBackendProjectWorkflow, getProjectWorkflow } from "../services/projectService";
+import { useWorkflow } from "../hooks/useWorkflow";
 
 export default function AppShell({ activePath, onNavigate, children }) {
-  const { state, setState } = useAppStore();
+  const { state } = useAppStore();
   const { isCollapsed, toggleMobile, setProjectContext } = useSidebarStore();
   const scenario = getScenarioContext(state.activeScenario);
-  const workflow = React.useMemo(
-    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
-    [state]
-  );
+  const { workflow } = useWorkflow(state.activeProjectDetails?.id || state.activeProject);
   const showWorkspaceWorkflow = !["/app", "/app/"].includes(String(activePath || "")) && !String(activePath || "").startsWith("/app/projects");
 
   React.useEffect(() => {
@@ -26,32 +23,6 @@ export default function AppShell({ activePath, onNavigate, children }) {
       scenario: state.activeScenario,
     });
   }, [setProjectContext, state.activeProject, state.activeScenario]);
-
-  React.useEffect(() => {
-    const project = state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject };
-    const projectId = project?.id;
-    if (!projectId || project.backendWorkflow || project.backend_workflow) return;
-
-    let mounted = true;
-    getBackendProjectWorkflow(projectId).then((backendWorkflow) => {
-      if (!mounted || !backendWorkflow) return;
-      setState((current) => {
-        if (!current.activeProjectDetails || String(current.activeProjectDetails.id) !== String(projectId)) {
-          return current;
-        }
-        return {
-          ...current,
-          activeProjectDetails: {
-            ...current.activeProjectDetails,
-            backendWorkflow,
-          },
-        };
-      });
-    });
-    return () => {
-      mounted = false;
-    };
-  }, [state.activeProject, state.activeProjectDetails, setState]);
 
   return (
     <div className={`saas-shell ${isCollapsed ? "is-collapsed" : ""}`}>

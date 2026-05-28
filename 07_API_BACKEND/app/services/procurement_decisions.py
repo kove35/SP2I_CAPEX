@@ -100,10 +100,12 @@ def summarize_procurement_decision_counts(counts: dict[str, int], scenario_ready
     review = int(counts.get("review_required_count") or 0)
     to_arbitrate = int(counts.get("to_arbitrate_count") or 0)
 
+    completed = validated >= total and pending == 0 and review == 0 and to_arbitrate == 0 and critical_pending == 0
+
     if blocked > 0:
         status = "REVIEW_REQUIRED"
         message = "Des decisions achat sont bloquees ou doivent etre arbitrees."
-    elif validated > 0 and critical_pending == 0:
+    elif completed:
         status = "READY"
         message = "Approvisionnement pret pour preparation chantier."
     elif review > 0 or to_arbitrate > 0 or pending > 0:

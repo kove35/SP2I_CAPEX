@@ -8236,6 +8236,108 @@ button.procurement-kpi-card:hover {
   background: rgba(2, 6, 23, .26);
 }
 
+.site-prep-page {
+  gap: 14px;
+}
+
+.site-prep-assistant {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr);
+  gap: 14px;
+  align-items: stretch;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  padding: 22px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, .88), rgba(2, 6, 23, .38));
+}
+
+.site-prep-assistant h1 {
+  max-width: 760px;
+  margin: 0;
+  color: #f8fafc;
+  font-size: 34px;
+  line-height: 1.08;
+}
+
+.site-prep-assistant p {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: #b9cadc;
+  line-height: 1.55;
+}
+
+.site-prep-stage-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.site-prep-stage-metrics article,
+.site-prep-context,
+.site-prep-generate-step {
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, .82), rgba(2, 6, 23, .32));
+}
+
+.site-prep-stage-metrics article {
+  min-height: 104px;
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  padding: 14px;
+}
+
+.site-prep-stage-metrics span,
+.site-prep-context span {
+  color: #8da2b8;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.site-prep-stage-metrics strong,
+.site-prep-context strong {
+  color: #f8fafc;
+  font-size: 20px;
+}
+
+.site-prep-stage-metrics small,
+.site-prep-context small {
+  color: #9fb4d1;
+  line-height: 1.45;
+}
+
+.site-prep-context {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.site-prep-context div {
+  display: grid;
+  gap: 5px;
+}
+
+.site-prep-context.blocked {
+  border-color: rgba(251, 191, 36, .24);
+}
+
+.site-prep-context.ready {
+  border-color: rgba(52, 211, 153, .20);
+}
+
+.site-prep-generate-step {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.site-prep-generate-step > button {
+  width: fit-content;
+}
+
 .execution-context-strip.ready {
   border-color: rgba(103, 232, 201, .24);
 }
@@ -8756,9 +8858,16 @@ button.procurement-kpi-card:hover {
     grid-template-columns: 1fr;
   }
 
+  .site-prep-assistant,
+  .site-prep-context,
+  .site-prep-stage-metrics,
   .execution-context-strip,
   .execution-operational-grid {
     grid-template-columns: 1fr;
+  }
+
+  .site-prep-assistant h1 {
+    font-size: 28px;
   }
 
   .spatial-filter-grid,

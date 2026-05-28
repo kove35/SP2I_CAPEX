@@ -2,8 +2,9 @@ import React from "react";
 import { HardHat, Settings } from "lucide-react";
 import { sidebarQuickActions } from "../navigation/sidebarConfig";
 import { useAppStore } from "../store/appStore.jsx";
+import { useWorkflow } from "../hooks/useWorkflow";
 import { PROJECT_CONTEXT } from "../utils/businessContext";
-import { getProjectWorkflow, isBudgetSynced } from "../services/projectService";
+import { isBudgetSynced } from "../services/projectService";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
@@ -23,7 +24,7 @@ function hasActiveDqeVersion(projectId) {
 export default function ProjectQuickActions({ onNavigate, disabled = false }) {
   const { state } = useAppStore();
   const hasProject = Boolean(state.activeProject);
-  const workflow = getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state);
+  const { workflow } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
   const needsSetup = workflow.steps?.[0]?.state !== "done";
   const budgetSynced = isBudgetSynced(workflow);
   const scenarioReady = workflow.steps?.find((step) => step.id === "scenarios")?.state === "done";

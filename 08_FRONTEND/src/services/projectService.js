@@ -240,7 +240,7 @@ function getUnifiedWorkflowState({
 }
 
 function buildNextAction(workflowContext) {
-  const { activeStep, procurementReviewRequired, executionStatusOverride } = workflowContext;
+  const { activeStep, procurementReviewRequired, executionStatusOverride, ordersGeneratedCount } = workflowContext;
   if (activeStep?.id === "configuration") return { label: "Configurer le projet", route: "/app/projects", mode: "setup" };
   if (activeStep?.id === "dqe") return { label: "Importer le DQE budget", route: "/app/dqe?tab=import" };
   if (activeStep?.id === "budget") return { label: "Synchroniser le budget CAPEX", route: "/app/dqe?tab=sync" };
@@ -251,6 +251,7 @@ function buildNextAction(workflowContext) {
       : { label: "Analyser les arbitrages achat", route: "/app/procurement" };
   }
   if (activeStep?.id === "execution") {
+    if (!ordersGeneratedCount) return { label: "Generer les commandes fournisseurs", route: "/app/procurement" };
     if (executionStatusOverride === "ACTIVE") return { label: "Piloter la préparation chantier", route: "/app/site?tab=planning" };
     if (executionStatusOverride === "AT_RISK") return { label: "Traiter les lots chantier a risque", route: "/app/site?tab=planning" };
     return { label: "Preparer actions chantier par lot", route: "/app/site?tab=planning" };
@@ -269,9 +270,32 @@ export function getProjectWorkflow(project = {}, appState = {}) {
   const dqeReady = activeDqe && DQE_READY_STATUSES.includes(activeDqe.status);
   const budgetSynced = Boolean(project.budget || activeDqe?.synced_at || activeDqe?.status === "SYNCED");
   const scenarioReady = Boolean(scopedSimulation || project.scenario_ready || project.workflow_status === "SCENARIO_READY" || project.workflow_status === "ACTIVE");
-  const procurementReady = Boolean(project.procurement_ready || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
-  const procurementReviewRequired = Boolean(project.procurement_review_required || project.workflow_status === "PROCUREMENT_REVIEW_REQUIRED");
-  const procurementRequired = Boolean(scenarioReady && !procurementReady && !procurementReviewRequired);
+  const procurementDecisionCount = toCount(project.procurement_decisions_count) || toCount(scopedSimulation?.lignes?.length);
+  const procurementValidatedCount = toCount(project.procurement_validated_decisions_count);
+  const procurementPendingCount = project.procurement_pending_decisions_count == null
+    ? Math.max(procurementDecisionCount - procurementValidatedCount, 0)
+    : toCount(project.procurement_pending_decisions_count);
+  const procurementToArbitrateCount = project.procurement_to_arbitrate_count == null
+    ? procurementPendingCount
+    : toCount(project.procurement_to_arbitrate_count);
+  const procurementReviewCount = project.procurement_review_required_count == null
+    ? procurementToArbitrateCount
+    : toCount(project.procurement_review_required_count);
+  const procurementOrdersCount = project.procurement_orders_count == null
+    ? (project.procurement_ready ? Math.max(1, Math.ceil(Math.max(procurementValidatedCount || procurementDecisionCount, 1) / 25)) : 0)
+    : toCount(project.procurement_orders_count);
+  const procurementValidationCompleted = procurementDecisionCount > 0
+    && procurementValidatedCount >= procurementDecisionCount
+    && procurementPendingCount === 0
+    && procurementToArbitrateCount === 0
+    && procurementReviewCount === 0;
+  const procurementReady = Boolean(project.procurement_ready || procurementValidationCompleted || project.workflow_status === "PROCUREMENT_READY" || project.workflow_status === "EXECUTION_READY" || project.workflow_status === "ACTIVE");
+  const procurementReviewRequired = Boolean(
+    project.procurement_review_required ||
+    project.workflow_status === "PROCUREMENT_REVIEW_REQUIRED" ||
+    (scenarioReady && procurementDecisionCount > 0 && !procurementValidationCompleted && !procurementReady)
+  );
+  const procurementRequired = Boolean(scenarioReady && procurementDecisionCount <= 0 && !procurementReady && !procurementReviewRequired);
   const executionStatusOverride = project.execution_status;
   const executionReady = Boolean(project.execution_ready || project.workflow_status === "EXECUTION_READY" || ["READY", "ACTIVE", "AT_RISK"].includes(executionStatusOverride));
   const executionRequired = Boolean(procurementReady && !executionReady);
@@ -386,13 +410,18 @@ export function getProjectWorkflow(project = {}, appState = {}) {
   });
   const workflowMetrics = {
     progress_percent: Math.round((timeline.filter((item) => item.state === "done").length / timeline.length) * 100),
-    validated_lines_count: toCount(project.procurement_validated_decisions_count) || (procurementReady ? toCount(project.procurement_decisions_count) : 0),
-    procurement_lines_count: toCount(project.procurement_decisions_count),
-    orders_generated_count: toCount(project.procurement_orders_count) || (procurementReady ? Math.max(1, Math.ceil(Math.max(toCount(project.procurement_validated_decisions_count) || toCount(project.procurement_decisions_count), 1) / 25)) : 0),
+    validated_lines_count: procurementValidatedCount || (procurementReady ? procurementDecisionCount : 0),
+    procurement_lines_count: procurementDecisionCount,
+    orders_generated_count: procurementOrdersCount,
     average_eta_days: toCount(project.average_eta_days) || (toCount(project.execution_deliveries_to_watch_count) ? 24 : 0),
     active_containers_count: toCount(project.active_containers_count) || toCount(project.execution_deliveries_to_watch_count),
   };
-  const nextAction = buildNextAction({ activeStep, procurementReviewRequired, executionStatusOverride });
+  const nextAction = buildNextAction({
+    activeStep,
+    procurementReviewRequired,
+    executionStatusOverride,
+    ordersGeneratedCount: procurementOrdersCount,
+  });
 
   return {
     status,
@@ -424,14 +453,14 @@ export function getProjectWorkflow(project = {}, appState = {}) {
     procurement: {
       status: procurementReady ? "READY" : procurementReviewRequired ? "REVIEW_REQUIRED" : procurementRequired ? "REQUIRED" : "BLOCKED",
       is_ready: procurementReady,
-      decisions_count: Number(project.procurement_decisions_count || scopedSimulation?.lignes?.length || 0),
+      decisions_count: procurementDecisionCount,
       import_lines_count: Number(project.procurement_import_lines_count || 0),
       local_lines_count: Number(project.procurement_local_lines_count || 0),
       hybrid_lines_count: Number(project.procurement_hybrid_lines_count || 0),
-      validated_decisions_count: procurementReady ? Number(project.procurement_validated_decisions_count || project.procurement_decisions_count || 0) : 0,
-      pending_decisions_count: Number(project.procurement_pending_decisions_count || 0),
-      to_arbitrate_count: Number(project.procurement_to_arbitrate_count || 0),
-      review_required_count: Number(project.procurement_review_required_count || 0),
+      validated_decisions_count: procurementValidatedCount || (procurementReady ? procurementDecisionCount : 0),
+      pending_decisions_count: procurementPendingCount,
+      to_arbitrate_count: procurementToArbitrateCount,
+      review_required_count: procurementReviewCount,
       blocked_decisions_count: Number(project.procurement_blocked_decisions_count || 0),
       export_available: Boolean(project.procurement_export_available || procurementReady),
       source: "local_demo",
@@ -484,6 +513,7 @@ export function getProjectPrimaryAction(project = {}, appState = {}) {
   if (nextStep.id === "scenarios") return { label: "Simuler la stratégie CAPEX", route: "/app/simulation" };
   if (nextStep.id === "procurement" && workflow.procurement?.status === "REVIEW_REQUIRED") return { label: "Valider les décisions import critiques", route: "/app/procurement" };
   if (nextStep.id === "procurement") return { label: "Analyser les arbitrages achat", route: "/app/procurement" };
+  if (nextStep.id === "execution" && workflow.procurement?.is_ready && !toCount(workflow.metrics?.orders_generated_count)) return { label: "Generer les commandes fournisseurs", route: "/app/procurement" };
   if (nextStep.id === "execution" && workflow.execution?.status === "REQUIRED") return { label: "Préparer les actions chantier par lot", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution" && workflow.execution?.status === "ACTIVE") return { label: "Piloter la préparation chantier", route: "/app/site?tab=planning" };
   if (nextStep.id === "execution" && workflow.execution?.status === "AT_RISK") return { label: "Traiter les lots chantier à risque", route: "/app/site?tab=planning" };
@@ -664,7 +694,23 @@ export async function getBackendProjectWorkflowState(projectId) {
     return null;
   }
   try {
-    return await request({ url: `/projects/${projectId}/workflow-state`, headers: authHeaders() });
+    return await request({ url: `/workflow/${projectId}`, headers: authHeaders() });
+  } catch {
+    try {
+      return await request({ url: `/projects/${projectId}/workflow-state`, headers: authHeaders() });
+    } catch {
+      return null;
+    }
+  }
+}
+
+export async function refreshBackendProjectWorkflow(projectId) {
+  const session = getStoredSession();
+  if (!session || session.token_type === "demo" || String(projectId || "").startsWith("local-") || Number.isNaN(Number(projectId))) {
+    return null;
+  }
+  try {
+    return await request({ url: `/workflow/${projectId}/refresh`, method: "POST", headers: authHeaders() });
   } catch {
     return null;
   }

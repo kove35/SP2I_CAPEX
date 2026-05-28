@@ -8,10 +8,11 @@ import SimulationToolbar from "../../components/simulation/SimulationToolbar";
 import SimulationTable from "../../components/simulation/SimulationTable";
 import ScenarioComparison from "../../components/procurement/ScenarioComparison";
 import { useAppStore } from "../../store/appStore.jsx";
+import { useWorkflow } from "../../hooks/useWorkflow";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getProjectWorkflow, getBudgetStatus, isBudgetSynced, patchLocalProject } from "../../services/projectService";
+import { getBudgetStatus, isBudgetSynced } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 
@@ -304,10 +305,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const [notice, setNotice] = React.useState("");
   const { state, setState } = useAppStore();
   const dqeSummary = React.useMemo(() => getDqeSummary(state.activeProject || PROJECT_CONTEXT.code), [state.activeProject]);
-  const workflow = React.useMemo(
-    () => getProjectWorkflow(state.activeProjectDetails || { id: state.activeProject, workspace_key: state.activeProject }, state),
-    [state]
-  );
+  const projectId = state.activeProjectDetails?.id || state.activeProject;
+  const { workflow } = useWorkflow(projectId, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const budgetStatus = getBudgetStatus(workflow);
   const budgetDone = budgetStatus === "SYNCED" || isBudgetSynced(workflow);
@@ -356,8 +355,9 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
           simulation_line_count: lineCount,
           backendWorkflow: null,
           backend_workflow: null,
+          backendWorkflowState: null,
+          backend_workflow_state: null,
         };
-        patchLocalProject(projectKey, patch);
         return {
           ...current,
           activeScenario: scenarioName,

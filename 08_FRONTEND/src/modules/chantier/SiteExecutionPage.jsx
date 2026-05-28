@@ -5,9 +5,9 @@ import { useAppStore } from "../../store/appStore.jsx";
 import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
 import {
   generateProjectExecutionActions,
-  getProjectWorkflow,
   listProjectExecutionActions,
 } from "../../services/projectService";
+import { useWorkflow } from "../../hooks/useWorkflow";
 import ActionsWorkflowBoard from "./ActionsWorkflowBoard";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import SmartWorkflowActions from "../projects/SmartWorkflowActions";
@@ -310,6 +310,53 @@ function DataTable({ columns, rows, empty }) {
   );
 }
 
+function PreparationAssistantHeader({ stage, title, message, metrics }) {
+  return (
+    <section className={`site-prep-assistant ${stage}`}>
+      <div>
+        <p className="eyebrow">Préparation Chantier</p>
+        <h1>{title}</h1>
+        <p>{message}</p>
+      </div>
+      <div className="site-prep-stage-metrics">
+        {metrics.map((metric) => (
+          <article key={metric.label}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+            <small>{metric.help}</small>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PreparationContextStrip({ context, activeScope }) {
+  return (
+    <section className={`site-prep-context ${context.hasActiveDqe ? "ready" : "blocked"}`}>
+      <div>
+        <span>Source</span>
+        <strong>{context.dqeLabel}</strong>
+        <small>
+          {context.hasActiveDqe
+            ? `${context.dqeStatus} - ${context.lines ?? "-"} lignes`
+            : "DQE a valider"}
+        </small>
+      </div>
+      <div>
+        <span>Scenario</span>
+        <strong>{context.scenarioLabel}</strong>
+        <small>{context.scenarioStatusLabel} - {context.planningImpactLabel}</small>
+      </div>
+      <div>
+        <span>Etape active</span>
+        <strong>{activeScope}</strong>
+        <small>{context.globalRisk}</small>
+      </div>
+    </section>
+  );
+}
+
 function mapExecutionAction(action) {
   const priorityLabels = {
     LOW: "Basse",
@@ -349,17 +396,7 @@ export default function SiteExecutionPage() {
   const [remoteActionsRaw, setRemoteActionsRaw] = React.useState([]);
   const { state } = useAppStore();
 
-  const workflow = React.useMemo(
-    () =>
-      getProjectWorkflow(
-        state.activeProjectDetails || {
-          id: state.activeProject,
-          workspace_key: state.activeProject,
-        },
-        state
-      ),
-    [state]
-  );
+  const { workflow } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
 
   const setupDone =
     workflow.steps.find((step) => step.id === "configuration")?.state === "done";
@@ -508,6 +545,141 @@ export default function SiteExecutionPage() {
   };
 
   const activeTab = tabContent[tab] || tabContent.planning;
+  const generatedActionsCount =
+    Number(executionSummary.actions_count || 0) || remoteActionsRaw.length || remoteActions.length;
+  const hasGeneratedActions = generatedActionsCount > 0;
+  const preparationStage =
+    !setupDone
+      ? "configuration"
+      : !context.scenarioIsExecutable
+      ? "simulation"
+      : !procurementReady
+      ? "procurement"
+      : !executionReady && executionStatus === "REQUIRED" && !hasGeneratedActions
+      ? "prepare"
+      : "active";
+  const activeScope =
+    preparationStage === "configuration"
+      ? "Configuration projet"
+      : preparationStage === "simulation"
+      ? "Simulation CAPEX"
+      : preparationStage === "procurement"
+      ? "Arbitrages achat"
+      : preparationStage === "prepare"
+      ? "Actions chantier"
+      : "Coordination des lots";
+  const stageCopy = {
+    configuration: {
+      title: "Configurer le projet avant de préparer le chantier",
+      message: "La préparation chantier dépend du DQE, du scénario CAPEX et des arbitrages achat. A ce stade, aucun KPI chantier n'est utile.",
+      metrics: [
+        { label: "Maintenant", value: "Configurer", help: "Créer le socle projet" },
+        { label: "Donnée chantier", value: "Non prête", help: "Masquée tant que le projet n'est pas prêt" },
+      ],
+    },
+    simulation: {
+      title: "Lancer la simulation avant toute préparation chantier",
+      message: "Les ETA, dépendances et alertes restent masqués tant que l'impact planning du scénario n'a pas été calculé.",
+      metrics: [
+        { label: "Maintenant", value: "Simuler", help: "Calculer l'impact CAPEX et planning" },
+        { label: "Scenario", value: context.scenarioStatusLabel, help: context.planningImpactLabel },
+      ],
+    },
+    procurement: {
+      title: "Valider les arbitrages achat avant de préparer les lots",
+      message: "La page chantier attend les décisions procurement. Les tableaux logistiques ne s'affichent pas tant que les achats ne sont pas prêts.",
+      metrics: [
+        { label: "Maintenant", value: "Arbitrer", help: "Local, import, hybride ou escalade" },
+        { label: "Approvisionnement", value: "En attente", help: "Préparation chantier bloquée" },
+      ],
+    },
+    prepare: {
+      title: "Générer les actions chantier par lot",
+      message: "L'approvisionnement est prêt. La prochaine étape utile est de créer les actions opérationnelles et d'affecter les responsables.",
+      metrics: [
+        { label: "Maintenant", value: "Générer", help: "Actions chantier par lot" },
+        { label: "ETA", value: "A confirmer", help: "Après génération des actions" },
+      ],
+    },
+    active: {
+      title: "Piloter uniquement les lots à préparer maintenant",
+      message: "Les actions, ETA et dépendances sont disponibles. La page affiche les éléments utiles à la coordination opérationnelle actuelle.",
+      metrics: [
+        { label: "Actions", value: generatedActionsCount || displayedActions.length, help: "Lots à coordonner" },
+        { label: "ETA", value: Number(executionSummary.eta_to_watch_count || 0) || watchedEta, help: "A surveiller" },
+        { label: "Lots critiques", value: blockedLots, help: "Priorité chantier" },
+      ],
+    },
+  };
+  const currentStage = stageCopy[preparationStage];
+
+  if (preparationStage !== "active") {
+    return (
+      <main className="cockpit-page cockpit-page-fit site-prep-page">
+        <PreparationAssistantHeader
+          stage={preparationStage}
+          title={currentStage.title}
+          message={currentStage.message}
+          metrics={currentStage.metrics}
+        />
+
+        <PreparationContextStrip context={context} activeScope={activeScope} />
+
+        {preparationStage === "configuration" ? (
+          <WorkflowGuardEmptyState
+            title="Configuration projet requise"
+            message="Ce projet doit être configuré avant de poursuivre le workflow CAPEX."
+            actionLabel="Configurer le projet"
+            actionRoute="/app/projects"
+            severity="blocking"
+            currentStep={workflow.label}
+            requiredStep="Configuration projet"
+            testId="execution-empty-state"
+          />
+        ) : preparationStage === "simulation" ? (
+          <WorkflowGuardEmptyState
+            title="Simulation à lancer"
+            message="Lancez une simulation pour calculer l'impact planning avant de préparer le chantier."
+            actionLabel="Simuler la stratégie CAPEX"
+            actionRoute="/app/simulation"
+            currentStep={context.scenarioStatusLabel}
+            requiredStep="Scénario exploitable"
+            testId="execution-empty-state"
+          />
+        ) : preparationStage === "procurement" ? (
+          <WorkflowGuardEmptyState
+            title="Approvisionnement à préparer"
+            message="Préparez les arbitrages achat avant de lancer la préparation chantier."
+            actionLabel="Analyser les arbitrages achat"
+            actionRoute="/app/procurement"
+            currentStep={workflow.steps.find((step) => step.id === "procurement")?.status}
+            requiredStep="Approvisionnement"
+            testId="execution-empty-state"
+          />
+        ) : (
+          <section className="site-prep-generate-step">
+            <WorkflowGuardEmptyState
+              title="Préparation chantier par lot"
+              message="L'approvisionnement est prêt. Générez les actions par lot, affectez les responsables et confirmez les ETA avant le suivi opérationnel."
+              actionLabel="Préparer les actions chantier par lot"
+              actionRoute="/app/site?tab=planning"
+              currentStep={workflow.steps.find((step) => step.id === "execution")?.status}
+              requiredStep="Actions chantier"
+              testId="execution-empty-state"
+            />
+
+            <button
+              type="button"
+              className="primary-action secondary-action"
+              onClick={handleGenerateExecutionActions}
+            >
+              Générer actions chantier par lot
+            </button>
+          </section>
+        )}
+      </main>
+    );
+  }
 
   return (
     <main className="cockpit-page cockpit-page-fit">
