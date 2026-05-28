@@ -1,3 +1,5 @@
+import { demoProjects } from "../services/projectService";
+
 export const PROJECT_CONTEXT = {
   code: "Pointe-Noire CAPEX",
   label: "Centre medical Pointe-Noire",
@@ -51,10 +53,33 @@ export const SCENARIO_OPTIONS = [
 
 const TECHNICAL_SCENARIO_PATTERNS = [/FRONT_/i, /_TEST/i, /\bTEST\b/i, /\bDEV\b/i, /SAAS_/i];
 
-export function getProjectContext(projectCode) {
+export function getProjectContext(projectCodeOrDetails) {
+  if (projectCodeOrDetails && typeof projectCodeOrDetails === "object") {
+    const details = projectCodeOrDetails;
+    return {
+      ...PROJECT_CONTEXT,
+      ...details,
+      code: details.workspace_key || details.code || details.id || PROJECT_CONTEXT.code,
+      label: details.name || details.label || PROJECT_CONTEXT.label,
+      location: [details.city, details.country].filter(Boolean).join(", ") || PROJECT_CONTEXT.location,
+      type: details.type || PROJECT_CONTEXT.type,
+      status: details.status || PROJECT_CONTEXT.status,
+    };
+  }
+
+  const fallbackProject = demoProjects.find((project) =>
+    [project.workspace_key, project.id, project.name].includes(String(projectCodeOrDetails || ""))
+  );
+
   return {
     ...PROJECT_CONTEXT,
-    code: projectCode || PROJECT_CONTEXT.code,
+    code: projectCodeOrDetails || PROJECT_CONTEXT.code,
+    label: fallbackProject?.name || PROJECT_CONTEXT.label,
+    location: fallbackProject ? [fallbackProject.city, fallbackProject.country].filter(Boolean).join(", ") : PROJECT_CONTEXT.location,
+    type: fallbackProject?.type || PROJECT_CONTEXT.type,
+    status: fallbackProject?.status || PROJECT_CONTEXT.status,
+    trust_score: fallbackProject?.trust_score ?? PROJECT_CONTEXT.trust_score,
+    ...fallbackProject,
   };
 }
 

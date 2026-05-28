@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+﻿import { expect, test } from "@playwright/test";
 
 async function resetDemoProjects(page) {
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
@@ -200,6 +200,14 @@ test("workspace summary shows next recommended action", async ({ page }) => {
     path: "test-results/screenshots/workspace-summary.png",
     fullPage: true,
   });
+});
+
+test("workspace displays the selected project instead of the default fallback", async ({ page }) => {
+  await configureFirstUnconfiguredProject(page, "Projet actif synchronise");
+  await page.getByTestId("project-card").filter({ hasText: /projet actif synchronise/i }).first().getByRole("button", { name: /ouvrir le workspace/i }).click();
+
+  await expect(page.locator(".project-selector")).toContainText(/projet actif synchronise/i);
+  await expect(page.locator(".sidebar-project-status")).toContainText(/projet actif synchronise/i);
 });
 
 test("pilotage analytics page shows export rapport projet button", async ({ page }) => {

@@ -4,6 +4,20 @@ import { PROJECT_CONTEXT, SCENARIO_OPTIONS } from "../../../utils/businessContex
 
 const defaultOpenedSections = ["general", "workspace", "other"];
 
+function buildProjectMeta(projectDetails, fallbackProject) {
+  const resolvedProject = projectDetails || fallbackProject;
+  const fallback = resolvedProject || {};
+  return {
+    code: fallback.workspace_key || fallback.code || fallback.id || PROJECT_CONTEXT.code,
+    label: fallback.name || fallback.label || PROJECT_CONTEXT.label,
+    location: [fallback.city, fallback.country].filter(Boolean).join(", ") || PROJECT_CONTEXT.location,
+    type: fallback.type || PROJECT_CONTEXT.type,
+    status: fallback.status || PROJECT_CONTEXT.status,
+    trust_score: fallback.trust_score ?? null,
+    details: resolvedProject || null,
+  };
+}
+
 export const useSidebarStore = create(
   persist(
     (set) => ({
@@ -12,6 +26,7 @@ export const useSidebarStore = create(
       openedSections: defaultOpenedSections,
       activeProject: PROJECT_CONTEXT.code,
       activeScenario: SCENARIO_OPTIONS[0].code,
+      projectMeta: buildProjectMeta(null, null),
       apiStatus: "online",
       syncStatus: "pret",
       toggleCollapsed: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
@@ -29,10 +44,11 @@ export const useSidebarStore = create(
           }
           return { openedSections: [...opened] };
         }),
-      setProjectContext: ({ project, scenario }) =>
+      setProjectContext: ({ project, scenario, projectDetails }) =>
         set((state) => ({
           activeProject: project || state.activeProject,
           activeScenario: scenario || state.activeScenario,
+          projectMeta: buildProjectMeta(projectDetails, state.projectMeta?.details || null),
         })),
       setStatuses: ({ apiStatus, syncStatus }) =>
         set((state) => ({
@@ -45,6 +61,7 @@ export const useSidebarStore = create(
       partialize: (state) => ({
         isCollapsed: state.isCollapsed,
         openedSections: state.openedSections,
+        projectMeta: state.projectMeta,
       }),
     }
   )

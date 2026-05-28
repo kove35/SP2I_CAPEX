@@ -12,7 +12,7 @@ import { useWorkflow } from "../../hooks/useWorkflow";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
 import { compareScenarios, listScenarios } from "../../services/scenarioService";
 import { getProjectContext, getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext";
-import { getBudgetStatus, isBudgetSynced } from "../../services/projectService";
+import { getBudgetStatus, getProjectWorkspaceKey, isBudgetSynced } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 
@@ -304,7 +304,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const [error, setError] = React.useState("");
   const [notice, setNotice] = React.useState("");
   const { state, setState } = useAppStore();
-  const dqeSummary = React.useMemo(() => getDqeSummary(state.activeProject || PROJECT_CONTEXT.code), [state.activeProject]);
+  const projectKey = getProjectWorkspaceKey(state.activeProjectDetails || { workspace_key: state.activeProject, id: state.activeProject });
+  const dqeSummary = React.useMemo(() => getDqeSummary(projectKey), [projectKey]);
   const projectId = state.activeProjectDetails?.id || state.activeProject;
   const { workflow } = useWorkflow(projectId, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
@@ -433,7 +434,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const scenarioRisk = scenarioRiskLabel(lines);
   const scenarioStatus = simulation ? "Simule" : "Brouillon";
   const activeScenario = getScenarioContext(scenarioName);
-  const activeProject = getProjectContext(state.activeProject);
+  const activeProject = getProjectContext(state.activeProjectDetails || state.activeProject);
   const simulationDisabledReason = !dqeSummary.hasActiveDqe
     ? "Importez et validez un DQE avant de lancer une simulation."
     : "";

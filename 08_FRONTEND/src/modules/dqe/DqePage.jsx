@@ -6,6 +6,7 @@ import { analyzeExcel, syncExcel, validateAiMapping } from "../../services/excel
 import { getAnalyticsDataQuality } from "../../services/analyticsService";
 import { useAppStore } from "../../store/appStore.jsx";
 import { useWorkflow } from "../../hooks/useWorkflow";
+import { getProjectWorkspaceKey } from "../../services/projectService";
 import { PROJECT_CONTEXT } from "../../utils/businessContext";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 
@@ -96,8 +97,9 @@ function resolveDqeLineCount(payload, fallbackAnalysis = {}) {
 }
 
 export default function DqePage() {
-  const { state } = useAppStore();
-  const projectId = state.activeProject || PROJECT_CONTEXT.code;
+  const { state, setState } = useAppStore();
+  const projectKey = getProjectWorkspaceKey(state.activeProjectDetails || { workspace_key: state.activeProject, id: state.activeProject });
+  const projectId = state.activeProjectDetails?.id || state.activeProject || projectKey;
   const { workflow } = useWorkflow(projectId, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const dqeStep = workflow.steps.find((step) => step.id === "dqe");
@@ -121,19 +123,31 @@ export default function DqePage() {
     staleTime: 30_000,
   });
 
+  const updateProjectWorkflowState = React.useCallback((patch) => {
+    setState((current) => ({
+      ...current,
+      activeProjectDetails: current.activeProjectDetails
+        ? {
+            ...current.activeProjectDetails,
+            ...patch,
+          }
+        : current.activeProjectDetails,
+    }));
+  }, [setState]);
+
   React.useEffect(() => {
     setTab(new URLSearchParams(window.location.search).get("tab") || "import");
   }, [window.location.search]);
 
   React.useEffect(() => {
-    const versions = readStoredVersions(projectId);
+    const versions = readStoredVersions(projectKey);
     setDqeVersions(versions);
     setCurrentVersionId(versions.find((item) => item.is_active)?.id || versions[0]?.id || null);
-  }, [projectId]);
+  }, [projectKey]);
 
   React.useEffect(() => {
-    window.localStorage.setItem(getStorageKey(projectId), JSON.stringify(dqeVersions));
-  }, [dqeVersions, projectId]);
+    window.localStorage.setItem(getStorageKey(projectKey), JSON.stringify(dqeVersions));
+  }, [dqeVersions, projectKey]);
 
   const activeVersion = dqeVersions.find((version) => version.is_active) || null;
   const currentVersion = dqeVersions.find((version) => version.id === currentVersionId) || activeVersion || dqeVersions[0] || null;
@@ -276,6 +290,11 @@ export default function DqePage() {
         quality_issue_count: resultAiPreview.invalid_rows || null,
         review_required_count: result?.parsing_stats?.review_required || null,
       });
+      updateProjectWorkflowState({
+        workflow_status: "DQE_ANALYZED",
+        activeDqe: { ...currentVersion, status: "ANALYZED", trust_score: resultScore },
+        trust_score: resultScore,
+      });
       setError(null);
     } catch (apiError) {
       setError(`Analyse DQE indisponible : ${apiError.message}`);
@@ -335,6 +354,17 @@ export default function DqePage() {
             }
           : { ...version, is_active: false }
       )));
+      updateProjectWorkflowState({
+        workflow_status: "BUDGET_SYNCED",
+        activeDqe: {
+          ...currentVersion,
+          status: "SYNCED",
+          synced_at: new Date().toISOString(),
+          trust_score: currentVersion?.trust_score ?? qualityScore,
+        },
+        last_dqe: currentVersion?.file_name || file?.name,
+        trust_score: currentVersion?.trust_score ?? qualityScore,
+      });
       setError(null);
     } catch (apiError) {
       setError(`Synchronisation PostgreSQL indisponible : ${apiError.message}`);
