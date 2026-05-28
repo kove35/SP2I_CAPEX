@@ -1,11 +1,13 @@
 import React from "react";
 import { MapPin } from "lucide-react";
 import { useSidebarStore } from "./sidebarStore";
+import { useAppStore } from "../../../store/appStore.jsx";
 import { getProjectContext } from "../../../utils/businessContext";
 
 export default function SidebarProjectStatus({ onNavigate }) {
-  const { isCollapsed, activeProject } = useSidebarStore();
-  const project = getProjectContext(activeProject);
+  const { isCollapsed, activeProject, projectMeta } = useSidebarStore();
+  const { state } = useAppStore();
+  const project = getProjectContext(state.activeProjectDetails || projectMeta || activeProject);
 
   if (isCollapsed) {
     return (

@@ -5,7 +5,7 @@ import { getProjectContext, getScenarioContext } from "../utils/businessContext"
 
 export default function ProjectSelector() {
   const { state } = useAppStore();
-  const project = getProjectContext(state.activeProject);
+  const project = getProjectContext(state.activeProjectDetails || state.activeProject);
   const scenario = getScenarioContext(state.activeScenario);
 
   return (

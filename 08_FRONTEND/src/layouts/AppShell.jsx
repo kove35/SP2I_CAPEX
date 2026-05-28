@@ -21,8 +21,9 @@ export default function AppShell({ activePath, onNavigate, children }) {
     setProjectContext({
       project: state.activeProject,
       scenario: state.activeScenario,
+      projectDetails: state.activeProjectDetails,
     });
-  }, [setProjectContext, state.activeProject, state.activeScenario]);
+  }, [setProjectContext, state.activeProject, state.activeScenario, state.activeProjectDetails]);
 
   return (
     <div className={`saas-shell ${isCollapsed ? "is-collapsed" : ""}`}>
