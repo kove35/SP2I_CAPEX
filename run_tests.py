@@ -93,6 +93,7 @@ def main() -> int:
         ("API /health", test_api.test_health),
         ("API /capex/summary", test_api.test_capex_summary),
         ("Coherence API vs SQL", test_api.test_api_sql_coherence),
+        ("Debug reconciliation CAPEX", test_api.test_capex_reconciliation_debug),
     ]
 
     print("\nBase PostgreSQL")

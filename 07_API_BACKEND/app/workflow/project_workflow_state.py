@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -29,6 +30,11 @@ class WorkflowMetrics:
     execution_actions_count: int = 0
     execution_blocked_count: int = 0
     execution_at_risk_count: int = 0
+    last_dqe_certification: datetime | None = None
+    last_fact_metre_sync: datetime | None = None
+    sync_status: str = "OUT_OF_SYNC"
+    sync_delta_rows: int = 0
+    sync_delta_capex: float = 0
 
 
 def _safe_scalar(db: Session, sql: str, params: dict[str, Any] | None = None, default: Any = 0) -> Any:
@@ -95,12 +101,59 @@ def _latest_audit_metrics(db: Session) -> dict[str, Any]:
                score_qualite,
                lignes_parsees,
                lignes_fact_metre,
+               capex_source,
+               capex_fact_metre,
                created_at
         FROM dqe_import_audit
         ORDER BY created_at DESC
         LIMIT 1
         """,
     )
+
+
+def _current_fact_totals(db: Session) -> tuple[int, float, datetime | None]:
+    total_rows = int(_safe_scalar(db, "SELECT COUNT(*) FROM fact_metre", default=0) or 0)
+    total_capex = float(
+        _safe_scalar(
+            db,
+            "SELECT COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) FROM fact_metre",
+            default=0,
+        )
+        or 0
+    )
+    last_sync = _safe_scalar(db, "SELECT MAX(updated_at) FROM fact_metre", default=None)
+    return total_rows, total_capex, last_sync
+
+
+def _compute_sync_validation(
+    audit: dict[str, Any],
+    total_rows: int,
+    total_capex: float,
+    last_sync: datetime | None,
+) -> dict[str, Any]:
+    if not audit:
+        return {
+            "last_dqe_certification": None,
+            "last_fact_metre_sync": last_sync,
+            "sync_status": "OUT_OF_SYNC",
+            "sync_delta_rows": total_rows,
+            "sync_delta_capex": total_capex,
+        }
+
+    expected_rows = int(audit.get("lignes_fact_metre") or 0)
+    expected_capex = float(audit.get("capex_fact_metre") or 0)
+    created_at = audit.get("created_at")
+    row_match = total_rows == expected_rows
+    capex_match = abs(total_capex - expected_capex) <= 1.0
+    sync_after_cert = last_sync is not None and created_at is not None and last_sync >= created_at
+    synced = row_match and capex_match and sync_after_cert
+    return {
+        "last_dqe_certification": created_at,
+        "last_fact_metre_sync": last_sync,
+        "sync_status": "SYNCED" if synced else "OUT_OF_SYNC",
+        "sync_delta_rows": total_rows - expected_rows,
+        "sync_delta_capex": total_capex - expected_capex,
+    }
 
 
 def _simulation_counts(db: Session, project_id: int) -> tuple[int, int]:
@@ -182,6 +235,8 @@ def collect_project_workflow_metrics(db: Session, project_id: int, setup_configu
     fact_project_rows, fact_rows = _count_fact_rows(db, project_id)
     simulation_project_rows, simulation_rows = _simulation_counts(db, project_id)
     audit = _latest_audit_metrics(db)
+    total_rows, total_capex, last_sync = _current_fact_totals(db)
+    sync = _compute_sync_validation(audit, total_rows, total_capex, last_sync)
     execution = _execution_counts(db, project_id)
     return WorkflowMetrics(
         setup_configured=setup_configured,
@@ -199,17 +254,27 @@ def collect_project_workflow_metrics(db: Session, project_id: int, setup_configu
         execution_actions_count=execution["actions_count"],
         execution_blocked_count=execution["blocked_count"],
         execution_at_risk_count=execution["at_risk_count"],
+        last_dqe_certification=sync["last_dqe_certification"],
+        last_fact_metre_sync=sync["last_fact_metre_sync"],
+        sync_status=sync["sync_status"],
+        sync_delta_rows=sync["sync_delta_rows"],
+        sync_delta_capex=sync["sync_delta_capex"],
     )
 
 
 def compute_project_workflow_state_from_metrics(metrics: WorkflowMetrics) -> dict[str, Any]:
-    dqe_synced = metrics.fact_metre_rows > 0
+    sync_status = str(getattr(metrics, "sync_status", "OUT_OF_SYNC") or "OUT_OF_SYNC")
+    dqe_synced = sync_status == "SYNCED"
     budget_synced = dqe_synced and metrics.capex_local_total > 0
     scenarios_ready = metrics.simulation_rows > 0
     procurement_ready = metrics.procurement_decisions_count > 0 or metrics.procurement_fact_decisions_count > 0
 
+    workflow_state = "OUT_OF_SYNC" if not dqe_synced else "BUDGET_SYNCED"
+    if dqe_synced and budget_synced and scenarios_ready:
+        workflow_state = "SIMULATION_READY"
+
     if not dqe_synced:
-        dqe = "A_IMPORTER"
+        dqe = "A_SYNCHRONISER"
     else:
         dqe = "SYNCHRONISE"
 
@@ -239,7 +304,19 @@ def compute_project_workflow_state_from_metrics(metrics: WorkflowMetrics) -> dic
         execution in {"PRETE", "A_RISQUE"},
     ]
 
+    def _serialize(value: datetime | None) -> str | None:
+        if value is None:
+            return None
+        return value.isoformat()
+
     return {
+        "workflow_state": workflow_state,
+        "dqe_synced": dqe_synced,
+        "sync_status": sync_status,
+        "sync_delta_rows": int(metrics.sync_delta_rows or 0),
+        "sync_delta_capex": round(float(metrics.sync_delta_capex or 0), 2),
+        "last_dqe_certification": _serialize(metrics.last_dqe_certification),
+        "last_fact_metre_sync": _serialize(metrics.last_fact_metre_sync),
         "dqe": dqe,
         "budget": budget,
         "scenarios": scenarios,
@@ -266,6 +343,7 @@ def compute_project_workflow_state_from_metrics(metrics: WorkflowMetrics) -> dic
         "file_name": metrics.latest_file_name,
         "normalized_lines_count": metrics.fact_metre_rows or metrics.latest_fact_rows or metrics.latest_audit_rows,
         "capex_local_total": round(float(metrics.capex_local_total or 0), 2),
+        "next_action": "Resynchroniser le DQE" if workflow_state == "OUT_OF_SYNC" else None,
     }
 
 

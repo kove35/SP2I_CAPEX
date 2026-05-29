@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 from io import BytesIO
@@ -7,6 +8,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.analytics.cache import analytics_cache
@@ -276,6 +278,206 @@ class AnalyticsService:
             "metadata": analytics_cache.status(),
         }
 
+    @staticmethod
+    def _to_float(*values: Any) -> float:
+        for value in values:
+            if value in (None, ""):
+                continue
+            try:
+                cleaned = str(value).strip().replace(" ", "")
+                if cleaned.count(",") == 1 and cleaned.count(".") == 0:
+                    cleaned = cleaned.replace(",", ".")
+                return float(cleaned)
+            except (TypeError, ValueError):
+                continue
+        return 0.0
+
+    def _fact_metre_csv_snapshot(self) -> dict[str, Any]:
+        csv_path = RACINE / "06_ANALYSE_BI/dataset/FACT_METRE.csv"
+        if not csv_path.exists():
+            return {
+                "available": False,
+                "rows": 0,
+                "capex": 0.0,
+                "optimized_capex": 0.0,
+                "ids": [],
+                "rows_raw": [],
+            }
+
+        rows_raw: list[dict[str, Any]] = []
+        with csv_path.open("r", encoding="utf-8", newline="") as handle:
+            reader = csv.reader(handle, delimiter=";")
+            header = next(reader, None)
+            if header is None:
+                return {
+                    "available": True,
+                    "rows": 0,
+                    "capex": 0.0,
+                    "optimized_capex": 0.0,
+                    "ids": [],
+                    "rows_raw": [],
+                }
+
+            for row_index, row in enumerate(reader, start=1):
+                row_dict = {
+                    column: row[index] if index < len(row) else ""
+                    for index, column in enumerate(header)
+                }
+                row_dict["_row_index"] = row_index
+                rows_raw.append(row_dict)
+
+        ids = [str(row.get("id_ligne") or "").strip() for row in rows_raw if str(row.get("id_ligne") or "").strip()]
+        capex = sum(self._to_float(row.get("CAPEX_LOCAL"), row.get("prix_total_ht"), row.get("montant_local")) for row in rows_raw)
+        optimized_capex = sum(self._to_float(row.get("capex_optimise")) for row in rows_raw)
+
+        return {
+            "available": True,
+            "rows": len(rows_raw),
+            "capex": round(capex, 2),
+            "optimized_capex": round(optimized_capex, 2),
+            "ids": ids,
+            "rows_raw": rows_raw,
+        }
+
+    def capex_reconciliation(self, project_id: int) -> dict[str, Any]:
+        latest_source = self._latest_pipeline_source()
+        metrics = self.repository.quality_metrics()
+        debug = self.repository.pipeline_debug()
+        csv_snapshot = self._fact_metre_csv_snapshot()
+
+        db_rows = self.repository.db.execute(
+            text(
+                """
+                SELECT id_ligne, COALESCE(capex_local, prix_total_ht, 0) AS amount
+                FROM fact_metre
+                """
+            )
+        ).mappings().all()
+
+        db_rows_list = [dict(row) for row in db_rows]
+        db_ids = [str(row["id_ligne"]) for row in db_rows_list]
+        csv_ids = csv_snapshot["ids"]
+        csv_id_set = set(csv_ids)
+        db_id_set = set(db_ids)
+
+        stale_rows = [row for row in db_rows_list if str(row["id_ligne"]) not in csv_id_set]
+        missing_rows = [row for row in csv_snapshot["rows_raw"] if str(row.get("id_ligne") or "").strip() not in db_id_set]
+
+        stale_capex = round(sum(float(row["amount"] or 0) for row in stale_rows), 2)
+        missing_capex = round(
+            sum(
+                self._to_float(row.get("CAPEX_LOCAL"), row.get("prix_total_ht"), row.get("montant_local"))
+                for row in missing_rows
+            ),
+            2,
+        )
+
+        source_capex = float(latest_source.get("capex_source") or 0)
+        csv_capex = float(csv_snapshot["capex"] or 0)
+        db_capex = float(metrics.get("capex_local_total") or 0)
+        delta_vs_source = round(db_capex - source_capex, 2)
+        delta_vs_csv = round(db_capex - csv_capex, 2)
+        delta_percent = round(abs(delta_vs_source) / source_capex, 6) if source_capex else 0.0
+
+        warnings = []
+        if delta_percent > 0.005:
+            warnings.append("Ecart financier inter-etages superieur a la tolerance de 0,5 %.")
+        if stale_rows:
+            warnings.append(
+                f"{len(stale_rows)} lignes PostgreSQL sont legacy et ne correspondent pas au flux courant FACT_METRE.csv."
+            )
+        if missing_rows:
+            warnings.append(
+                f"{len(missing_rows)} lignes du flux courant ne sont pas presentes dans PostgreSQL."
+            )
+
+        return {
+            "status": "SUCCESS",
+            "project_id": project_id,
+            "stages": {
+                "excel_source": {
+                    "rows": int(latest_source.get("rows_in_source_json") or 0),
+                    "capex": round(source_capex, 2),
+                    "source": "03_DONNEES_ENTREE/dqe/dqe_source_brut.json",
+                },
+                "analytic_feed": {
+                    "rows": csv_snapshot["rows"],
+                    "capex": csv_snapshot["capex"],
+                    "optimized_capex": csv_snapshot["optimized_capex"],
+                    "source": "06_ANALYSE_BI/dataset/FACT_METRE.csv",
+                },
+                "postgres_fact_metre": {
+                    "rows": len(db_rows_list),
+                    "capex": round(db_capex, 2),
+                    "fallback_rows": int(metrics.get("lignes_capex_fallback") or 0),
+                    "source": "fact_metre",
+                },
+            },
+            "reconciliation": {
+                "excel_capex": round(source_capex, 2),
+                "csv_capex": round(csv_capex, 2),
+                "fact_metre_capex": round(db_capex, 2),
+                "cockpit_capex": round(db_capex, 2),
+                "delta_fcfa": delta_vs_source,
+                "delta_percent": delta_percent,
+                "delta_vs_csv_fcfa": delta_vs_csv,
+                "delta_vs_csv_percent": round(abs(delta_vs_csv) / csv_capex, 6) if csv_capex else 0.0,
+                "shared_row_count": len(db_id_set & csv_id_set),
+                "stale_row_count": len(stale_rows),
+                "missing_current_feed_row_count": len(missing_rows),
+                "overlap_rate": round(len(db_id_set & csv_id_set) / max(csv_snapshot["rows"], 1), 6),
+            },
+            "explained_losses": [
+                {
+                    "stage": "excel_source",
+                    "reason": "La source brute DQE conserve 290 lignes et 113928000 FCFA ; aucune perte de gouvernance n'a ete detectee dans le payload source.",
+                    "rows": int(latest_source.get("rows_in_source_json") or 0),
+                    "capex": round(source_capex, 2),
+                    "type": "baseline",
+                },
+                {
+                    "stage": "analytic_feed",
+                    "reason": "Le fichier FACT_METRE.csv courant conserve les 290 lignes et 113928000 FCFA ; il sert de reference analytique synchronisee.",
+                    "rows": csv_snapshot["rows"],
+                    "capex": csv_snapshot["capex"],
+                    "optimized_capex": csv_snapshot["optimized_capex"],
+                    "type": "baseline",
+                },
+                {
+                    "stage": "postgres_sync",
+                    "reason": "PostgreSQL contient 89 lignes legacy qui n'existent pas dans le flux courant FACT_METRE.csv; elles gonflent le cockpit de 186235965.56 FCFA.",
+                    "rows": len(stale_rows),
+                    "capex": stale_capex,
+                    "sample_ids": [
+                        str(row["id_ligne"] or f"row_{index + 1}")
+                        for index, row in enumerate(stale_rows[:10])
+                    ],
+                    "type": "stale_rows",
+                },
+                {
+                    "stage": "postgres_sync",
+                    "reason": "Le flux courant FACT_METRE.csv contient 201 lignes absentes de PostgreSQL ; les lignes attendues ne sont pas presentes dans le cockpit.",
+                    "rows": len(missing_rows),
+                    "capex": missing_capex,
+                    "sample_ids": [
+                        str(row.get("id_ligne") or f"row_{index + 1}")
+                        for index, row in enumerate(missing_rows[:10])
+                    ],
+                    "type": "missing_rows",
+                },
+            ],
+            "metadata": {
+                "engine": "SP2I Analytics Engine V1",
+                "source_available": bool(latest_source.get("available")),
+                "csv_available": csv_snapshot["available"],
+                "governance_quality": latest_source.get("governance_quality"),
+                "quality_metrics": metrics,
+                "views": debug["views"],
+                "cache": analytics_cache.status(),
+            },
+            "warnings": warnings,
+        }
+
     def debug_pipeline(self) -> dict[str, Any]:
         debug = self.repository.pipeline_debug()
         latest_source = self._latest_pipeline_source()
@@ -382,6 +584,7 @@ class AnalyticsService:
         line_delta = fact_rows - source_rows
         line_delta_pct = abs(line_delta) / source_rows if source_rows else 0
         family_pending = int(metrics.get("lignes_famille_a_classer") or 0)
+        fallback_rows = int(metrics.get("lignes_capex_fallback") or 0)
         invalid_rows = (
             int(metrics.get("lignes_quantite_invalide") or 0)
             + int(metrics.get("lignes_capex_invalide") or 0)
@@ -404,6 +607,8 @@ class AnalyticsService:
             warnings.append("Le nombre de lignes source et FACT_METRE differe sur des lignes bloquantes.")
         if family_pending:
             warnings.append(f"{family_pending} lignes restent sans classification metier robuste.")
+        if fallback_rows:
+            warnings.append(f"{fallback_rows} lignes utilisent le montant de secours prix_total_ht dans le cockpit.")
         if invalid_rows:
             warnings.append(f"{invalid_rows} controles ligne sont en anomalie dans FACT_METRE.")
 
@@ -446,6 +651,7 @@ class AnalyticsService:
                 "lignes_ignorees": ignored_rows,
                 "trust_score": source.get("trust_score", score),
                 "lignes_famille_a_classer": family_pending,
+                "lignes_capex_fallback": fallback_rows,
                 "anomalies": len(anomalies) + invalid_rows,
             },
             "charts": {

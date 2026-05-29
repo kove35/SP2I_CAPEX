@@ -382,8 +382,8 @@ class RepositorySimulation:
             text(
                 """
                 SELECT
-                    COALESCE(SUM(capex_local), 0) AS capex_local,
-                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local,
+                    COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0) AS capex_optimise,
                     COALESCE(SUM(economie), 0) AS economie,
                     COUNT(*) AS lignes
                 FROM fact_metre

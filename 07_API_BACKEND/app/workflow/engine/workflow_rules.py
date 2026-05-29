@@ -10,8 +10,9 @@ def compute_workflow_state(snapshot: dict[str, Any]) -> str:
     procurement = snapshot.get("procurement") or {}
     execution = snapshot.get("execution") or {}
     setup_configured = bool(getattr(base, "setup_configured", False))
-    dqe_ready = bool(getattr(base, "fact_metre_rows", 0) > 0)
-    budget_synced = bool(getattr(base, "capex_local_total", 0) > 0)
+    sync_status = str(getattr(base, "sync_status", "OUT_OF_SYNC") or "OUT_OF_SYNC")
+    dqe_ready = sync_status == "SYNCED"
+    budget_synced = dqe_ready and bool(getattr(base, "capex_local_total", 0) > 0)
     simulation_ready = bool(getattr(base, "simulation_rows", 0) > 0)
     decisions = int(procurement.get("decisions_count") or 0)
     validated = int(procurement.get("validated_decisions_count") or 0)
@@ -23,6 +24,8 @@ def compute_workflow_state(snapshot: dict[str, Any]) -> str:
 
     if not setup_configured:
         return "CONFIGURATION"
+    if sync_status != "SYNCED":
+        return "OUT_OF_SYNC"
     if not dqe_ready:
         return "DQE_CERTIFIED"
     if not budget_synced:
@@ -52,6 +55,7 @@ def compute_active_step(workflow_state: str) -> str:
     return {
         "CONFIGURATION": "CONFIGURATION",
         "DQE_CERTIFIED": "DQE",
+        "OUT_OF_SYNC": "DQE",
         "BUDGET_SYNCED": "BUDGET",
         "SIMULATION_READY": "SIMULATION",
         "SIMULATION_COMPLETED": "ARBITRAGE",
@@ -72,6 +76,7 @@ def compute_next_action(workflow_state: str, metrics) -> WorkflowAction:
     action_map = {
         "CONFIGURATION": WorkflowAction(label="Configurer le projet", route="/app/projects", reason="Le projet doit etre configure."),
         "DQE_CERTIFIED": WorkflowAction(label="Importer et certifier le DQE", route="/app/dqe?tab=import"),
+        "OUT_OF_SYNC": WorkflowAction(label="Resynchroniser le DQE", route="/app/dqe?tab=sync", reason="Le DQE certifie actif et FACT_METRE sont divergents."),
         "BUDGET_SYNCED": WorkflowAction(label="Synchroniser le budget CAPEX", route="/app/dqe?tab=sync"),
         "SIMULATION_READY": WorkflowAction(label="Simuler la strategie CAPEX", route="/app/simulation"),
         "SIMULATION_COMPLETED": WorkflowAction(label="Analyser les arbitrages achat", route="/app/procurement"),
@@ -93,6 +98,8 @@ def compute_next_action(workflow_state: str, metrics) -> WorkflowAction:
 
 def compute_blockers(workflow_state: str, snapshot: dict[str, Any], metrics) -> list[WorkflowBlocker]:
     blockers: list[WorkflowBlocker] = []
+    if workflow_state == "OUT_OF_SYNC":
+        blockers.append(WorkflowBlocker(code="DQE_OUT_OF_SYNC", label="Le DQE certifie actif est hors synchronisation avec FACT_METRE.", severity="critical", module="dqe"))
     if workflow_state == "ARBITRAGE_IN_PROGRESS" and metrics.pending_lines:
         blockers.append(WorkflowBlocker(code="ARBITRAGE_INCOMPLETE", label="Arbitrage achat incomplet", module="procurement"))
     if metrics.execution_blocked:
