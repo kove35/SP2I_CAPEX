@@ -7,6 +7,7 @@ import { formatMoney } from "../../shared/formatters";
 import SimulationToolbar from "../../components/simulation/SimulationToolbar";
 import SimulationTable from "../../components/simulation/SimulationTable";
 import ScenarioComparison from "../../components/procurement/ScenarioComparison";
+import DataLineageCard, { buildLineageMetric, formatLineageSync } from "../../components/traceability/DataLineageCard";
 import { useAppStore } from "../../store/appStore.jsx";
 import { useWorkflow } from "../../hooks/useWorkflow";
 import { defaultSimulationPayload, getSimulationAnalyticsPreview, simulateCapex } from "../../services/simulationService";
@@ -51,6 +52,15 @@ function formatPercent(value) {
 function navigateTo(route) {
   window.history.pushState({}, "", route);
   window.dispatchEvent(new PopStateEvent("popstate"));
+}
+
+function formatSyncTimestamp(value) {
+  if (!value) return "Aucune synchronisation";
+  try {
+    return new Date(value).toLocaleString("fr-FR");
+  } catch {
+    return String(value);
+  }
 }
 
 function RiskBadge({ value }) {
@@ -134,7 +144,7 @@ function ScenarioDecisionCopilot({
               <CopilotMetric label="Économie nette" value={formatMoney(savings)} tone="success" />
               <CopilotMetric label="ROI import" value={formatPercent(roi)} detail="économie / CAPEX local" />
               <CopilotMetric label="Taux économie" value={formatPercent(savingsRate)} />
-              <CopilotMetric label="DQE / simulées" value={`${dqeLineCount || "-"} / ${simulatedLineCount || "-"}`} detail={`${importableLineCount} importables · ${retainedLineCount} retenues`} />
+              <CopilotMetric label="DQE actif / scénario" value={`${dqeLineCount || "-"} / ${simulatedLineCount || "-"}`} detail={`${importableLineCount} importables · ${retainedLineCount} retenues`} />
             </div>
             <div className="copilot-ops-grid">
               <span><Clock3 size={15} /> Délai logistique <strong>{estimatedLeadTime}</strong></span>
@@ -307,7 +317,7 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const projectKey = getProjectWorkspaceKey(state.activeProjectDetails || { workspace_key: state.activeProject, id: state.activeProject });
   const dqeSummary = React.useMemo(() => getDqeSummary(projectKey), [projectKey]);
   const projectId = state.activeProjectDetails?.id || state.activeProject;
-  const { workflow } = useWorkflow(projectId, state.activeProjectDetails);
+  const { workflow, workflowState } = useWorkflow(projectId, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const budgetStatus = getBudgetStatus(workflow);
   const budgetDone = budgetStatus === "SYNCED" || isBudgetSynced(workflow);
@@ -432,12 +442,28 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const savings = Number(kpi.economie_nette || Math.max(localBudget - optimizedBudget, 0));
   const savingsRate = localBudget ? (savings / localBudget) * 100 : NaN;
   const scenarioRisk = scenarioRiskLabel(lines);
+  const syncState = workflowState || {};
+  const factMetreRows = Number(syncState.counts?.fact_metre_rows ?? syncState.normalized_lines_count ?? dqeLineCount ?? 0);
+  const syncDeltaRows = Math.abs(Number(syncState.sync_delta_rows || 0));
+  const syncDeltaCapex = Math.abs(Number(syncState.sync_delta_capex || 0));
+  const syncStatus = String(syncState.sync_status || "OUT_OF_SYNC").toUpperCase();
+  const syncBadge = syncStatus === "SYNCED" && !syncDeltaRows && !syncDeltaCapex ? "Synchronisé" : "Désynchronisé";
+  const syncTone = syncStatus === "SYNCED" && !syncDeltaRows && !syncDeltaCapex ? "success" : "warning";
+  const lastFactMetreSync = formatLineageSync(syncState.last_fact_metre_sync);
   const scenarioStatus = simulation ? "Simule" : "Brouillon";
   const activeScenario = getScenarioContext(scenarioName);
   const activeProject = getProjectContext(state.activeProjectDetails || state.activeProject);
   const simulationDisabledReason = !dqeSummary.hasActiveDqe
     ? "Importez et validez un DQE avant de lancer une simulation."
     : "";
+  const lineageMetrics = [
+    buildLineageMetric("DQE actif", dqeLineCount, dqeSummary.label),
+    buildLineageMetric("FACT_METRE", factMetreRows, lastFactMetreSync),
+    buildLineageMetric("Scénario actif", simulatedLineCount, simulation ? "Simulation lancée" : "Aucune simulation lancée"),
+    buildLineageMetric("Écart lignes", syncDeltaRows, "Mesure de cohérence"),
+    buildLineageMetric("Écart CAPEX", formatMoney(syncDeltaCapex), "Delta synchronisation"),
+    buildLineageMetric("Dernière sync", lastFactMetreSync, syncStatus === "SYNCED" ? "Base projet à jour" : "A revoir avant décision"),
+  ];
 
   return (
     <main className="cockpit-page cockpit-page-fit">
@@ -536,8 +562,8 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
               <KpiCard label="Budget optimise" value={formatMoney(optimizedBudget)} tone="success" />
               <KpiCard label="Economie nette" value={formatMoney(savings)} tone="warning" />
               <KpiCard label="Taux economie" value={formatPercent(savingsRate)} />
-              <KpiCard label="Lignes DQE" value={dqeLineCount || "-"} />
-              <KpiCard label="Lignes simulées" value={simulatedLineCount || "-"} />
+              <KpiCard label="DQE actif" value={dqeLineCount || "-"} />
+              <KpiCard label="Lignes scénario" value={simulatedLineCount || "-"} />
               <KpiCard label="Importables" value={importableLineCount || "-"} />
               <KpiCard label="Retenues" value={retainedLineCount || "-"} />
               <KpiCard label="Arbitrées" value={arbitratedLineCount || "-"} />
@@ -550,6 +576,14 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
               <KpiCard label="Budget" value={budgetDone ? "Synchronisé" : "À synchroniser"} />
             </section>
           )}
+          <DataLineageCard
+            eyebrow="Qualité de synchronisation"
+            title="Traçabilité DQE · FACT_METRE · scénario"
+            badge={syncBadge}
+            badgeTone={syncTone}
+            metrics={lineageMetrics}
+            testId="synchronization-traceability-card"
+          />
           <section className="cockpit-split">
             <AnalyticsCard title="Lignes d'arbitrage du scenario" eyebrow={`${activeScenario.label} · ${scenarioStatus}`}>
               <div className="panel-scroll">

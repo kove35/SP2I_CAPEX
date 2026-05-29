@@ -5361,6 +5361,85 @@ a {
   gap: 12px;
 }
 
+.data-lineage-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 10px;
+  padding: 16px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, .82), rgba(2, 6, 23, .36));
+}
+
+.data-lineage-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.data-lineage-card-header h2 {
+  margin: 4px 0 0;
+  color: #f8fafc;
+  font-size: 20px;
+}
+
+.data-lineage-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.data-lineage-stat {
+  display: grid;
+  gap: 5px;
+  min-height: 98px;
+  align-content: flex-start;
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(2, 6, 23, .34);
+}
+
+.data-lineage-stat span,
+.data-lineage-card-header .eyebrow {
+  color: #8da2b8;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.data-lineage-stat strong {
+  color: #f8fafc;
+  font-size: 20px;
+}
+
+.data-lineage-stat small {
+  color: #9fb4d1;
+  line-height: 1.4;
+}
+
+.data-lineage-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 10px;
+  min-height: 24px;
+  color: #f8fafc;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.data-lineage-status-badge.success {
+  background: rgba(20, 83, 45, .72);
+  border: 1px solid rgba(52, 211, 153, .42);
+}
+
+.data-lineage-status-badge.warning {
+  background: rgba(146, 64, 14, .72);
+  border: 1px solid rgba(251, 191, 36, .42);
+}
+
 .procurement-decision-guide article {
   display: grid;
   gap: 8px;

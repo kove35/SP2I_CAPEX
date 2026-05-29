@@ -256,6 +256,72 @@ test("synced DQE enables simulation and updates project workflow state", async (
   await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider les décisions import critiques/i);
 });
 
+test("simulation exposes DQE, FACT_METRE and scenario traceability labels", async ({ page }) => {
+  const projectName = "Projet source unique traceability";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setProjectDqeVersion(page, projectName, { status: "SYNCED", trust_score: 94, normalized_lines_count: 128, synced_at: new Date().toISOString() });
+  await setSimulationResult(page, {
+    metadata: {
+      line_counts: {
+        dqe: 128,
+        simulees: 96,
+        importables: 24,
+        retenues: 18,
+        arbitrees: 96,
+      },
+    },
+  });
+
+  await page.goto("/app/simulation", { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: /lancer simulation/i }).click();
+  await expect(page.getByText(/simulation du scénario lancée/i)).toBeVisible();
+  await expect(page.getByText(/Qualité de synchronisation/i)).toBeVisible();
+  await expect(page.getByText(/DQE actif/i).first()).toBeVisible();
+  await expect(page.getByText(/FACT_METRE/i).first()).toBeVisible();
+  await expect(page.getByText(/Scénario actif/i).first()).toBeVisible();
+  await expect(page.getByText(/Lignes scénario/i).first()).toBeVisible();
+  await expect(page.getByTestId("synchronization-traceability-card")).toBeVisible();
+});
+
+test("procurement exposes the shared lineage card and decision traceability", async ({ page }) => {
+  const projectName = "Projet source unique procurement lineage";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setProjectDqeVersion(page, projectName, { status: "SYNCED", trust_score: 95, normalized_lines_count: 128, synced_at: new Date().toISOString() });
+  await patchProject(page, projectName, {
+    scenario_ready: true,
+    procurement_ready: true,
+    procurement_decisions_count: 10,
+    procurement_validated_decisions_count: 6,
+    procurement_pending_decisions_count: 4,
+    procurement_to_arbitrate_count: 4,
+    procurement_review_required_count: 0,
+  });
+
+  await page.goto("/app/procurement", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("procurement-data-lineage-card")).toBeVisible();
+  await expect(page.getByTestId("procurement-data-lineage-card")).toContainText(/TRAÇABILITÉ ACHAT/i);
+  await expect(page.getByTestId("procurement-data-lineage-card")).toContainText(/DQE actif/i);
+  await expect(page.getByTestId("procurement-data-lineage-card")).toContainText(/FACT_METRE/i);
+  await expect(page.getByTestId("procurement-data-lineage-card")).toContainText(/Scénario actif/i);
+  await expect(page.getByTestId("procurement-data-lineage-card")).toContainText(/Décisions validées/i);
+  await expect(page.getByTestId("procurement-data-lineage-card")).toContainText(/Désynchronisé|Synchronisé/i);
+});
+
+test("site execution exposes the shared lineage card and readiness counters", async ({ page }) => {
+  const projectName = "Projet source unique site lineage";
+  await openConfiguredProjectWorkspace(page, projectName);
+  await setProjectDqeVersion(page, projectName, { status: "SYNCED", trust_score: 95, normalized_lines_count: 128, synced_at: new Date().toISOString() });
+
+  await page.goto("/app/site?tab=planning", { waitUntil: "domcontentloaded" });
+  await expect(page.getByTestId("site-data-lineage-card")).toBeVisible();
+  await expect(page.getByTestId("site-data-lineage-card")).toContainText(/TRAÇABILITÉ CHANTIER/i);
+  await expect(page.getByTestId("site-data-lineage-card")).toContainText(/DQE actif/i);
+  await expect(page.getByTestId("site-data-lineage-card")).toContainText(/FACT_METRE/i);
+  await expect(page.getByTestId("site-data-lineage-card")).toContainText(/Scénario actif/i);
+  await expect(page.getByTestId("site-data-lineage-card")).toContainText(/Lots prêts/i);
+  await expect(page.getByText(/Préparation Chantier/i).first()).toBeVisible();
+});
+
 test("refresh preserves the active project identity after simulation", async ({ page }) => {
   const projectName = "Projet source unique refresh";
   await openConfiguredProjectWorkspace(page, projectName);

@@ -16,6 +16,7 @@ import { getScenarioContext, PROJECT_CONTEXT } from "../../utils/businessContext
 import { exportProcurementWorkbook, saveLocalProjects } from "../../services/projectService";
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import SmartWorkflowActions from "../projects/SmartWorkflowActions";
+import DataLineageCard, { buildLineageMetric, formatLineageSync } from "../../components/traceability/DataLineageCard";
 
 const LANDED_COST_RATES = [
   ["Transport maritime", 0.15],
@@ -992,7 +993,7 @@ export default function ProcurementPage() {
   const { activeChips, clearDrilldown, drilldownTarget, filters, applyFilter, applyFilters, applyDrilldown, reset } = useCrossFiltering();
   const analytics = useAnalyticsEngine("procurement");
   const { state, setState } = useAppStore();
-  const { workflow } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
+  const { workflow, workflowState } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
   const setupDone = workflow.steps.find((step) => step.id === "configuration")?.state === "done";
   const scenarioReady = workflow.scenario?.is_ready || workflow.steps.find((step) => step.id === "scenarios")?.state === "done";
   const procurementStatus = workflow.procurement?.status || workflow.steps.find((step) => step.id === "procurement")?.status;
@@ -1035,6 +1036,24 @@ export default function ProcurementPage() {
     () => getProcurementSourceContext(state.activeProject || PROJECT_CONTEXT.code, state.activeScenario, currentSimulation),
     [state.activeProject, state.activeScenario, currentSimulation]
   );
+  const syncState = workflowState || {};
+  const factMetreRows = Number(syncState.counts?.fact_metre_rows ?? syncState.normalized_lines_count ?? rows.length ?? 0);
+  const syncDeltaRows = Math.abs(Number(syncState.sync_delta_rows || 0));
+  const syncDeltaCapex = Math.abs(Number(syncState.sync_delta_capex || 0));
+  const syncStatus = String(syncState.sync_status || "OUT_OF_SYNC").toUpperCase();
+  const syncBadge = syncStatus === "SYNCED" && !syncDeltaRows && !syncDeltaCapex ? "Synchronisé" : "Désynchronisé";
+  const syncTone = syncStatus === "SYNCED" && !syncDeltaRows && !syncDeltaCapex ? "success" : "warning";
+  const lastFactMetreSync = formatLineageSync(syncState.last_fact_metre_sync || syncState.last_dqe_certification);
+  const validatedDecisions = Number(procurementValidation.validated_decisions_count || 0);
+  const pendingDecisions = Number(procurementValidation.pending_decisions_count ?? procurementValidation.to_arbitrate_count ?? Math.max(rows.length - validatedDecisions, 0));
+  const procurementLineageMetrics = [
+    buildLineageMetric("DQE actif", sourceContext.lines ?? rows.length ?? "-", sourceContext.dqeLabel),
+    buildLineageMetric("FACT_METRE", factMetreRows, lastFactMetreSync),
+    buildLineageMetric("Scénario actif", rows.length, sourceContext.scenarioLabel),
+    buildLineageMetric("Décisions validées", validatedDecisions, `${pendingDecisions} en attente`),
+    buildLineageMetric("Écart lignes", syncDeltaRows, syncStatus),
+    buildLineageMetric("Dernière sync", lastFactMetreSync, syncBadge),
+  ];
   const activeScopeLabel = displayScope(filters.lot || filters.famille || filters.importLocal || "Projet complet");
   const totalCost = costRows.reduce((sum, row) => sum + row.value, 0);
   const activeAnalysis = React.useMemo(
@@ -1172,6 +1191,15 @@ export default function ProcurementPage() {
         currency={activeCurrency}
         onExport={handleProcurementExport}
         exporting={exportingWorkbook}
+      />
+
+      <DataLineageCard
+        eyebrow="Qualité de synchronisation"
+        title="TRAÇABILITÉ ACHAT"
+        badge={syncBadge}
+        badgeTone={syncTone}
+        metrics={procurementLineageMetrics}
+        testId="procurement-data-lineage-card"
       />
 
       <section className="procurement-decision-context">

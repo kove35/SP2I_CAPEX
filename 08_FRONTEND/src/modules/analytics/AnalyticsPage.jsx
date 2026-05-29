@@ -145,7 +145,7 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
     ["Economie nette", displayMoney(kpis.economie_nette || currentSimulation?.kpi?.economie_nette)],
     ["Taux economie", displayPercent(kpis.taux_economie || kpis.roi || currentSimulation?.kpi?.taux_economie)],
     ["Trust score DQE", dqe.trust_score ? `${dqe.trust_score}/100` : "-"],
-    ["Lignes DQE", dqe.normalized_lines_count ? dqe.normalized_lines_count.toLocaleString("fr-FR") : "-"],
+    ["DQE actif", dqe.normalized_lines_count ? dqe.normalized_lines_count.toLocaleString("fr-FR") : "-"],
     ["Scénario actif", scenarioName],
     ["Approvisionnement", procurement.status || "-"],
     ["Lots critiques", execution.critical_lots_count != null ? execution.critical_lots_count : "-"],
