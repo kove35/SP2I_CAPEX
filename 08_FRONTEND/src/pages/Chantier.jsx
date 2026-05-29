@@ -10,7 +10,7 @@ export default function Chantier() {
       </header>
 
       <section className="grille-indicateurs">
-        <Indicateur libelle="Lignes DQE" valeur="JSON normalise" />
+        <Indicateur libelle="Lignes référentiel" valeur="JSON normalise" />
         <Indicateur libelle="Anomalies" valeur="Audit qualite" tonalite="alerte" />
         <Indicateur libelle="Zones" valeur="Batiment / niveau" />
       </section>

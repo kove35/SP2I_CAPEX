@@ -18,6 +18,7 @@ import {
   useSpatialIntelligence,
 } from "../spatial";
 import { hasSpatialCapabilities } from "../spatial/utils/spatialFormatters";
+import DataLineageCard, { buildLineageMetric, formatLineageSync } from "../../components/traceability/DataLineageCard";
 
 const DQE_READY_STATUSES = ["SYNCED", "CERTIFIED", "CERTIFIED_WITH_WARNINGS"];
 
@@ -396,7 +397,7 @@ export default function SiteExecutionPage() {
   const [remoteActionsRaw, setRemoteActionsRaw] = React.useState([]);
   const { state } = useAppStore();
 
-  const { workflow } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
+  const { workflow, workflowState } = useWorkflow(state.activeProjectDetails?.id || state.activeProject, state.activeProjectDetails);
 
   const setupDone =
     workflow.steps.find((step) => step.id === "configuration")?.state === "done";
@@ -481,6 +482,26 @@ export default function SiteExecutionPage() {
   ).length;
 
   const watchedEta = deliveries.filter((item) => String(item.gap).startsWith("+")).length;
+
+  const syncState = workflowState || {};
+  const factMetreRows = Number(syncState.counts?.fact_metre_rows ?? syncState.normalized_lines_count ?? 0);
+  const syncDeltaRows = Math.abs(Number(syncState.sync_delta_rows || 0));
+  const syncDeltaCapex = Math.abs(Number(syncState.sync_delta_capex || 0));
+  const syncStatus = String(syncState.sync_status || "OUT_OF_SYNC").toUpperCase();
+  const syncBadge = syncStatus === "SYNCED" && !syncDeltaRows && !syncDeltaCapex ? "Synchronisé" : "Désynchronisé";
+  const syncTone = syncStatus === "SYNCED" && !syncDeltaRows && !syncDeltaCapex ? "success" : "warning";
+  const lastFactMetreSync = formatLineageSync(syncState.last_fact_metre_sync || syncState.last_dqe_certification);
+  const scenarioLineCount = Number(workflow.scenario?.line_count || currentSimulation?.kpi?.lignes_simulees || 0);
+  const readyLots = displayedActions.filter((action) => action.status === "Terminé").length;
+  const pendingActions = displayedActions.filter((action) => action.status === "À traiter" || action.status === "En cours").length;
+  const lineageMetrics = [
+    buildLineageMetric("DQE actif", context.lines ?? 0, context.dqeLabel),
+    buildLineageMetric("FACT_METRE", factMetreRows, lastFactMetreSync),
+    buildLineageMetric("Scénario actif", scenarioLineCount, context.scenarioLabel),
+    buildLineageMetric("Lots prêts", readyLots, "Coordination prête"),
+    buildLineageMetric("Livraisons critiques", criticalDeliveries, "ETA à suivre"),
+    buildLineageMetric("Actions à traiter", pendingActions, "Opérations chantier"),
+  ];
 
   const tabContent = {
     planning: {
@@ -605,9 +626,12 @@ export default function SiteExecutionPage() {
       title: "Piloter uniquement les lots à préparer maintenant",
       message: "Les actions, ETA et dépendances sont disponibles. La page affiche les éléments utiles à la coordination opérationnelle actuelle.",
       metrics: [
-        { label: "Actions", value: generatedActionsCount || displayedActions.length, help: "Lots à coordonner" },
-        { label: "ETA", value: Number(executionSummary.eta_to_watch_count || 0) || watchedEta, help: "A surveiller" },
-        { label: "Lots critiques", value: blockedLots, help: "Priorité chantier" },
+        { label: "Lots prêts", value: readyLots, help: "Lots coordonnables" },
+        { label: "Lots bloqués", value: blockedLots, help: "Points de blocage" },
+        { label: "Livraisons critiques", value: criticalDeliveries, help: "ETA à surveiller" },
+        { label: "Dépendances ouvertes", value: dependencies.length, help: "Liens actifs" },
+        { label: "Retards ETA", value: watchedEta, help: "Déviation planning" },
+        { label: "Actions à traiter", value: pendingActions, help: "Affectations à planifier" },
       ],
     },
   };
@@ -624,6 +648,14 @@ export default function SiteExecutionPage() {
         />
 
         <PreparationContextStrip context={context} activeScope={activeScope} />
+        <DataLineageCard
+          eyebrow="Qualité de synchronisation"
+          title="TRAÇABILITÉ CHANTIER"
+          badge={syncBadge}
+          badgeTone={syncTone}
+          metrics={lineageMetrics}
+          testId="site-data-lineage-card"
+        />
 
         {preparationStage === "configuration" ? (
           <WorkflowGuardEmptyState
@@ -691,6 +723,15 @@ export default function SiteExecutionPage() {
           aux dépendances et aux risques de readiness.
         </p>
       </section>
+
+      <DataLineageCard
+        eyebrow="Qualité de synchronisation"
+        title="TRAÇABILITÉ CHANTIER"
+        badge={syncBadge}
+        badgeTone={syncTone}
+        metrics={lineageMetrics}
+        testId="site-data-lineage-card"
+      />
 
       <section className={`execution-context-strip ${context.hasActiveDqe ? "ready" : "blocked"}`}>
         <div>
