@@ -4,6 +4,15 @@ from app.workflow.schemas.workflow import WorkflowReadiness
 
 
 def compute_readiness(workflow_state: str, metrics) -> WorkflowReadiness:
+    if workflow_state == "OUT_OF_SYNC":
+        return WorkflowReadiness(
+            procurement="BLOCKED",
+            logistics="BLOCKED",
+            execution="BLOCKED",
+            chantier="AT_RISK",
+            dependencies_critical=1,
+        )
+
     procurement = "READY" if workflow_state in {
         "PROCUREMENT_VALIDATED",
         "ORDER_READY",

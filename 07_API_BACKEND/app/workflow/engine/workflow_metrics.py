@@ -49,4 +49,9 @@ def compute_workflow_metrics(snapshot: dict[str, Any], workflow_state: str) -> W
         simulation_lines=_count(getattr(base, "simulation_rows", 0)),
         dqe_lines=_count(getattr(base, "fact_metre_rows", 0)),
         capex_local_total=float(getattr(base, "capex_local_total", 0) or 0),
+        latest_dqe_certification=getattr(base, "last_dqe_certification", None),
+        latest_fact_metre_sync=getattr(base, "last_fact_metre_sync", None),
+        dqe_sync_status=str(getattr(base, "sync_status", "OUT_OF_SYNC") or "OUT_OF_SYNC"),
+        dqe_sync_delta_rows=_count(getattr(base, "sync_delta_rows", 0)),
+        dqe_sync_delta_capex=float(getattr(base, "sync_delta_capex", 0) or 0),
     )

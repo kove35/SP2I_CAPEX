@@ -119,11 +119,21 @@ class WorkflowStateEngine:
     def _legacy_fields(snapshot: dict[str, Any], workflow_state: str, metrics) -> dict[str, Any]:
         base = snapshot.get("base_metrics")
         setup = "CONFIGURE" if getattr(base, "setup_configured", False) else "A_COMPLETER"
-        dqe = "SYNCHRONISE" if metrics.dqe_lines > 0 else "A_IMPORTER"
-        budget = "SYNCHRONISE" if metrics.capex_local_total > 0 else "A_SYNCHRONISER"
+        sync_status = str(getattr(base, "sync_status", "OUT_OF_SYNC") or "OUT_OF_SYNC")
+        dqe_synced = sync_status == "SYNCED"
+        dqe = "SYNCHRONISE" if dqe_synced else "A_SYNCHRONISER"
+        budget = "SYNCHRONISE" if dqe_synced and metrics.capex_local_total > 0 else "A_SYNCHRONISER"
         scenarios = "SIMULE" if metrics.simulation_lines > 0 else "A_SIMULER"
-        procurement = "PRET" if workflow_state not in {"CONFIGURATION", "DQE_CERTIFIED", "BUDGET_SYNCED", "SIMULATION_READY", "SIMULATION_COMPLETED", "ARBITRAGE_IN_PROGRESS"} else ("A_PREPARER" if metrics.simulation_lines else "BLOQUE")
+        procurement = "PRET" if workflow_state not in {"CONFIGURATION", "DQE_CERTIFIED", "OUT_OF_SYNC", "BUDGET_SYNCED", "SIMULATION_READY", "SIMULATION_COMPLETED", "ARBITRAGE_IN_PROGRESS"} else ("A_PREPARER" if metrics.simulation_lines else "BLOQUE")
         execution = "PRETE" if workflow_state in {"CHANTIER_READY", "EXECUTION_IN_PROGRESS", "EXECUTION_COMPLETED"} else ("A_PREPARER" if procurement == "PRET" else "BLOQUEE")
+
+        def _serialize_datetime(value: Any) -> str | None:
+            if value is None:
+                return None
+            if hasattr(value, "isoformat"):
+                return value.isoformat()
+            return str(value)
+
         return {
             "setup": setup,
             "dqe": dqe,
@@ -131,9 +141,15 @@ class WorkflowStateEngine:
             "scenarios": scenarios,
             "procurement": procurement,
             "execution": execution,
-            "trust_score": int(getattr(base, "latest_trust_score", 0) or (99 if metrics.dqe_lines else 0)),
+            "trust_score": int(getattr(base, "latest_trust_score", 0) or (99 if dqe_synced else 0)),
             "normalized_lines_count": int(metrics.dqe_lines or getattr(base, "latest_fact_rows", 0) or getattr(base, "latest_audit_rows", 0) or 0),
             "capex_local_total": round(metrics.capex_local_total, 2),
+            "dqe_synced": dqe_synced,
+            "last_dqe_certification": _serialize_datetime(getattr(base, "last_dqe_certification", None)),
+            "last_fact_metre_sync": _serialize_datetime(getattr(base, "last_fact_metre_sync", None)),
+            "sync_status": sync_status,
+            "sync_delta_rows": int(getattr(base, "sync_delta_rows", 0) or 0),
+            "sync_delta_capex": round(float(getattr(base, "sync_delta_capex", 0) or 0), 2),
             "counts": {
                 "fact_metre_rows": int(getattr(base, "fact_metre_rows", 0) or 0),
                 "fact_metre_project_rows": int(getattr(base, "fact_metre_project_rows", 0) or 0),

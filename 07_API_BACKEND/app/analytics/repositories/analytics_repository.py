@@ -431,9 +431,10 @@ class AnalyticsRepository:
                 """
                 SELECT
                     COUNT(*) AS nb_lignes,
-                    COALESCE(SUM(capex_local), 0) AS capex_local_total,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local_total,
                     SUM(CASE WHEN quantite IS NULL OR quantite <= 0 THEN 1 ELSE 0 END) AS lignes_quantite_invalide,
-                    SUM(CASE WHEN capex_local IS NULL OR capex_local <= 0 THEN 1 ELSE 0 END) AS lignes_capex_invalide,
+                    SUM(CASE WHEN COALESCE(capex_local, prix_total_ht, 0) <= 0 THEN 1 ELSE 0 END) AS lignes_capex_invalide,
+                    SUM(CASE WHEN capex_local IS NULL AND COALESCE(prix_total_ht, 0) > 0 THEN 1 ELSE 0 END) AS lignes_capex_fallback,
                     SUM(CASE WHEN lot IS NULL OR TRIM(lot) = '' THEN 1 ELSE 0 END) AS lignes_sans_lot,
                     SUM(CASE WHEN designation IS NULL OR TRIM(designation) = '' THEN 1 ELSE 0 END) AS lignes_sans_designation,
                     SUM(CASE WHEN famille IS NULL OR TRIM(famille) = '' OR LOWER(famille) IN ('default', 'unknown') THEN 1 ELSE 0 END) AS lignes_famille_a_classer,
@@ -506,11 +507,12 @@ class AnalyticsRepository:
                     COALESCE(SUM(quantite), 0) AS quantite_total,
                     COALESCE(SUM(prix_total_ht), 0) AS prix_total_ht_total,
                     COALESCE(SUM(pu_local), 0) AS pu_local_total,
-                    COALESCE(SUM(capex_local), 0) AS capex_local_total,
-                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise_total,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local_total,
+                    COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0) AS capex_optimise_total,
                     COALESCE(SUM(economie), 0) AS economie_total,
                     SUM(CASE WHEN quantite IS NULL OR quantite <= 0 THEN 1 ELSE 0 END) AS lignes_quantite_invalide,
-                    SUM(CASE WHEN capex_local IS NULL OR capex_local <= 0 THEN 1 ELSE 0 END) AS lignes_capex_local_invalide,
+                    SUM(CASE WHEN COALESCE(capex_local, prix_total_ht, 0) IS NULL OR COALESCE(capex_local, prix_total_ht, 0) <= 0 THEN 1 ELSE 0 END) AS lignes_capex_local_invalide,
+                    SUM(CASE WHEN capex_local IS NULL AND COALESCE(prix_total_ht, 0) > 0 THEN 1 ELSE 0 END) AS lignes_capex_fallback,
                     SUM(CASE WHEN lot IS NULL OR lot = '' THEN 1 ELSE 0 END) AS lignes_sans_lot
                 FROM fact_metre
                 """
@@ -547,6 +549,8 @@ class AnalyticsRepository:
             warnings.append("fact_metre est vide : synchroniser un DQE avec /api/upload/excel/sync.")
         if float(sums["capex_local_total"] or 0) == 0 and fact_count > 0:
             warnings.append("fact_metre contient des lignes mais capex_local total vaut 0 : verifier mapping montant/PU.")
+        if int(sums["lignes_capex_fallback"] or 0) > 0:
+            warnings.append("Certaines lignes utilisent le montant de secours prix_total_ht pour le cockpit.")
         if int(sums["lignes_capex_local_invalide"] or 0) > 0:
             warnings.append("Certaines lignes ont capex_local vide ou nul.")
         if int(sums["lignes_sans_lot"] or 0) > 0:

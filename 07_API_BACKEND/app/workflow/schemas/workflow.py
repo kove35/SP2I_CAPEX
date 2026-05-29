@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -60,6 +61,11 @@ class WorkflowMetrics(BaseModel):
     simulation_lines: int = 0
     dqe_lines: int = 0
     capex_local_total: float = 0
+    latest_dqe_certification: datetime | None = None
+    latest_fact_metre_sync: datetime | None = None
+    dqe_sync_status: str = "OUT_OF_SYNC"
+    dqe_sync_delta_rows: int = 0
+    dqe_sync_delta_capex: float = 0
 
 
 class WorkflowState(BaseModel):
@@ -90,5 +96,11 @@ class WorkflowState(BaseModel):
     trust_score: int = 0
     normalized_lines_count: int = 0
     capex_local_total: float = 0
+    dqe_synced: bool = False
+    last_dqe_certification: datetime | None = None
+    last_fact_metre_sync: datetime | None = None
+    sync_status: str = "OUT_OF_SYNC"
+    sync_delta_rows: int = 0
+    sync_delta_capex: float = 0
     counts: dict[str, int] = Field(default_factory=dict)
     file_name: str = ""

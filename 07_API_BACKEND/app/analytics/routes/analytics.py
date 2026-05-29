@@ -197,3 +197,8 @@ def qa_summary(db: Session = Depends(get_db)) -> dict:
 @router.get("/data-quality", response_model=AnalyticsResponse)
 def data_quality(db: Session = Depends(get_db)) -> dict:
     return AnalyticsService(db).data_quality()
+
+
+@router.get("/debug/capex-reconciliation/{project_id}")
+def capex_reconciliation(project_id: int, db: Session = Depends(get_db)) -> dict:
+    return AnalyticsService(db).capex_reconciliation(project_id)

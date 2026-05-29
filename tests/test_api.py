@@ -75,13 +75,13 @@ def test_capex_summary() -> dict[str, Any]:
 
 
 def test_api_sql_coherence() -> dict[str, Any]:
-    """Test API 3 - Compare les KPI API avec les sommes SQL."""
+    """Test API 3 - Compare les KPI API avec les sommes SQL effectives."""
     api_summary = api_get("/capex/summary")
     sql_local, sql_optimise, sql_economie, sql_lignes = fetch_one(
         """
         SELECT
-            COALESCE(SUM(prix_total_ht), 0),
-            COALESCE(SUM(capex_optimise), 0),
+            COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0),
+            COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0),
             COALESCE(SUM(economie_nette), 0),
             COUNT(*)
         FROM fact_metre
@@ -107,3 +107,27 @@ def test_api_sql_coherence() -> dict[str, Any]:
     assert not differences, f"Incoherence API vs SQL : {differences}"
     logger.info("Coherence API vs SQL OK.")
     return {"status": "OK", "api": api_summary, "sql": sql_summary}
+
+
+def test_capex_reconciliation_debug() -> dict[str, Any]:
+    """Test API 4 - Verifie l'audit de reconciliation Excel -> FACT_METRE -> cockpit."""
+    data = api_get("/analytics/debug/capex-reconciliation/1")
+
+    required_keys = {"status", "stages", "reconciliation", "explained_losses"}
+    missing_keys = required_keys - set(data)
+    assert not missing_keys, f"Cles manquantes dans /analytics/debug/capex-reconciliation/1 : {missing_keys}"
+
+    assert data["status"] == "SUCCESS"
+    assert data["stages"]["excel_source"]["rows"] > 0
+    assert data["stages"]["analytic_feed"]["rows"] > 0
+    assert data["reconciliation"]["stale_row_count"] > 0
+    assert data["reconciliation"]["missing_current_feed_row_count"] > 0
+    assert data["reconciliation"]["fact_metre_capex"] > data["stages"]["analytic_feed"]["capex"]
+
+    stale_sample_ids = [item for item in data["explained_losses"] if item["type"] == "stale_rows"][0]["sample_ids"]
+    missing_sample_ids = [item for item in data["explained_losses"] if item["type"] == "missing_rows"][0]["sample_ids"]
+    assert any(sample_id for sample_id in stale_sample_ids)
+    assert any(sample_id for sample_id in missing_sample_ids)
+
+    logger.info("Reconciliation debug OK.")
+    return {"status": "OK", "response": data}
