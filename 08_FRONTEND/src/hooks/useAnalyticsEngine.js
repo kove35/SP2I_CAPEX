@@ -18,6 +18,16 @@ import {
 import { buildAnalyticsQueryKey } from "../services/analyticsQueryBuilder";
 import { useAnalyticsFilters } from "./useAnalyticsFilters";
 
+const logAnalyticsResult = (label, data, filters) => {
+  console.log("Analytics query result", label, {
+    filters,
+    nb_lignes: data?.kpis?.nb_lignes,
+    pagination_total: data?.pagination?.total,
+    tableLength: data?.table?.length,
+    kpis: data?.kpis,
+  });
+};
+
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
 
@@ -29,6 +39,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-dashboard", debouncedFilters);
       return getAnalyticsDashboard(debouncedFilters, dashboardType);
     },
+    onSuccess: (data) => logAnalyticsResult("dashboard", data, debouncedFilters),
     staleTime: 20_000,
   });
 
@@ -38,6 +49,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-capex", debouncedFilters);
       return getAnalyticsCapex(debouncedFilters);
     },
+    onSuccess: (data) => logAnalyticsResult("capex", data, debouncedFilters),
     staleTime: 20_000,
   });
 
@@ -47,6 +59,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-procurement", debouncedFilters);
       return getAnalyticsProcurement(debouncedFilters);
     },
+    onSuccess: (data) => logAnalyticsResult("procurement", data, debouncedFilters),
     staleTime: 20_000,
   });
 
@@ -74,6 +87,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   const procurementLines = useQuery({
     queryKey: buildAnalyticsQueryKey("procurement-lines", debouncedFilters),
     queryFn: () => getAnalyticsProcurementLines(debouncedFilters),
+    onSuccess: (data) => logAnalyticsResult("procurement-lines", data, debouncedFilters),
     staleTime: 20_000,
   });
 

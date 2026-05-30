@@ -354,6 +354,33 @@ export default function AnalyticsPage() {
   const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || [];
 
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    console.log("AnalyticsPage computed kpis", {
+      dashboard,
+      activeProject: state.activeProject,
+      activeScenario: state.activeScenario,
+      lastSimulationLines: state.lastSimulation?.kpi?.lignes_simulees,
+      mainPayloadKpisNbLignes: mainPayload.kpis?.nb_lignes,
+      capexPayloadKpisNbLignes: capexPayload.kpis?.nb_lignes,
+      mergedKpisNbLignes: kpis.nb_lignes,
+      tableLength: table.length,
+      total,
+      dashboardQuery: engine.dashboard?.queryKey,
+      capexQuery: engine.capex?.queryKey,
+      procurementQuery: engine.procurement?.queryKey,
+    });
+    try {
+      const persisted = window.localStorage.getItem("sp2i:appState");
+      const appState = persisted ? JSON.parse(persisted) : null;
+      console.log("AnalyticsPage localStorage sp2i:appState", appState);
+      const session = window.sessionStorage.getItem("sp2i:appState");
+      console.log("AnalyticsPage sessionStorage sp2i:appState", session);
+    } catch (storageError) {
+      console.warn("AnalyticsPage storage parse failed", storageError);
+    }
+  }, [dashboard, state.activeProject, state.activeScenario, state.lastSimulation, mainPayload.kpis, capexPayload.kpis, kpis.nb_lignes, table.length, total, engine.dashboard?.queryKey, engine.capex?.queryKey, engine.procurement?.queryKey]);
+
+  React.useEffect(() => {
     let cancelled = false;
     listProjectWorkflowEvents(project?.id).then((payload) => {
       if (!cancelled && Array.isArray(payload?.events)) {
