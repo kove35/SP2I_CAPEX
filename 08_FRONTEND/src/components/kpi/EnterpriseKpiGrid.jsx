@@ -7,6 +7,10 @@ import Skeleton from "../../ui/Skeleton";
 export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
   const economyRate = Number(kpis.taux_economie || 0) * 100;
   const importRate = Number(kpis.taux_importable || 0) * 100;
+
+  React.useEffect(() => {
+    console.log("EnterpriseKpiGrid render", { nb_lignes: kpis.nb_lignes, kpis });
+  }, [kpis.nb_lignes]);
   const items = [
     { label: "Budget initial", value: formatMoney(kpis.capex_brut || kpis.capex_local), helper: "Reference locale", tone: "blue", icon: Database, delta: 0, points: [71, 72, 74, 76, 75, 78, 80] },
     { label: "Budget optimise", value: formatMoney(kpis.capex_optimise), helper: "Apres arbitrage", tone: "green", icon: LineChart, delta: -economyRate, positiveIsGood: false, points: [80, 78, 74, 72, 70, 68, 66] },

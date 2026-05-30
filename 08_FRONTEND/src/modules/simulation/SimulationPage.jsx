@@ -354,9 +354,16 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
       ...(projectId ? { project_id: projectId } : {}),
     };
     const applySimulationWorkflowState = (result) => {
+      const lineCount = Number(result?.kpi?.lignes_simulees || result?.metadata?.line_counts?.simulees || result?.lignes?.length || 0);
+      console.log("SimulationPage applySimulationWorkflowState", {
+        resultScenarioId: result?.metadata?.scenario_id || scenarioName,
+        lignes_simulees: result?.kpi?.lignes_simulees,
+        metadataLineCounts: result?.metadata?.line_counts,
+        linesLength: result?.lignes?.length,
+        computedLineCount: lineCount,
+      });
       setState((current) => {
         const projectKey = getCurrentProjectKey(current);
-        const lineCount = Number(result?.kpi?.lignes_simulees || result?.metadata?.line_counts?.simulees || result?.lignes?.length || 0);
         const patch = {
           workflow_status: "SCENARIO_READY",
           scenario_ready: true,
@@ -390,6 +397,15 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
         throw new Error("La simulation a retourne un resultat vide.");
       }
 
+      console.log("SimulationPage API result received", {
+        payload: simulationPayload,
+        resultSummary: {
+          lignes_simulees: result?.kpi?.lignes_simulees,
+          lineCounts: result?.metadata?.line_counts,
+          linesLength: result?.lignes?.length,
+          kpis: result?.kpi,
+        },
+      });
       setSimulation(result);
       applySimulationWorkflowState(result);
       setNotice("Simulation du scénario lancée.");
@@ -432,6 +448,18 @@ export default function SimulationPage({ defaultTab = "simulation" }) {
   const dqeLineCount = Number(kpi.lignes_dqe || lineCounts.dqe || dqeSummary.lines || 0);
   const simulatedLineCount = Number(kpi.lignes_simulees || lineCounts.simulees || kpi.lignes || lines.length || 0);
   const importableLineCount = Number(kpi.lignes_importables || lineCounts.importables || kpi.procurement?.LIGNES_IMPORTABLES || 0);
+
+  React.useEffect(() => {
+    console.log("SimulationPage render snapshot", {
+      activeProject: state.activeProject,
+      lastSimulationProject: state.lastSimulationProject,
+      lastSimulationLines: state.lastSimulation?.kpi?.lignes_simulees,
+      simulationLineCount: state.activeProjectDetails?.simulation_line_count,
+      currentSimulationLines: simulatedLineCount,
+      scenarioName,
+      simulation: simulation ? { lignes: simulation?.lignes?.length, kpi: simulation?.kpi } : null,
+    });
+  }, [state.activeProject, state.lastSimulationProject, state.lastSimulation, state.activeProjectDetails?.simulation_line_count, simulatedLineCount, scenarioName, simulation]);
   const retainedLineCount = Number(kpi.lignes_retenues || lineCounts.retenues || kpi.lignes_import || lines.filter((row) => String(row.decision_finale || row.decision_import || "").toUpperCase() === "IMPORT").length);
   const arbitratedLineCount = Number(kpi.lignes_arbitrees || lineCounts.arbitrees || lines.filter((row) => row.decision_finale || row.decision_import).length);
   const analyzedLines = simulatedLineCount || Number(kpi.lignes || lines.length || 0);

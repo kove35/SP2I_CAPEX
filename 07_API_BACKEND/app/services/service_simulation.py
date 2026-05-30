@@ -13,7 +13,7 @@ from app.core.audit_trail_engine import AuditTrailEngine
 from app.core.calculator import CalculateurCAPEX
 from app.core.cleaner import DataCleaner
 from app.core.decision_engine_v2 import DecisionEngineV2
-from app.core.errors import SP2ICapexError, SimulationError
+from app.core.errors import SP2ICapexError, SimulationError, DataQualityError
 from app.core.explainability_engine import ExplainabilityEngine
 from app.core.kpi_engine import KPIEngine
 from app.core.logistics_engine import LogisticsEngine
@@ -139,16 +139,270 @@ class ServiceSimulation:
         run_id = f"run_{uuid4().hex}"
         scenario_id = f"scenario_{uuid4().hex}"
 
+        # Trace structure to collect observability data at each pipeline step
+        trace: dict[str, Any] = {
+            "fact_metre": {"count": len(lignes_entree), "capex": 0.0},
+            "normalisation": {},
+            "optimisation": {},
+            "procurement": {},
+            "logistics": {},
+            "decision": {},
+            "scenario_final": {},
+        }
+
+        def _extract_capex_from_raw(l: dict[str, Any]) -> float:
+            # Best-effort extraction of monetary value from heterogeneous keys
+            for key in ("prix_total_ht", "prix_total", "montant_local", "CAPEX_LOCAL", "capex_local", "montant_total"):
+                try:
+                    val = l.get(key)
+                except Exception:
+                    val = None
+                if val is None:
+                    continue
+                try:
+                    return float(val)
+                except Exception:
+                    continue
+            # fallback to quantite * prix_unitaire if available
+            try:
+                q = float(l.get("quantite") or l.get("QTE") or 0)
+                pu = float(l.get("prix_unitaire_ht") or l.get("PU_LOCAL") or l.get("pu_local") or 0)
+                return q * pu
+            except Exception:
+                return 0.0
+
+        # initial capex from input
+        try:
+            trace["fact_metre"]["capex"] = round(sum(_extract_capex_from_raw(r) for r in lignes_entree), 2)
+        except Exception:
+            trace["fact_metre"]["capex"] = 0.0
+
         cleaner = DataCleaner(mode=mode)
-        lignes_normalisees = cleaner.normaliser_lignes(lignes_entree)
+
+        def _build_rejected_row(idx: int, raw: dict[str, Any], reason: str | None = None) -> dict[str, Any]:
+            ligne_info = None
+            if cleaner.warnings:
+                matching = [w for w in cleaner.warnings if w.get("index") == idx]
+                if matching:
+                    ligne_info = matching[-1].get("ligne") if isinstance(matching[-1].get("ligne"), dict) else None
+                    reason = reason or matching[-1].get("code")
+
+            id_ligne = (
+                ligne_info.get("id_ligne")
+                if ligne_info
+                else raw.get("id_ligne") or raw.get("ID_LIGNE")
+            )
+            lot_val = (
+                ligne_info.get("lot") if ligne_info else raw.get("lot") or raw.get("LOT")
+            )
+            designation_val = (
+                ligne_info.get("designation")
+                if ligne_info
+                else raw.get("designation") or raw.get("DESIGNATION")
+            )
+            quantite_val = None
+            prix_total_val = None
+            try:
+                quantite_val = float(raw.get("quantite") or raw.get("QTE") or 0)
+            except Exception:
+                quantite_val = raw.get("quantite") or raw.get("QTE")
+            try:
+                prix_total_val = float(raw.get("prix_total_ht") or raw.get("prix_total") or raw.get("montant_local") or 0)
+            except Exception:
+                prix_total_val = raw.get("prix_total_ht") or raw.get("prix_total") or raw.get("montant_local")
+            capex_val = None
+            try:
+                capex_val = float(raw.get("CAPEX_LOCAL") or raw.get("capex_local") or prix_total_val or 0)
+            except Exception:
+                capex_val = prix_total_val
+            return {
+                "index": idx,
+                "id_ligne": id_ligne,
+                "lot": lot_val,
+                "designation": designation_val,
+                "raison": reason or "UNKNOWN",
+                "quantite": quantite_val,
+                "prix_total": prix_total_val,
+                "capex": capex_val,
+            }
+
+        # manual per-line normalization so we can record per-line rejections and reasons
+        lignes_normalisees: list[dict[str, Any]] = []
+        rejected_indices: list[int] = []
+        rejected_rows: list[dict[str, Any]] = []
+        for idx, raw in enumerate(lignes_entree, start=1):
+            try:
+                ln = cleaner.normaliser_ligne(raw, idx)
+                if ln:
+                    lignes_normalisees.append(ln)
+                else:
+                    rejected_indices.append(idx)
+                    rejected_rows.append(_build_rejected_row(idx, raw))
+            except DataQualityError as dq:
+                # DataCleaner already recorded the warning in cleaner.warnings
+                rejected_indices.append(idx)
+                details = dq.details if hasattr(dq, "details") else {}
+                reason = details.get("code") or (details.get("message") if isinstance(details, dict) else str(dq))
+                rejected_rows.append(_build_rejected_row(idx, raw, reason=reason))
+            except Exception:
+                # Non-data-quality exception during normalization: record and continue
+                logger.exception("Unexpected error while normalising line %s", idx)
+                rejected_indices.append(idx)
+                rejected_rows.append(_build_rejected_row(idx, raw, reason="UNEXPECTED_ERROR"))
+
+        reasons: dict[str, dict[str, Any]] = {}
+        for w in cleaner.warnings:
+            code = w.get("code")
+            reasons.setdefault(code, {"count": 0, "capex": 0.0, "examples": []})
+            reasons[code]["count"] += 1
+            widx = (w.get("index") or 1) - 1
+            if 0 <= widx < len(lignes_entree):
+                reasons[code]["capex"] += _extract_capex_from_raw(lignes_entree[widx])
+                if len(reasons[code]["examples"]) < 3:
+                    reasons[code]["examples"].append(
+                        lignes_entree[widx].get("id_ligne") or lignes_entree[widx].get("lot") or lignes_entree[widx].get("designation")
+                    )
+
+        trace["normalisation"] = {
+            "kept": len(lignes_normalisees),
+            "rejected": len(lignes_entree) - len(lignes_normalisees),
+            "reasons": reasons,
+            "rejected_rows": rejected_rows,
+        }
+
+        # After attempting normalization of all lines, if strict mode and we have rejections, return an ERROR with full trace
+        if cleaner.mode == "strict" and rejected_rows:
+            duration = round(perf_counter() - start, 4)
+            logger.info("simulation aborted strict mode after full pass: kept=%s rejected=%s", len(lignes_normalisees), len(lignes_entree) - len(lignes_normalisees))
+            return {
+                "status": "ERROR",
+                "kpi": {
+                    "lignes": 0,
+                    "capex_local": 0,
+                    "capex_import": 0,
+                    "capex_optimise": 0,
+                    "economie_nette": 0,
+                    "taux_economie": 0,
+                    "lignes_import": 0,
+                    "lignes_local": 0,
+                },
+                "lignes": [],
+                "lignes_export": [],
+                "sensibilite": [],
+                "metadata": {
+                    "simulation_id": simulation_id,
+                    "run_id": run_id,
+                    "scenario_id": scenario_id,
+                    "mode": mode,
+                    "lignes_entree": len(lignes_entree),
+                    "lignes_calculees": 0,
+                    "line_counts": {
+                        "dqe": len(lignes_entree),
+                        "simulees": len(lignes_normalisees),
+                    },
+                    "temps_calcul_secondes": duration,
+                    "persist": persist,
+                    "project_id": project_id,
+                },
+                "warnings": cleaner.warnings,
+                "errors": [r for r in (dq.as_dict() if hasattr(dq, "as_dict") else {"message": str(dq)} for dq in [DataQualityError("aggregated")])],
+                "trace": trace,
+            }
+
         calculateur = CalculateurCAPEX(parametres)
-        lignes_calculees = calculateur.optimiser_lignes(lignes_normalisees)
+        # OPTIMISATION
+        lignes_optim = calculateur.optimiser_lignes(lignes_normalisees)
+        # dropped by optimiser (e.g., missing designation)
+        dropped_by_optim = len(lignes_normalisees) - len(lignes_optim)
+        # eligible/import vs local according to optimiser decision
+        optim_by_decision = {"IMPORT": 0, "LOCAL": 0, "OTHER": 0}
+        optim_capex = {"IMPORT": 0.0, "LOCAL": 0.0, "OTHER": 0.0}
+        for l in lignes_optim:
+            d = (l.get("DECISION") or l.get("DECISION_IMPORT") or "").upper()
+            if d not in optim_by_decision:
+                d = "OTHER"
+            optim_by_decision[d] += 1
+            optim_capex[d] += float(l.get("CAPEX_LOCAL") or l.get("MONTANT_LOCAL") or 0)
+
+        trace["optimisation"] = {
+            "kept": len(lignes_optim),
+            "dropped": dropped_by_optim,
+            "by_decision": optim_by_decision,
+            "capex_by_decision": {k: round(v, 2) for k, v in optim_capex.items()},
+        }
+
+        # PROCUREMENT
         procurement_engine = ProcurementEnrichmentEngine()
-        lignes_calculees = [procurement_engine.enrich_line(ligne) for ligne in lignes_calculees]
+        lignes_after_proc = [procurement_engine.enrich_line(ligne) for ligne in lignes_optim]
+        # Build simple buckets for importability / procurement score to explain reductions
+        buckets = {">=75": 0, ">=50": 0, ">=25": 0, "<25": 0}
+        proc_capex = 0.0
+        for l in lignes_after_proc:
+            score = float(l.get("IMPORTABILITY_SCORE") or l.get("IMPORTABILITY_SCORE") or 0)
+            proc_capex += float(l.get("CAPEX_LOCAL") or l.get("MONTANT_LOCAL") or 0)
+            if score >= 75:
+                buckets[">=75"] += 1
+            elif score >= 50:
+                buckets[">=50"] += 1
+            elif score >= 25:
+                buckets[">=25"] += 1
+            else:
+                buckets["<25"] += 1
+
+        trace["procurement"] = {"total": len(lignes_after_proc), "buckets_importability": buckets, "capex_total": round(proc_capex, 2)}
+
+        # LOGISTICS
         logistics_engine = LogisticsEngine()
-        lignes_calculees = [logistics_engine.enrich_line(ligne) for ligne in lignes_calculees]
+        lignes_after_log = [logistics_engine.enrich_line(ligne) for ligne in lignes_after_proc]
+        # Count by fill_rate and delivery risk
+        fill_buckets = {">=0.8": 0, ">=0.5": 0, ">=0.35": 0, "<0.35": 0}
+        risk_counts = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+        for l in lignes_after_log:
+            fr = float(l.get("FILL_RATE") or 0)
+            if fr >= 0.8:
+                fill_buckets[">=0.8"] += 1
+            elif fr >= 0.5:
+                fill_buckets[">=0.5"] += 1
+            elif fr >= 0.35:
+                fill_buckets[">=0.35"] += 1
+            else:
+                fill_buckets["<0.35"] += 1
+            dr = str(l.get("DELIVERY_RISK") or "").upper()
+            if "HIGH" in dr or "ELEVE" in dr.upper():
+                risk_counts["HIGH"] += 1
+            elif "MED" in dr or "MOYEN" in dr.upper():
+                risk_counts["MEDIUM"] += 1
+            else:
+                risk_counts["LOW"] += 1
+
+        trace["logistics"] = {"total": len(lignes_after_log), "fill_buckets": fill_buckets, "delivery_risk": risk_counts}
+
+        # DECISION
         decision_engine = DecisionEngineV2({**parametres, "scenario_type": scenario_type})
-        lignes_calculees = [decision_engine.enrich_line(ligne) for ligne in lignes_calculees]
+        lignes_after_decision = [decision_engine.enrich_line(ligne) for ligne in lignes_after_log]
+        decision_counts: dict[str, int] = {"IMPORT": 0, "LOCAL": 0, "HYBRIDE": 0, "REJETE": 0, "OTHER": 0}
+        decision_capex: dict[str, float] = {k: 0.0 for k in decision_counts}
+        for l in lignes_after_decision:
+            d = str(l.get("DECISION_FINALE") or l.get("DECISION") or "").upper()
+            if d not in decision_counts:
+                d = "OTHER"
+            decision_counts[d] += 1
+            decision_capex[d] += float(l.get("CAPEX_OPTIMISE") or l.get("CAPEX_LOCAL") or 0)
+
+        trace["decision"] = {"counts": decision_counts, "capex_by_decision": {k: round(v, 2) for k, v in decision_capex.items()}}
+
+        # Enrich audit and explanation
+        parameter_registry = ParameterRegistryEngine(parametres)
+        audit_engine = AuditTrailEngine(parameter_registry)
+        explainability_engine = ExplainabilityEngine()
+        lignes_calculees = [
+            {
+                **ligne,
+                "AUDIT_TRAIL": audit_engine.build_line_audit(ligne),
+                "EXPLANATION": explainability_engine.explain_line(ligne),
+            }
+            for ligne in lignes_after_decision
+        ]
 
         parameter_registry = ParameterRegistryEngine(parametres)
         audit_engine = AuditTrailEngine(parameter_registry)
@@ -165,6 +419,9 @@ class ServiceSimulation:
         kpi = calculateur.calculer_kpi(lignes_calculees)
         kpi["procurement"] = KPIEngine().compute_procurement_kpi(lignes_calculees)
         self._enrichir_kpi_lignes(kpi, lignes_entree, lignes_normalisees, lignes_calculees)
+
+        # scenario final summary
+        trace["scenario_final"] = {"final_count": len(lignes_calculees), "capex_final": round(kpi.get("capex_optimise", 0), 2)}
 
         sensibilite = []
         if inclure_sensibilite:
@@ -213,6 +470,7 @@ class ServiceSimulation:
             },
             "warnings": cleaner.warnings,
             "errors": [],
+            "trace": trace,
         }
         if persist:
             self._persist_simulation(

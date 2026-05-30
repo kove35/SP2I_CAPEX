@@ -134,6 +134,11 @@ class DataCleaner:
         "pm": "forfait",
     }
 
+    STRICT_WARNING_CODES = {
+        "PRIX_UNITAIRE_INVALIDE",
+        "PRIX_TOTAL_INVALIDE",
+    }
+
     def __init__(self, mode: str = DEFAULT_SIMULATION_MODE) -> None:
         if mode not in VALID_SIMULATION_MODES:
             raise DataQualityError(
@@ -271,6 +276,9 @@ class DataCleaner:
         self.warnings.append(warning)
 
         if self.mode == "strict":
+            if code in self.STRICT_WARNING_CODES:
+                logger.warning("%s | %s", code, message)
+                return
             logger.error("%s | %s", code, message)
             raise DataQualityError(message, details=warning)
 
