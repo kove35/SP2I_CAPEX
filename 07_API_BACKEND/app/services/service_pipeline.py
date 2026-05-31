@@ -5,8 +5,14 @@ import hashlib
 import json
 import logging
 import re
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+
+try:
+    import pandas as pd
+except ImportError:  # pragma: no cover
+    pd = None
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -33,6 +39,51 @@ def _lire_csv(chemin: Path) -> list[dict[str, Any]]:
         return list(csv.DictReader(fichier, delimiter=";"))
 
 
+def _json_safe_data(value: Any, path: str = "root", issues: list[tuple[str, str]] | None = None) -> Any:
+    if issues is None:
+        issues = []
+
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    if isinstance(value, (datetime, date)):
+        issues.append((path, type(value).__name__))
+        return value.isoformat()
+    if pd is not None and isinstance(value, pd.Timestamp):
+        issues.append((path, type(value).__name__))
+        return value.isoformat()
+    if isinstance(value, bytes):
+        issues.append((path, type(value).__name__))
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, dict):
+        return {str(key): _json_safe_data(val, f"{path}.{key}", issues) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_json_safe_data(item, f"{path}[{index}]", issues) for index, item in enumerate(value)]
+
+    try:
+        json.dumps(value, ensure_ascii=False)
+        return value
+    except (TypeError, ValueError):
+        issues.append((path, type(value).__name__))
+        try:
+            return str(value)
+        except Exception:
+            return repr(value)
+
+
+def _json_safe_donnees(value: Any) -> Any:
+    issues: list[tuple[str, str]] = []
+    safe = _json_safe_data(value, "root", issues)
+    if issues:
+        pipeline_logger.debug("JSON safe conversion issues: %s", issues)
+    return safe
+
+
+def _ecrire_json(chemin: Path, donnees: dict[str, Any]) -> None:
+    chemin.parent.mkdir(parents=True, exist_ok=True)
+    safe_data = _json_safe_donnees(donnees)
+    chemin.write_text(json.dumps(safe_data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def _ecrire_csv(chemin: Path, lignes: list[dict[str, Any]]) -> None:
     chemin.parent.mkdir(parents=True, exist_ok=True)
     if not lignes:
@@ -44,11 +95,6 @@ def _ecrire_csv(chemin: Path, lignes: list[dict[str, Any]]) -> None:
         writer = csv.DictWriter(fichier, fieldnames=champs, delimiter=";")
         writer.writeheader()
         writer.writerows(lignes)
-
-
-def _ecrire_json(chemin: Path, donnees: dict[str, Any]) -> None:
-    chemin.parent.mkdir(parents=True, exist_ok=True)
-    chemin.write_text(json.dumps(donnees, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 class ServicePipeline:
@@ -74,7 +120,7 @@ class ServicePipeline:
 
         self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
         with self.chemin_source.open("w", encoding="utf-8") as fichier:
-            json.dump(donnees, fichier, ensure_ascii=False, indent=2)
+            json.dump(_json_safe_data(donnees), fichier, ensure_ascii=False, indent=2)
 
         return self.executer_source_courante()
 
@@ -97,19 +143,21 @@ class ServicePipeline:
         self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
         with self.chemin_source.open("w", encoding="utf-8") as fichier:
             json.dump(
-                {
-                    "source": nom_fichier,
-                    "lignes": lignes,
-                    "audit_excel": audit_excel,
-                },
+                _json_safe_donnees(
+                    {
+                        "source": nom_fichier,
+                        "lignes": lignes,
+                        "audit_excel": audit_excel,
+                    }
+                ),
                 fichier,
                 ensure_ascii=False,
                 indent=2,
             )
 
         resultat = self.executer_source_courante()
-        resultat["audit_excel"] = audit_excel
-        return resultat
+        resultat["audit_excel"] = _json_safe_donnees(audit_excel)
+        return _json_safe_donnees(resultat)
 
     def executer_source_courante(self) -> dict[str, Any]:
         resultat = self._executer_moteur_backend()

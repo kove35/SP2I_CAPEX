@@ -12,8 +12,14 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   DEFAULT_API_URL;
-
+console.group("SP2I Environment");
+console.log("Origin:", window.location.origin);
+console.log("API_BASE_URL:", API_BASE_URL);
+console.log("VITE_API_URL:", import.meta.env.VITE_API_URL);
+console.log("VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
+console.groupEnd();
 export const apiClient = axios.create({
+  
   baseURL: API_BASE_URL,
   timeout: 120000,
 });

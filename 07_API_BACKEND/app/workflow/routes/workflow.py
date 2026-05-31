@@ -10,6 +10,7 @@ from app.projects.models import Project
 from app.workflow.engine.workflow_state_engine import WorkflowStateEngine
 from app.workflow.schemas.workflow import WorkflowState
 from app.workflow.services.workflow_cache import workflow_cache
+from app.utils.json_safe import sanitize_for_json
 
 
 router = APIRouter()
@@ -40,7 +41,7 @@ def get_workflow_timeline(
 ) -> dict:
     project = _get_owned_project(db, current_user, project_id)
     state = WorkflowStateEngine(db).compute(project.id, setup_status=project.setup_status)
-    return {"project_id": project.id, "timeline": [item.model_dump(mode="json") for item in state.timeline]}
+    return sanitize_for_json({"project_id": project.id, "timeline": [item.model_dump(mode="json") for item in state.timeline]})
 
 
 @router.get("/{project_id}/metrics")
@@ -51,7 +52,7 @@ def get_workflow_metrics(
 ) -> dict:
     project = _get_owned_project(db, current_user, project_id)
     state = WorkflowStateEngine(db).compute(project.id, setup_status=project.setup_status)
-    return {"project_id": project.id, "metrics": state.metrics.model_dump(mode="json"), "progress_percent": state.progress_percent}
+    return sanitize_for_json({"project_id": project.id, "metrics": state.metrics.model_dump(mode="json"), "progress_percent": state.progress_percent})
 
 
 @router.get("/{project_id}/alerts")
@@ -62,7 +63,7 @@ def get_workflow_alerts(
 ) -> dict:
     project = _get_owned_project(db, current_user, project_id)
     state = WorkflowStateEngine(db).compute(project.id, setup_status=project.setup_status)
-    return {"project_id": project.id, "alerts": [alert.model_dump(mode="json") for alert in state.alerts], "blockers": [blocker.model_dump(mode="json") for blocker in state.blockers]}
+    return sanitize_for_json({"project_id": project.id, "alerts": [alert.model_dump(mode="json") for alert in state.alerts], "blockers": [blocker.model_dump(mode="json") for blocker in state.blockers]})
 
 
 @router.post("/{project_id}/refresh", response_model=WorkflowState)

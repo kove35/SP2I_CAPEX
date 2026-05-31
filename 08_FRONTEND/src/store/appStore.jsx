@@ -31,6 +31,33 @@ export function AppStoreProvider({ children }) {
     return persisted ? { ...defaultState, ...persisted } : defaultState;
   });
 
+  // Debug: log store snapshot on change for tracing
+  React.useEffect(() => {
+    try {
+      console.log("STORE SNAPSHOT", {
+        lastSimulationLines: state?.lastSimulation?.kpi?.lignes_simulees,
+        activeProject: state?.activeProject,
+        activeWorkspace: state?.workspaceKey || state?.activeProject,
+        lastSimulationProject: state?.lastSimulationProject,
+      });
+    } catch (e) {
+      console.warn("STORE SNAPSHOT LOG FAILED", e);
+    }
+  }, [state]);
+
+  // Expose debug helper to quickly dump persisted state from console
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.__sp2i_dump_state = () => {
+      try {
+        const persisted = window.localStorage.getItem(APP_STATE_KEY);
+        console.log("PERSISTED sp2i:appState", persisted ? JSON.parse(persisted) : null);
+      } catch (e) {
+        console.warn("PERSISTED DUMP FAILED", e);
+      }
+    };
+  }, []);
+
   React.useEffect(() => {
     if (typeof window === "undefined") return;
     try {
