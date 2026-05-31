@@ -26,6 +26,14 @@ const logAnalyticsResult = (label, data, filters) => {
     tableLength: data?.table?.length,
     kpis: data?.kpis,
   });
+  try {
+    if (typeof window !== "undefined") {
+      window.__REACT_QUERY_CACHE = window.__REACT_QUERY_CACHE || {};
+      window.__REACT_QUERY_CACHE[label] = data;
+    }
+  } catch (e) {
+    // ignore
+  }
 };
 
 export function useAnalyticsEngine(dashboardType = "direction") {
@@ -165,4 +173,15 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     isFetching: dashboard.isFetching || capex.isFetching || drilldown.isFetching || gainAnalysis.isFetching,
     error: dashboard.error || capex.error || procurement.error || gainAnalysis.error || suppliers.error || procurementLines.error || procurementScenarios.error || currency.error || importRisks.error || heatmap.error || risk.error || timeline.error || drilldown.error,
   };
+}
+
+// Debug helper: log cached values for key queries
+if (typeof window !== "undefined") {
+  setTimeout(() => {
+    try {
+      console.log("REACT-QUERY CACHE SNAPSHOT: dashboard", { data: window.__REACT_QUERY_DASHBOARD_DATA });
+    } catch (e) {
+      // noop
+    }
+  }, 1000);
 }

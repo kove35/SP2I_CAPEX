@@ -375,6 +375,11 @@ export default function AnalyticsPage() {
       console.log("AnalyticsPage localStorage sp2i:appState", appState);
       const session = window.sessionStorage.getItem("sp2i:appState");
       console.log("AnalyticsPage sessionStorage sp2i:appState", session);
+      try {
+        console.log("AnalyticsPage REACT_QUERY_CACHE", window.__REACT_QUERY_CACHE || null);
+      } catch (e) {
+        // ignore
+      }
     } catch (storageError) {
       console.warn("AnalyticsPage storage parse failed", storageError);
     }

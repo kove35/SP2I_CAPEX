@@ -10,6 +10,7 @@ from app.database import get_db
 from app.schemas import ExcelUploadResponse
 from app.services.service_ai_mapping import ServiceAIMapping
 from app.services.service_pipeline import ServicePipeline
+from app.utils.json_safe import sanitize_for_json
 from sqlalchemy.orm import Session
 
 
@@ -73,7 +74,7 @@ async def upload_excel_intelligent(
         print("FACT_METRE ROWS:", 0)
         print("PREVIEW ROWS:", resultat.get("preview_rows_count", 0))
         print("SYNCED ROWS:", 0)
-        return resultat
+        return sanitize_for_json(resultat)
     except Exception as erreur:
         raise HTTPException(
             status_code=500,
@@ -110,7 +111,7 @@ async def upload_excel_et_synchroniser(
         print("FACT_METRE ROWS:", data_quality.get("lignes_fact_metre", 0))
         print("PREVIEW ROWS:", (resultat.get("audit_excel") or {}).get("preview_rows_count", 0))
         print("SYNCED ROWS:", (resultat.get("db_sync") or {}).get("fact_metre_sql_count", 0))
-        return resultat
+        return sanitize_for_json(resultat)
     except Exception as erreur:
         raise HTTPException(
             status_code=500,

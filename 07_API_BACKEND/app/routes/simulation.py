@@ -11,6 +11,7 @@ from app.repositories import RepositoryScenario, RepositorySimulation
 from app.schemas import ScenarioRequest, SimulationRequest, SimulationResponse
 from app.services.service_simulation import ServiceSimulation
 from app.services.service_scenario_intelligence import ServiceScenarioIntelligence
+from app.utils.json_safe import sanitize_for_json
 
 
 router = APIRouter()
@@ -28,7 +29,7 @@ def simulate_capex(
     La route ne contient pas de formule metier : elle valide le JSON via
     Pydantic, appelle le service, puis renvoie une reponse stable au frontend.
     """
-    return service.simuler(demande)
+    return sanitize_for_json(service.simuler(demande))
 
 
 @router.post("/scenarios")
@@ -37,7 +38,7 @@ def simulate_scenarios(
     service: ServiceSimulation = Depends(get_service_simulation),
 ) -> dict:
     """Calcule plusieurs hypotheses de landed cost pour le frontend."""
-    return service.analyser_scenarios(demande)
+    return sanitize_for_json(service.analyser_scenarios(demande))
 
 
 @router.get("/scenarios")
@@ -58,7 +59,7 @@ def list_scenarios(
                 "Historique scenarios indisponible temporairement. Le cockpit reste utilisable sans historique."
             ],
         }
-    return {"status": "SUCCESS", "scenarios": scenarios}
+    return sanitize_for_json({"status": "SUCCESS", "scenarios": scenarios})
 
 
 @router.get("/scenario/{scenario_id}")
@@ -75,11 +76,11 @@ def get_scenario(
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario introuvable.")
 
-    return {
+    return sanitize_for_json({
         "status": "SUCCESS",
         "scenario": scenario,
         "lignes": simulation_repo.get_simulation(scenario_id, limit=limit, offset=offset),
-    }
+    })
 
 
 @router.get("/scenarios/compare")
@@ -89,7 +90,7 @@ def compare_scenarios(
     service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
 ) -> dict:
     """Compare deux scenarios historises via les moteurs d'intelligence Scenario."""
-    return service.compare_scenarios(scenario_a, scenario_b)
+    return sanitize_for_json(service.compare_scenarios(scenario_a, scenario_b))
 
 
 @router.get("/compare")
@@ -100,12 +101,14 @@ def compare_scenarios_legacy(
 ) -> dict:
     """Compare deux scenarios historises via les KPI PostgreSQL."""
     rows = RepositorySimulation(db).compare_simulations(scenario_a, scenario_b)
-    return {
-        "status": "SUCCESS",
-        "scenario_a": scenario_a,
-        "scenario_b": scenario_b,
-        "comparison": rows,
-    }
+    return sanitize_for_json(
+        {
+            "status": "SUCCESS",
+            "scenario_a": scenario_a,
+            "scenario_b": scenario_b,
+            "comparison": rows,
+        }
+    )
 
 
 @router.get("/scenarios/history")
@@ -115,7 +118,7 @@ def scenario_history(
     service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
 ) -> dict:
     """Retourne l'historique des scenarios avec scoring et performances."""
-    return service.list_history(limit=limit, offset=offset)
+    return sanitize_for_json(service.list_history(limit=limit, offset=offset))
 
 
 @router.get("/scenarios/best")
@@ -126,7 +129,7 @@ def best_scenarios(
 ) -> dict:
     """Retourne les meilleurs scenarios en fonction du scoring global."""
     ids = scenario_ids.split(",") if scenario_ids else None
-    return service.best_scenarios(scenario_ids=ids, limit=limit)
+    return sanitize_for_json(service.best_scenarios(scenario_ids=ids, limit=limit))
 
 
 @router.get("/scenarios/analytics")
@@ -135,4 +138,4 @@ def scenario_analytics(
     service: ServiceScenarioIntelligence = Depends(get_service_scenario_intelligence),
 ) -> dict:
     """Retourne les analytics métiers et la timeline d'un scenario."""
-    return service.analytics(scenario_id)
+    return sanitize_for_json(service.analytics(scenario_id))

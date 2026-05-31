@@ -8,6 +8,7 @@ from app.analytics.schemas import AnalyticsResponse
 from app.analytics.services import AnalyticsService
 from app.analytics.utils import build_query
 from app.database import get_db
+from app.utils.json_safe import sanitize_for_json
 
 
 router = APIRouter()
@@ -62,47 +63,47 @@ def analytics_query(
 
 @router.get("/capex", response_model=AnalyticsResponse)
 def capex(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).capex(query)
+    return sanitize_for_json(AnalyticsService(db).capex(query))
 
 
 @router.get("/kpis", response_model=AnalyticsResponse)
 def kpis(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).kpis(query)
+    return sanitize_for_json(AnalyticsService(db).kpis(query))
 
 
 @router.get("/risk", response_model=AnalyticsResponse)
 def risk(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).risk(query)
+    return sanitize_for_json(AnalyticsService(db).risk(query))
 
 
 @router.get("/procurement", response_model=AnalyticsResponse)
 def procurement(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).procurement(query)
+    return sanitize_for_json(AnalyticsService(db).procurement(query))
 
 
 @router.get("/procurement-scenarios", response_model=AnalyticsResponse)
 def procurement_scenarios(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).procurement_scenarios(query)
+    return sanitize_for_json(AnalyticsService(db).procurement_scenarios(query))
 
 
 @router.get("/suppliers", response_model=AnalyticsResponse)
 def suppliers(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).suppliers(query)
+    return sanitize_for_json(AnalyticsService(db).suppliers(query))
 
 
 @router.get("/procurement-lines", response_model=AnalyticsResponse)
 def procurement_lines(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).procurement_lines(query)
+    return sanitize_for_json(AnalyticsService(db).procurement_lines(query))
 
 
 @router.get("/currency", response_model=AnalyticsResponse)
 def currency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).currency(query)
+    return sanitize_for_json(AnalyticsService(db).currency(query))
 
 
 @router.get("/import-risks", response_model=AnalyticsResponse)
 def import_risks(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).import_risks(query)
+    return sanitize_for_json(AnalyticsService(db).import_risks(query))
 
 
 @router.get("/procurement-export")
@@ -117,7 +118,7 @@ def procurement_export(query=Depends(analytics_query), db: Session = Depends(get
 
 @router.get("/gain-analysis", response_model=AnalyticsResponse)
 def gain_analysis(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).gain_analysis(query)
+    return sanitize_for_json(AnalyticsService(db).gain_analysis(query))
 
 
 @router.get("/gain-analysis/export")
@@ -132,32 +133,32 @@ def gain_analysis_export(query=Depends(analytics_query), db: Session = Depends(g
 
 @router.get("/logistics", response_model=AnalyticsResponse)
 def logistics(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).logistics(query)
+    return sanitize_for_json(AnalyticsService(db).logistics(query))
 
 
 @router.get("/scenarios", response_model=AnalyticsResponse)
 def scenarios(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).scenarios(query)
+    return sanitize_for_json(AnalyticsService(db).scenarios(query))
 
 
 @router.get("/heatmap", response_model=AnalyticsResponse)
 def heatmap(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).heatmap(query)
+    return sanitize_for_json(AnalyticsService(db).heatmap(query))
 
 
 @router.get("/drilldown", response_model=AnalyticsResponse)
 def drilldown(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).drilldown(query)
+    return sanitize_for_json(AnalyticsService(db).drilldown(query))
 
 
 @router.get("/timeline", response_model=AnalyticsResponse)
 def timeline(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).timeline(query)
+    return sanitize_for_json(AnalyticsService(db).timeline(query))
 
 
 @router.get("/filters")
 def filters(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).filter_options()
+    return sanitize_for_json(AnalyticsService(db).filter_options())
 
 
 @router.get("/dashboard", response_model=AnalyticsResponse)
@@ -166,39 +167,39 @@ def dashboard(
     query=Depends(analytics_query),
     db: Session = Depends(get_db),
 ) -> dict:
-    return AnalyticsService(db).dashboard(query, dashboard_type=dashboard_type)
+    return sanitize_for_json(AnalyticsService(db).dashboard(query, dashboard_type=dashboard_type))
 
 
 @router.get("/system-health", response_model=AnalyticsResponse)
 def system_health(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).system_health()
+    return sanitize_for_json(AnalyticsService(db).system_health())
 
 
 @router.get("/query-performance", response_model=AnalyticsResponse)
 def query_performance(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).query_performance()
+    return sanitize_for_json(AnalyticsService(db).query_performance())
 
 
 @router.get("/cache-status", response_model=AnalyticsResponse)
 def cache_status(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).cache_status()
+    return sanitize_for_json(AnalyticsService(db).cache_status())
 
 
 @router.get("/debug/pipeline", response_model=AnalyticsResponse)
 def debug_pipeline(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).debug_pipeline()
+    return sanitize_for_json(AnalyticsService(db).debug_pipeline())
 
 
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).qa_summary()
+    return sanitize_for_json(AnalyticsService(db).qa_summary())
 
 
 @router.get("/data-quality", response_model=AnalyticsResponse)
 def data_quality(db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).data_quality()
+    return sanitize_for_json(AnalyticsService(db).data_quality())
 
 
 @router.get("/debug/capex-reconciliation/{project_id}")
 def capex_reconciliation(project_id: int, db: Session = Depends(get_db)) -> dict:
-    return AnalyticsService(db).capex_reconciliation(project_id)
+    return sanitize_for_json(AnalyticsService(db).capex_reconciliation(project_id))

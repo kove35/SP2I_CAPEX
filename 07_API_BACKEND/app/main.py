@@ -7,6 +7,7 @@ from importlib import import_module
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from app.middleware.json_safe_middleware import JsonSafeMiddleware
 
 from app.analytics.routes import router as analytics_router
 from app.approval.routes.approvals import router as approvals_router
@@ -31,27 +32,37 @@ import_module("app.projects.models")
 
 def _get_cors_origins() -> list[str]:
     """
-    Charge les origines autorisees depuis l'environnement.
-
-    En local, React et Streamlit peuvent tourner sur des ports differents.
-    En cloud, Render doit accepter l'URL publique Streamlit configuree dans
-    `CORS_ORIGINS`.
+    Charge les origines autorisées depuis l'environnement.
     """
-    default_origins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8501"
-    raw_origins = os.getenv("CORS_ORIGINS", default_origins)
-    return [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
 
+    default_origins = (
+        "http://localhost:5173,"
+        "http://localhost:5174,"
+        "http://localhost:5175,"
+        "http://127.0.0.1:5173,"
+        "http://127.0.0.1:5174,"
+        "http://127.0.0.1:5175,"
+        "http://localhost:8501"
+    )
+
+    raw_origins = os.getenv("CORS_ORIGINS", default_origins)
+
+    return [
+        origin.strip()
+        for origin in raw_origins.split(",")
+        if origin.strip()
+    ]
 
 def _get_cors_origin_regex() -> str | None:
     """
-    Autorise les domaines Vercel sans connaitre l'URL finale a l'avance.
-
-    Vercel cree souvent des URLs de preview et de production differentes. Cette
-    regex evite de bloquer le frontend quand l'URL exacte n'a pas encore ete
-    ajoutee dans `CORS_ORIGINS`.
+    Autorise localhost sur n'importe quel port
+    ainsi que les domaines Vercel.
     """
-    return os.getenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
 
+    return os.getenv(
+        "CORS_ORIGIN_REGEX",
+        r"(http://localhost:\d+|http://127\.0\.0\.1:\d+|https://.*\.vercel\.app)"
+    )
 
 app = FastAPI(
     title="SP2I CAPEX API",
@@ -67,6 +78,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Ensure responses are JSON-safe (convert datetimes, decimals, UUIDs etc.)
+app.add_middleware(JsonSafeMiddleware)
 
 app.include_router(dqe.router, prefix="/dqe", tags=["DQE"])
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
