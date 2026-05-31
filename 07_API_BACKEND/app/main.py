@@ -263,3 +263,26 @@ def debug_tables():
     return {
         "tables": [t[0] for t in tables]
     }
+from sqlalchemy import text
+
+@app.get("/debug/render-capex")
+def debug_render_capex():
+    from app.database import engine
+
+    with engine.connect() as conn:
+
+        fact = conn.execute(text("""
+            SELECT COUNT(*) AS nb_lignes,
+                   COALESCE(SUM(capex_local),0) AS capex
+            FROM fact_metre
+        """)).mappings().first()
+
+        vw = conn.execute(text("""
+            SELECT *
+            FROM vw_capex_summary
+        """)).mappings().first()
+
+    return {
+        "fact_metre": dict(fact),
+        "vw_capex_summary": dict(vw) if vw else None
+    }
