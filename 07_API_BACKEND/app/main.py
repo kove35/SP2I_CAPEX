@@ -247,3 +247,19 @@ def debug_database():
     return {
         "database_url": DATABASE_URL
     }
+@app.get("/debug/tables")
+def debug_tables():
+    from sqlalchemy import text
+    from app.database import engine
+
+    with engine.connect() as conn:
+        tables = conn.execute(text("""
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema='public'
+            ORDER BY table_name
+        """)).fetchall()
+
+    return {
+        "tables": [t[0] for t in tables]
+    }
