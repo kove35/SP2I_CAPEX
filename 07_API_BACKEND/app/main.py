@@ -239,3 +239,11 @@ def debug_config() -> dict:
             for key in powerbi_keys
         },
     }
+
+@app.get("/debug/database")
+def debug_database():
+    from app.database import DATABASE_URL
+
+    return {
+        "database_url": DATABASE_URL
+    }
