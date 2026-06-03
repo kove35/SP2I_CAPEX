@@ -24,6 +24,15 @@ class AnalyticsCache:
     def set(self, key: str, value: Any) -> None:
         self._store[key] = (time.time(), value)
 
+    def peek(self, key: str) -> Any | None:
+        item = self._store.get(key)
+        if not item:
+            return None
+        return item[1]
+
+    def keys(self) -> list[str]:
+        return sorted(self._store.keys())
+
     def clear(self) -> None:
         """Vide le cache apres une synchronisation PostgreSQL."""
         self._store.clear()
@@ -34,6 +43,7 @@ class AnalyticsCache:
             "entries": len(self._store),
             "ttl_seconds": self.ttl_seconds,
             "redis_ready": False,
+            "keys": self.keys(),
         }
 
 

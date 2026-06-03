@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import logging
 from io import BytesIO
 from pathlib import Path
 from time import perf_counter
@@ -17,6 +18,7 @@ from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_payload_labels
 
 
+logger = logging.getLogger("sp2i-capex-api.analytics")
 RACINE = Path(__file__).resolve().parents[4]
 
 SUPPORTED_CURRENCIES = {
@@ -894,6 +896,21 @@ class AnalyticsService:
         }
 
     def _build_dashboard(self, query: AnalyticsQuery, dashboard_type: str) -> dict[str, Any]:
+        raw_metrics = self._fact_metre_raw_metrics()
+        where_sql, params = self.repository._where(query)
+        filtered_metrics = self._fact_metre_filtered_metrics(where_sql, params)
+        logger.info(
+            "ANALYTICS TRACE | dashboard=%s source=fact_metre filters=%s injected_filters=%s raw_nb_lignes=%s raw_capex=%s filtered_nb_lignes=%s filtered_capex=%s sql_where=%s sql_params=%s",
+            dashboard_type,
+            query.filters.model_dump(exclude_none=True),
+            self._injected_filter_trace(query),
+            raw_metrics.get("nb_lignes"),
+            raw_metrics.get("capex_brut"),
+            filtered_metrics.get("nb_lignes"),
+            filtered_metrics.get("capex_brut"),
+            where_sql or "<none>",
+            params,
+        )
         table, total = self.repository.table(query)
         group_default = {
             "direction": "lot",
@@ -902,9 +919,17 @@ class AnalyticsService:
             "logistics": "decision_import",
             "chantier": "batiment",
         }.get(dashboard_type, "lot")
+        kpis = self.repository.kpis(query)
+        nb_lignes = int(kpis.get("nb_lignes") or 0)
+        capex_brut = float(kpis.get("capex_brut") or 0)
+        logger.info(
+            "ANALYTICS TRACE | nb_lignes=%s capex=%s",
+            nb_lignes,
+            capex_brut,
+        )
         return self._response(
             query,
-            kpis=self.repository.kpis(query),
+            kpis=kpis,
             charts={
                 "bar": self.repository.grouped(query, default_group=group_default),
                 "heatmap": self.repository.heatmap(query),
@@ -1420,15 +1445,101 @@ class AnalyticsService:
         })
 
     def _cached(self, prefix: str, query: AnalyticsQuery, builder) -> dict[str, Any]:
-        key = f"{prefix}:{hashlib.sha1(query.model_dump_json().encode()).hexdigest()}"
+        signature = self._fact_metre_cache_signature()
+        key_payload = {"query": query.model_dump(mode="json"), "source": signature}
+        key = f"{prefix}:{hashlib.sha1(json.dumps(key_payload, sort_keys=True, default=str).encode()).hexdigest()}"
         cached = analytics_cache.get(key)
         if cached:
-            cached["metadata"] = {**cached.get("metadata", {}), "cache_hit": True}
-            return cached
+            value = json.loads(json.dumps(cached, default=str))
+            value["metadata"] = {
+                **value.get("metadata", {}),
+                "cache_hit": True,
+                "cache_key": key,
+                "cache_source_signature": signature,
+            }
+            logger.info(
+                "ANALYTICS CACHE | cache_hit=%s cache_key=%s cache_value=%s",
+                True,
+                key,
+                self._cache_value_summary(value),
+            )
+            return value
         value = builder()
-        value["metadata"] = {**value.get("metadata", {}), "cache_hit": False}
+        value["metadata"] = {
+            **value.get("metadata", {}),
+            "cache_hit": False,
+            "cache_key": key,
+            "cache_source_signature": signature,
+        }
+        logger.info(
+            "ANALYTICS CACHE | cache_hit=%s cache_key=%s cache_value=%s",
+            False,
+            key,
+            self._cache_value_summary(value),
+        )
         analytics_cache.set(key, json.loads(json.dumps(value, default=str)))
         return value
+
+    def _fact_metre_raw_metrics(self) -> dict[str, Any]:
+        row = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) AS nb_lignes,
+                    COALESCE(SUM(capex_local), 0) AS capex_brut
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        return dict(row)
+
+    def _fact_metre_filtered_metrics(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
+        row = self.repository.db.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) AS nb_lignes,
+                    COALESCE(SUM(capex_local), 0) AS capex_brut
+                FROM fact_metre
+                {where_sql}
+                """
+            ),
+            params,
+        ).mappings().one()
+        return dict(row)
+
+    def _fact_metre_cache_signature(self) -> dict[str, Any]:
+        row = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) AS nb_lignes,
+                    COALESCE(SUM(capex_local), 0) AS capex_local_total,
+                    MAX(created_at) AS max_created_at
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        return self.repository._json_safe(dict(row))
+
+    def _injected_filter_trace(self, query: AnalyticsQuery) -> dict[str, Any]:
+        filters = query.filters
+        return {
+            "project_id": filters.projet,
+            "scenario_id": filters.scenario,
+            "workspace_id": None,
+            "decision_import": filters.decision_import,
+            "date_debut": filters.periode_debut,
+            "date_fin": filters.periode_fin,
+        }
+
+    @staticmethod
+    def _cache_value_summary(value: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "kpis": value.get("kpis", {}),
+            "pagination": value.get("pagination", {}),
+            "filters": value.get("filters", {}),
+        }
 
     @staticmethod
     def _active_currency(query: AnalyticsQuery) -> str:
