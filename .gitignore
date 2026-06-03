@@ -22,6 +22,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+*.dump
 ~$*.xlsx
 .continue/
 tmp/

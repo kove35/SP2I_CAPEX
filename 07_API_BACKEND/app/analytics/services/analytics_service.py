@@ -16,6 +16,7 @@ from app.analytics.cache import analytics_cache
 from app.analytics.repositories import AnalyticsRepository
 from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_payload_labels
+from app.database import database_url_host, database_url_is_neon
 
 
 logger = logging.getLogger("sp2i-capex-api.analytics")
@@ -278,6 +279,24 @@ class AnalyticsService:
             "charts": {},
             "table": [],
             "metadata": analytics_cache.status(),
+        }
+
+    def database_debug(self) -> dict[str, Any]:
+        row = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    current_database() AS database_name,
+                    COUNT(*) AS fact_metre_count,
+                    COALESCE(SUM(capex_local), 0) AS capex_local_total
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        return {
+            **self.repository._json_safe(dict(row)),
+            "database_url_host": database_url_host(),
+            "is_neon": database_url_is_neon(),
         }
 
     @staticmethod
