@@ -193,6 +193,7 @@ def root() -> dict:
             "analytics_dashboard": "/analytics/dashboard",
             "analytics_kpis": "/analytics/kpis",
             "analytics_debug_pipeline": "/analytics/debug/pipeline",
+            "analytics_debug_database": "/analytics/debug/database",
             "analytics_capex_reconciliation": "/analytics/debug/capex-reconciliation/{project_id}",
             "analytics_data_quality": "/analytics/data-quality",
             "docs": "/docs",
@@ -230,6 +231,8 @@ def debug_config() -> dict:
     return {
         "environment": os.getenv("ENVIRONMENT", "development"),
         "database_configured": bool(os.getenv("DATABASE_URL")),
+        "render_git_commit": os.getenv("RENDER_GIT_COMMIT", ""),
+        "render_service_id": os.getenv("RENDER_SERVICE_ID", ""),
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
         "cors_origins": _get_cors_origins(),
         "frontend_url": os.getenv("FRONTEND_URL", ""),
@@ -242,10 +245,25 @@ def debug_config() -> dict:
 
 @app.get("/debug/database")
 def debug_database():
-    from app.database import DATABASE_URL
+    from app.database import database_url_database, database_url_host, database_url_is_neon, masked_database_url
+    from app.database import engine
+
+    with engine.connect() as conn:
+        row = conn.execute(text("""
+            SELECT
+                current_database() AS database_name,
+                COUNT(*) AS fact_metre_count,
+                COALESCE(SUM(capex_local), 0) AS capex_local_total
+            FROM fact_metre
+        """)).mappings().one()
 
     return {
-        "database_url": DATABASE_URL
+        "database_url": masked_database_url(),
+        "database_url_host": database_url_host(),
+        "database_name": row["database_name"] or database_url_database(),
+        "is_neon": database_url_is_neon(),
+        "fact_metre_count": int(row["fact_metre_count"] or 0),
+        "capex_local_total": float(row["capex_local_total"] or 0),
     }
 @app.get("/debug/tables")
 def debug_tables():

@@ -190,6 +190,11 @@ def debug_pipeline(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).debug_pipeline())
 
 
+@router.get("/debug/database")
+def debug_database(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).database_debug())
+
+
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())

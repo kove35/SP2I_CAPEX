@@ -1,9 +1,3 @@
-databases:
-  - name: sp2i-postgres
-    databaseName: sp2i_capex
-    user: sp2i_user
-    plan: free
-
 services:
   - type: web
     name: sp2i-backend
@@ -39,18 +33,19 @@ services:
         value: V1_ENTERPRISE
 
       - key: DATABASE_URL
-        fromDatabase:
-          name: sp2i-postgres
-          property: connectionString
+        sync: false
 
       - key: DB_POOL_SIZE
-        value: "5"
+        value: "2"
 
       - key: DB_MAX_OVERFLOW
-        value: "10"
+        value: "3"
+
+      - key: DB_POOL_RECYCLE
+        value: "1800"
 
       - key: DB_CONNECT_TIMEOUT
-        value: "5"
+        value: "10"
 
       - key: FRONTEND_URL
         sync: false
