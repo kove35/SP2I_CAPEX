@@ -70,6 +70,17 @@ function buildFilterLabel(filters = {}) {
   return parts.length ? parts.join(" / ") : "Tous les filtres";
 }
 
+function formatDqeDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
 function moduleTone(state) {
   if (state === "done") return "ready";
   if (state === "progress" || state === "todo") return "pending";
@@ -118,6 +129,18 @@ export default function CockpitPage() {
           <div>
             <p className="eyebrow">Synthese projet</p>
             <h1>{project.name || "Projet CAPEX"}</h1>
+            <div className={activeDqe ? "workspace-dqe-reference" : "workspace-dqe-reference empty"} aria-label="Fichier DQE de reference">
+              {activeDqe ? (
+                <>
+                  <span>📄 {activeDqe.file_name || "Fichier DQE actif"}</span>
+                  <span>🔖 Version {activeDqe.version_number ? `V${activeDqe.version_number}` : "-"}</span>
+                  <span>📅 {formatDqeDate(activeDqe.uploaded_at)}</span>
+                  <span>🎯 Trust Score : {activeDqe.trust_score ?? "-"}/100</span>
+                </>
+              ) : (
+                <span>📄 Aucun fichier de référence chargé</span>
+              )}
+            </div>
             <p>{project.city || "Ville a renseigner"}, {project.country || "Pays a renseigner"} · {project.client_name || "Client a renseigner"}</p>
           </div>
           <div className="workspace-summary-status">
