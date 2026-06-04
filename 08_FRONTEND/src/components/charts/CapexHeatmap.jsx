@@ -64,17 +64,29 @@ function normalizeBackendPayload(payload) {
   if (!payload?.xLabels || !payload?.yLabels || !Array.isArray(payload?.data)) return null;
   const xLabels = payload.xLabels.map((label) => toBusinessLabel(label, "Lot non renseigne"));
   const yLabels = payload.yLabels.map((label) => normalizeFamily(label));
+  const rowLookup = new Map(
+    (payload.rows || []).map((row) => [
+      `${toBusinessLabel(row.lot, "Lot non renseigne")}|${normalizeFamily(row.famille)}`,
+      row,
+    ])
+  );
   const total = payload.data.reduce((sum, item) => sum + Number(item[2] || 0), 0) || 1;
   const data = payload.data.map((item) => {
     const value = Number(item[2] || 0);
+    const lot = xLabels[Number(item[0])] || "";
+    const famille = yLabels[Number(item[1])] || "";
+    const row = rowLookup.get(`${lot}|${famille}`) || {};
     return {
       value: [Number(item[0]), Number(item[1]), value],
       capex: value,
+      budget: Number(row.budget || value),
+      economie: Number(row.economie || 0),
+      count: Number(row.nb_lignes || 0),
       share: value / total,
       decision: "A arbitrer",
       risque: "À évaluer",
       roi: 0,
-      filters: { lot: xLabels[Number(item[0])] || "", famille: yLabels[Number(item[1])] || "" },
+      filters: { lot, famille },
     };
   });
   return {
@@ -89,7 +101,7 @@ function normalizeBackendPayload(payload) {
 function buildHeatmap(payload, rows, modeKey) {
   if (modeKey === "lot-famille") {
     const backend = normalizeBackendPayload(payload);
-    if (backend && !rows.length) return backend;
+    if (backend) return backend;
   }
 
   const mode = HEATMAP_MODES.find((item) => item.key === modeKey) || HEATMAP_MODES[0];
@@ -158,15 +170,15 @@ function buildInsights(heatmap) {
   ];
 }
 
-export default function CapexHeatmap({ data = [], rows = [] }) {
+export default function CapexHeatmap({ data = [], rows = [], filtersLabel = "Tous les filtres" }) {
   const { applyFilters, applyDrilldown } = useCrossFiltering();
   const [mode, setMode] = React.useState("lot-famille");
   const heatmap = React.useMemo(() => buildHeatmap(data, rows, mode), [data, rows, mode]);
   const insights = React.useMemo(() => buildInsights(heatmap), [heatmap]);
   const scope = React.useMemo(() => {
-    const sourceRows = rows.length ? rows : heatmap.data;
+    const sourceRows = heatmap.data.length ? heatmap.data : rows;
     const lines = sourceRows.reduce((sum, row) => sum + Number(row.nb_lignes || row.count || 1), 0);
-    const budget = heatmap.data.reduce((sum, cell) => sum + Number(cell.capex || cell.value?.[2] || 0), 0);
+    const budget = sourceRows.reduce((sum, row) => sum + Number(row.budget || row.capexLocal || row.capex_local || row.capex_brut || 0), 0);
     const gain = sourceRows.reduce((sum, row) => sum + Number(row.economie || 0), 0);
     return { lines, budget, gain };
   }, [rows, heatmap]);
@@ -190,9 +202,10 @@ export default function CapexHeatmap({ data = [], rows = [] }) {
       </div>
       <div className="scope-summary">
         <span>Périmètre : {Number(scope.lines || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(scope.budget)}</span>
         <span>Gain : {formatMoney(scope.gain)}</span>
-        <span>Source : {rows.length ? "Sélection courante affichée" : "Projet complet agrégé"}</span>
+        <span>Source : Analytics Engine</span>
       </div>
       <BIChart
         height={380}

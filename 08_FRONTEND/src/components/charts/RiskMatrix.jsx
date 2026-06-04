@@ -73,7 +73,7 @@ function normalizeRowsPayload(payload) {
   return [];
 }
 
-export default function RiskMatrix({ rows = [] }) {
+export default function RiskMatrix({ rows = [], filtersLabel = "Tous les filtres" }) {
   const { applyFilters, applyDrilldown } = useCrossFiltering();
   const riskRows = useMemo(() => normalizeRowsPayload(rows).slice(0, 72).map(normalizeRiskRow), [rows]);
   const insight = useMemo(() => buildInsight(riskRows), [riskRows]);
@@ -122,9 +122,10 @@ export default function RiskMatrix({ rows = [] }) {
       </div>
       <div className="scope-summary">
         <span>Périmètre : {Number(insight.lines || riskRows.length).toLocaleString("fr-FR")} lignes</span>
+        <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(insight.budget)}</span>
         <span>Gain : {formatMoney(insight.gain)}</span>
-        <span>Source : Zones de risque agrégées</span>
+        <span>Source : Analytics Engine</span>
       </div>
       <BIChart
         height={388}

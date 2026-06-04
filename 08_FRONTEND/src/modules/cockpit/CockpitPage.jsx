@@ -59,6 +59,17 @@ function buildProjectAlerts(workflow) {
   return alerts.length ? alerts : ["Projet actif. Les principaux modules sont disponibles pour pilotage."];
 }
 
+function buildFilterLabel(filters = {}) {
+  const parts = [
+    filters.batiment,
+    filters.niveau,
+    filters.lot,
+    filters.famille,
+    filters.importLocal || filters.decisionImport,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" / ") : "Tous les filtres";
+}
+
 function moduleTone(state) {
   if (state === "done") return "ready";
   if (state === "progress" || state === "todo") return "pending";
@@ -92,6 +103,7 @@ export default function CockpitPage() {
   const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
   const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || table;
+  const filterLabel = buildFilterLabel(engine.filters);
   const estimatedSavings = Number(currentSimulation?.kpi?.economie_nette || kpis.economie_nette || 0);
   const procurementGain = Number(kpis.economie_nette || 0);
 
@@ -197,27 +209,27 @@ export default function CockpitPage() {
       <section className="analytics-command-grid">
         <InsightsPanel kpis={kpis} barRows={barRows} table={table} />
         <AnalyticsCard title="Du budget initial au budget optimise" eyebrow="Vue direction">
-          <CapexWaterfall summary={kpis} />
+          <CapexWaterfall summary={kpis} filtersLabel={filterLabel} />
         </AnalyticsCard>
       </section>
 
       <section className="bi-dashboard-grid">
         <AnalyticsCard title="Repartition des achats local / import" eyebrow="Arbitrage achats">
-          <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} />
+          <ImportDecisionSankey rows={table} chartRows={barRows} sankeyRows={sankeyRows} filtersLabel={filterLabel} />
         </AnalyticsCard>
         <AnalyticsCard title="Zones les plus couteuses" eyebrow="Lots et familles">
-          <CapexHeatmap data={heatmapRows} rows={table} />
+          <CapexHeatmap data={heatmapRows} rows={table} filtersLabel={filterLabel} />
         </AnalyticsCard>
         <AnalyticsCard title="Carte des risques projet" eyebrow="Pilotage projet">
-          <RiskMatrix rows={riskRows} />
+          <RiskMatrix rows={riskRows} filtersLabel={filterLabel} />
         </AnalyticsCard>
         <AnalyticsCard title="Evolution financiere du projet" eyebrow="Strategies et economies">
-          <CapexTimeline data={timelineRows} />
+          <CapexTimeline data={timelineRows} filtersLabel={filterLabel} />
         </AnalyticsCard>
       </section>
 
       <AnalyticsCard title="Analyse detaillee des lignes budgetaires" eyebrow={`${Number(total || table.length).toLocaleString("fr-FR")} lignes chargees`}>
-        <FactMetreGrid rows={table} total={total} />
+        <FactMetreGrid rows={table} total={total} filtersLabel={filterLabel} />
       </AnalyticsCard>
     </main>
   );

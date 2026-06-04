@@ -15,6 +15,7 @@ function normalizeTimeline(data = []) {
     const scenarioCode = row.scenario || row.scenario_nom || (index === rows.length - 1 ? "IMPORT_OPTIMIZATION" : "LOCAL_IMPORT_BALANCE");
     return {
       date: row.date || row.periode || `T${index}`,
+      budgetInitial: Number(row.budget_initial || row.capex_brut || row.capex_local || 0),
       capex: Number(row.capex || row.capex_optimise || 0),
       economie: Number(row.economie || row.economie_nette || 0),
       roi: Number(row.roi || row.roi_import || 0),
@@ -40,11 +41,11 @@ function buildInsights(rows) {
   ];
 }
 
-export default function CapexTimeline({ data = [] }) {
+export default function CapexTimeline({ data = [], filtersLabel = "Tous les filtres" }) {
   const { applyDrilldown } = useCrossFiltering();
   const rows = React.useMemo(() => normalizeTimeline(data), [data]);
   const insights = React.useMemo(() => buildInsights(rows), [rows]);
-  const currentScope = rows[rows.length - 1] || {};
+  const currentScope = rows.find((row) => row.scenarioCode === "Scenario actif") || rows[rows.length - 1] || {};
   const dates = rows.map((row) => row.date);
   const capex = rows.map((row) => row.capex);
   const savings = rows.map((row) => row.economie);
@@ -69,9 +70,10 @@ export default function CapexTimeline({ data = [] }) {
       </div>
       <div className="scope-summary">
         <span>Périmètre : {Number(currentScope.nbLignes || 0).toLocaleString("fr-FR")} lignes</span>
-        <span>Budget : {formatMoney(currentScope.capex || 0)}</span>
+        <span>Filtres : {filtersLabel}</span>
+        <span>Budget : {formatMoney(currentScope.budgetInitial || currentScope.capex || 0)}</span>
         <span>Gain : {formatMoney(currentScope.economie || 0)}</span>
-        <span>Source : {rows.length >= 4 ? "Historique import" : "Projection scénario actif"}</span>
+        <span>Source : Analytics Engine</span>
       </div>
       <BIChart
         height={372}

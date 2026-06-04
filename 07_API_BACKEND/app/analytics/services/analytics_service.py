@@ -208,7 +208,7 @@ class AnalyticsService:
 
     def currency(self, query: AnalyticsQuery) -> dict[str, Any]:
         active = self._active_currency(query)
-        return self._response(
+        return self._trace_endpoint("/analytics/currency", query, self._response(
             query,
             kpis={"active_currency": active, "usd_to_fcfa": 610, "eur_to_fcfa": 655.957},
             charts={
@@ -223,7 +223,7 @@ class AnalyticsService:
                 ],
             },
             metadata={"engine": "SP2I Currency Engine V1", "source": "SP2I_REFERENCE"},
-        )
+        ))
 
     def import_risks(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("import-risks", query, lambda: self._build_import_risks(query))
@@ -232,18 +232,30 @@ class AnalyticsService:
         return self._cached("logistics", query, lambda: self._build_logistics_plan(query))
 
     def scenarios(self, query: AnalyticsQuery) -> dict[str, Any]:
-        return self._response(query, table=self.repository.scenarios())
+        return self._trace_endpoint("/analytics/scenarios", query, self._response(query, table=self.repository.scenarios()))
 
     def heatmap(self, query: AnalyticsQuery) -> dict[str, Any]:
-        return self._response(query, charts={"heatmap": self.repository.heatmap(query)})
+        return self._trace_endpoint(
+            "/analytics/heatmap",
+            query,
+            self._response(query, charts={"heatmap": self.repository.heatmap(query)}),
+        )
 
     def drilldown(self, query: AnalyticsQuery) -> dict[str, Any]:
         path = self.repository.drilldown_path(query.drilldown_level)
         grouped = self.repository.grouped(query, default_group=path["next"] or path["current"])
-        return self._response(query, charts={"drilldown": grouped}, metadata={"drilldown": path})
+        return self._trace_endpoint(
+            "/analytics/drilldown",
+            query,
+            self._response(query, charts={"drilldown": grouped}, metadata={"drilldown": path}),
+        )
 
     def timeline(self, query: AnalyticsQuery) -> dict[str, Any]:
-        return self._response(query, charts={"timeline": self.repository.timeline(query)})
+        return self._trace_endpoint(
+            "/analytics/timeline",
+            query,
+            self._response(query, charts={"timeline": self.repository.timeline(query)}),
+        )
 
     def filter_options(self) -> dict[str, Any]:
         options = self.repository.filter_options()
@@ -441,6 +453,96 @@ class AnalyticsService:
             "is_consistent": not issues and bool(sankey_primary_gain),
             "issues": issues,
             "warnings": warnings,
+        }
+
+    def filter_consistency_debug(self, query: AnalyticsQuery) -> dict[str, Any]:
+        kpis = self.repository.kpis(query)
+        table, table_total = self.repository.table(query)
+        heatmap_rows = self.repository.heatmap_rows(query)
+        risk_rows = self.repository.risk_matrix(query)
+        timeline_rows = self.repository.timeline(query)
+        drilldown_rows = self.repository.grouped(query)
+        procurement_kpis = self.repository.kpis(query)
+        where_sql, params = self.repository.build_where_clause(query)
+
+        dashboard = self._scope_metrics(kpis)
+        heatmap = {
+            "lines": self._sum_lines(heatmap_rows),
+            "budget": round(sum(float(row.get("budget") or row.get("value") or 0) for row in heatmap_rows), 2),
+            "economie": round(sum(float(row.get("economie") or 0) for row in heatmap_rows), 2),
+            "source": "fact_metre GROUP BY lot, famille",
+        }
+        risk = {
+            "lines": self._sum_lines(risk_rows),
+            "budget": round(sum(float(row.get("impact") or 0) for row in risk_rows), 2),
+            "economie": round(sum(float(row.get("economie") or 0) for row in risk_rows), 2),
+            "source": "fact_metre GROUP BY lot, famille, decision_import",
+        }
+        timeline = {
+            "lines": self._timeline_scope_lines(timeline_rows),
+            "budget": self._timeline_scope_value(timeline_rows, "budget_initial"),
+            "budget_optimise": self._timeline_scope_value(timeline_rows, "capex"),
+            "economie": self._timeline_scope_value(timeline_rows, "economie"),
+            "source": "fact_metre GROUP BY date_import/created_at, fallback projection",
+        }
+        drilldown = {
+            "lines": self._sum_lines(drilldown_rows),
+            "budget": round(sum(float(row.get("capex_brut") or 0) for row in drilldown_rows), 2),
+            "economie": round(sum(float(row.get("economie_nette") or 0) for row in drilldown_rows), 2),
+            "source": "fact_metre GROUP BY drilldown level",
+        }
+        procurement = {
+            **self._scope_metrics(procurement_kpis),
+            "source": "fact_metre via dashboard procurement",
+        }
+        table_scope = {
+            "lines": len(table),
+            "total_filtered_lines": table_total,
+            "budget": round(sum(float(row.get("capex_local") or 0) for row in table), 2),
+            "economie": round(sum(float(row.get("economie") or 0) for row in table), 2),
+            "source": "fact_metre page courante",
+        }
+
+        expected_lines = int(dashboard["lines"])
+        expected_budget = float(dashboard["budget"])
+        expected_economie = float(dashboard["economie"])
+        line_checks = {
+            "heatmap": int(heatmap["lines"]),
+            "risk": int(risk["lines"]),
+            "timeline": int(timeline["lines"]),
+            "drilldown": int(drilldown["lines"]),
+            "procurement": int(procurement["lines"]),
+        }
+        issues = [
+            f"{endpoint}: lignes observees={lines}, attendues={expected_lines}"
+            for endpoint, lines in line_checks.items()
+            if lines != expected_lines
+        ]
+        for endpoint, metrics in {
+            "heatmap": heatmap,
+            "risk": risk,
+            "timeline": timeline,
+            "drilldown": drilldown,
+            "procurement": procurement,
+        }.items():
+            if abs(float(metrics.get("budget") or 0) - expected_budget) > 1:
+                issues.append(f"{endpoint}: budget observe={metrics.get('budget')}, attendu={expected_budget}")
+            if abs(float(metrics.get("economie") or 0) - expected_economie) > 1:
+                issues.append(f"{endpoint}: economie observee={metrics.get('economie')}, attendue={expected_economie}")
+        return {
+            "status": "SUCCESS",
+            "filters": query.filters.model_dump(exclude_none=True),
+            "where_clause": where_sql or "<none>",
+            "where_params": params,
+            "dashboard": dashboard,
+            "heatmap": heatmap,
+            "risk": risk,
+            "timeline": timeline,
+            "drilldown": drilldown,
+            "procurement": procurement,
+            "table": table_scope,
+            "is_consistent": not issues,
+            "issues": issues,
         }
 
     @staticmethod
@@ -1098,7 +1200,7 @@ class AnalyticsService:
             return value
 
         raw_metrics = measure("metadata_raw_fact", self._fact_metre_raw_metrics)
-        where_sql, params = self.repository._where(query)
+        where_sql, params = self.repository.build_where_clause(query)
         filtered_metrics = measure("metadata_filtered_fact", lambda: self._fact_metre_filtered_metrics(where_sql, params))
         timings["metadata_ms"] = round(
             float(timings.get("metadata_raw_fact_ms") or 0) + float(timings.get("metadata_filtered_fact_ms") or 0),
@@ -1275,7 +1377,7 @@ class AnalyticsService:
     def _build_procurement_lines(self, query: AnalyticsQuery) -> dict[str, Any]:
         analysis_query = query.model_copy(update={"page": 1, "page_size": 5000})
         table, total = self.repository.table(analysis_query)
-        project_kpis = self.repository.kpis(AnalyticsQuery())
+        project_kpis = self.repository.kpis(query)
         active_currency = self._active_currency(query)
         rows: list[dict[str, Any]] = []
 
@@ -1732,7 +1834,7 @@ class AnalyticsService:
                 key,
                 self._cache_value_summary(value),
             )
-            return value
+            return self._trace_endpoint(self._endpoint_from_cache_prefix(prefix), query, value)
         value = builder()
         value["metadata"] = {
             **value.get("metadata", {}),
@@ -1747,7 +1849,7 @@ class AnalyticsService:
             self._cache_value_summary(value),
         )
         analytics_cache.set(key, json.loads(json.dumps(value, default=str)))
-        return value
+        return self._trace_endpoint(self._endpoint_from_cache_prefix(prefix), query, value)
 
     def _fact_metre_raw_metrics(self) -> dict[str, Any]:
         row = self.repository.db.execute(
@@ -1790,6 +1892,63 @@ class AnalyticsService:
             )
         ).mappings().one()
         return self.repository._json_safe(dict(row))
+
+    def _trace_endpoint(self, endpoint: str, query: AnalyticsQuery, response: dict[str, Any]) -> dict[str, Any]:
+        where_sql, params = self.repository.build_where_clause(query)
+        metrics = self._fact_metre_filtered_metrics(where_sql, params)
+        logger.info({
+            "endpoint": endpoint,
+            "filters_received": query.filters.model_dump(exclude_none=True),
+            "where_clause": where_sql or "<none>",
+            "nb_lignes": int(metrics.get("nb_lignes") or 0),
+        })
+        response["metadata"] = {
+            **response.get("metadata", {}),
+            "filter_trace": {
+                "endpoint": endpoint,
+                "where_clause": where_sql or "<none>",
+                "nb_lignes": int(metrics.get("nb_lignes") or 0),
+            },
+        }
+        return response
+
+    @staticmethod
+    def _endpoint_from_cache_prefix(prefix: str) -> str:
+        endpoint = prefix.split(":", 1)[0]
+        return f"/analytics/{endpoint}"
+
+    @staticmethod
+    def _scope_metrics(kpis: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "lines": int(kpis.get("nb_lignes") or 0),
+            "budget": round(float(kpis.get("capex_brut") or kpis.get("capex_local") or 0), 2),
+            "budget_optimise": round(float(kpis.get("capex_optimise") or 0), 2),
+            "economie": round(float(kpis.get("economie_nette") or kpis.get("gain_net") or 0), 2),
+            "source": "fact_metre",
+        }
+
+    @staticmethod
+    def _sum_lines(rows: list[dict[str, Any]]) -> int:
+        return int(sum(int(row.get("nb_lignes") or 0) for row in rows))
+
+    @staticmethod
+    def _timeline_scope_lines(rows: list[dict[str, Any]]) -> int:
+        if not rows:
+            return 0
+        values = [int(row.get("nb_lignes") or 0) for row in rows]
+        return max(values) if len(set(values)) == 1 else sum(values)
+
+    @staticmethod
+    def _timeline_scope_value(rows: list[dict[str, Any]], key: str) -> float:
+        if not rows:
+            return 0
+        active = next((row for row in rows if str(row.get("scenario") or "") == "Scenario actif"), None)
+        if active:
+            return round(float(active.get(key) or 0), 2)
+        values = [float(row.get(key) or 0) for row in rows]
+        if len(set(values)) == 1:
+            return round(values[0], 2)
+        return round(values[-1], 2)
 
     def _injected_filter_trace(self, query: AnalyticsQuery) -> dict[str, Any]:
         filters = query.filters

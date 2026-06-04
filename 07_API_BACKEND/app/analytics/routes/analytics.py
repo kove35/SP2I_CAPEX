@@ -209,6 +209,11 @@ def debug_consistency(query=Depends(analytics_query), db: Session = Depends(get_
     return sanitize_for_json(AnalyticsService(db).consistency_debug(query))
 
 
+@router.get("/debug/filter-consistency")
+def debug_filter_consistency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).filter_consistency_debug(query))
+
+
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())
