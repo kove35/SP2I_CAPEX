@@ -65,7 +65,8 @@ function buildFallbackLinks(rows = [], chartRows = []) {
 export default function ImportDecisionSankey({ rows = [], chartRows = [], sankeyRows = [] }) {
   const { applyDrilldown } = useCrossFiltering();
   const rawLinks = sankeyRows.length ? sankeyRows : buildFallbackLinks(rows, chartRows);
-  const links = React.useMemo(() => aggregateLinks(rawLinks).filter((link) => Number(link.value || 0) > 0), [rawLinks]);
+  const aggregatedLinks = React.useMemo(() => aggregateLinks(rawLinks), [rawLinks]);
+  const links = React.useMemo(() => aggregatedLinks.filter((link) => Number(link.value || 0) > 0), [aggregatedLinks]);
   const nodes = React.useMemo(() => {
     const names = [...new Set(links.flatMap((link) => [link.source, link.target]))];
     return names.map((name) => ({
@@ -75,8 +76,8 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
     }));
   }, [links]);
   const kpis = React.useMemo(() => {
-    const primary = links.filter((link) => ["CAPEX", "Budget"].includes(link.source) && ["IMPORT", "LOCAL"].includes(link.target));
-    const scope = primary.length ? primary : links.filter((link) => !["CAPEX", "Budget"].includes(link.source) && link.target !== "IMPORT" && link.target !== "LOCAL");
+    const primary = aggregatedLinks.filter((link) => ["CAPEX", "Budget"].includes(link.source) && ["IMPORT", "LOCAL"].includes(link.target));
+    const scope = primary.length ? primary : aggregatedLinks.filter((link) => !["CAPEX", "Budget"].includes(link.source) && link.target !== "IMPORT" && link.target !== "LOCAL");
     const total = scope.reduce((sum, link) => sum + Number(link.value || 0), 0) || 1;
     const importTotal = scope.filter((link) => link.decision === "IMPORT" || link.target === "IMPORT").reduce((sum, link) => sum + Number(link.value || 0), 0);
     const localTotal = scope.filter((link) => link.decision === "LOCAL" || link.target === "LOCAL").reduce((sum, link) => sum + Number(link.value || 0), 0);
@@ -84,7 +85,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
     const roi = scope.length ? scope.reduce((sum, link) => sum + Number(link.roi || 0), 0) / scope.length : 0;
     const lines = scope.reduce((sum, link) => sum + Number(link.nb_lignes || 0), 0);
     return { importRate: importTotal / total, localRate: localTotal / total, gain, roi, lines, budget: total };
-  }, [links]);
+  }, [aggregatedLinks]);
   const chartKey = `sankey-premium-${links.map((link) => `${link.source}-${link.target}-${Math.round(link.value)}`).join("|") || "empty"}`;
 
   return (
