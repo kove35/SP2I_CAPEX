@@ -23,33 +23,56 @@ export const apiClient = axios.create({
   timeout: 60000,
 });
 
-apiClient.interceptors.request.use((config) => ({
-  ...config,
-  metadata: {
-    ...(config.metadata || {}),
-    startedAt: performance.now(),
-  },
-}));
+function now() {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+apiClient.interceptors.request.use((config) => {
+  const timeoutMs = config.timeout ?? apiClient.defaults.timeout;
+  console.log("API URL", config.baseURL || apiClient.defaults.baseURL);
+  console.log("REQUEST", {
+    endpoint: config.url,
+    method: config.method || "GET",
+    params: config.params,
+    timeout_ms: timeoutMs,
+  });
+  return {
+    ...config,
+    metadata: {
+      ...(config.metadata || {}),
+      startedAt: now(),
+    },
+  };
+});
 
 apiClient.interceptors.response.use(
   (response) => {
-    const startedAt = response.config.metadata?.startedAt || performance.now();
+    const startedAt = response.config.metadata?.startedAt || now();
     console.log("AXIOS TIMING", {
+      baseURL: response.config.baseURL || apiClient.defaults.baseURL,
       endpoint: response.config.url,
       status: response.status,
-      elapsed_ms: Math.round(performance.now() - startedAt),
+      elapsed_ms: Math.round(now() - startedAt),
       timeout_ms: response.config.timeout ?? apiClient.defaults.timeout,
+    });
+    console.log("AXIOS RESPONSE", {
+      endpoint: response.config.url,
+      status: response.status,
+      data: response.data,
     });
     return response;
   },
   (error) => {
-    const startedAt = error.config?.metadata?.startedAt || performance.now();
+    const startedAt = error.config?.metadata?.startedAt || now();
     console.error("AXIOS ERROR TIMING", {
+      baseURL: error.config?.baseURL || apiClient.defaults.baseURL,
       endpoint: error.config?.url,
       status: error.response?.status,
-      elapsed_ms: Math.round(performance.now() - startedAt),
+      elapsed_ms: Math.round(now() - startedAt),
       timeout_ms: error.config?.timeout ?? apiClient.defaults.timeout,
+      code: error.code,
       message: error.message,
+      data: error.response?.data,
     });
     return Promise.reject(error);
   }
@@ -75,11 +98,11 @@ export function normalizeApiError(error, config = {}) {
 }
 
 export async function request(config) {
-  const startedAt = performance.now();
+  const startedAt = now();
   const timeoutMs = config.timeout ?? apiClient.defaults.timeout;
   try {
     const response = await apiClient(config);
-    const elapsedMs = Math.round(performance.now() - startedAt);
+    const elapsedMs = Math.round(now() - startedAt);
     console.log(config.url, response.data);
     console.log("API TIMING", {
       endpoint: config.url,
@@ -94,7 +117,7 @@ export async function request(config) {
     });
     return response.data;
   } catch (error) {
-    const elapsedMs = Math.round(performance.now() - startedAt);
+    const elapsedMs = Math.round(now() - startedAt);
     console.error("API ERROR", {
       baseURL: API_BASE_URL,
       url: config.url,
@@ -102,6 +125,7 @@ export async function request(config) {
       status: error.response?.status,
       elapsed_ms: elapsedMs,
       timeout_ms: timeoutMs,
+      code: error.code,
       data: error.response?.data,
       message: error.message,
     });
