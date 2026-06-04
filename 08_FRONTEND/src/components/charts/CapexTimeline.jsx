@@ -44,6 +44,7 @@ export default function CapexTimeline({ data = [] }) {
   const { applyDrilldown } = useCrossFiltering();
   const rows = React.useMemo(() => normalizeTimeline(data), [data]);
   const insights = React.useMemo(() => buildInsights(rows), [rows]);
+  const currentScope = rows[rows.length - 1] || {};
   const dates = rows.map((row) => row.date);
   const capex = rows.map((row) => row.capex);
   const savings = rows.map((row) => row.economie);
@@ -65,6 +66,12 @@ export default function CapexTimeline({ data = [] }) {
             {item.label}
           </span>
         ))}
+      </div>
+      <div className="scope-summary">
+        <span>Périmètre : {Number(currentScope.nbLignes || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Budget : {formatMoney(currentScope.capex || 0)}</span>
+        <span>Gain : {formatMoney(currentScope.economie || 0)}</span>
+        <span>Source : {rows.length >= 4 ? "Historique import" : "Projection scénario actif"}</span>
       </div>
       <BIChart
         height={372}

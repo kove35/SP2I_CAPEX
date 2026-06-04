@@ -163,6 +163,13 @@ export default function CapexHeatmap({ data = [], rows = [] }) {
   const [mode, setMode] = React.useState("lot-famille");
   const heatmap = React.useMemo(() => buildHeatmap(data, rows, mode), [data, rows, mode]);
   const insights = React.useMemo(() => buildInsights(heatmap), [heatmap]);
+  const scope = React.useMemo(() => {
+    const sourceRows = rows.length ? rows : heatmap.data;
+    const lines = sourceRows.reduce((sum, row) => sum + Number(row.nb_lignes || row.count || 1), 0);
+    const budget = heatmap.data.reduce((sum, cell) => sum + Number(cell.capex || cell.value?.[2] || 0), 0);
+    const gain = sourceRows.reduce((sum, row) => sum + Number(row.economie || 0), 0);
+    return { lines, budget, gain };
+  }, [rows, heatmap]);
   const chartKey = `heatmap-premium-${mode}-${heatmap.xLabels.join("|")}-${heatmap.yLabels.join("|")}-${heatmap.data.length}`;
 
   if (!heatmap.data.length) {
@@ -180,6 +187,12 @@ export default function CapexHeatmap({ data = [], rows = [] }) {
       </div>
       <div className="heatmap-insight-strip">
         {insights.map((insight) => <span key={insight}>{insight}</span>)}
+      </div>
+      <div className="scope-summary">
+        <span>Périmètre : {Number(scope.lines || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Budget : {formatMoney(scope.budget)}</span>
+        <span>Gain : {formatMoney(scope.gain)}</span>
+        <span>Source : {rows.length ? "Sélection courante affichée" : "Projet complet agrégé"}</span>
       </div>
       <BIChart
         height={380}

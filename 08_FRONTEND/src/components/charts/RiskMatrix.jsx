@@ -41,11 +41,17 @@ function buildInsight(rows) {
   const sorted = [...rows].sort((a, b) => b.criticite - a.criticite);
   const critical = rows.filter((row) => row.criticite >= 72);
   const exposed = rows.reduce((sum, row) => sum + row.capexExpose, 0);
+  const budget = rows.reduce((sum, row) => sum + row.impact, 0);
+  const gain = rows.reduce((sum, row) => sum + row.economie, 0);
+  const lines = rows.reduce((sum, row) => sum + row.nbLignes, 0);
   const top = sorted[0];
   return {
     top,
     criticalCount: critical.length,
     exposed,
+    budget,
+    gain,
+    lines,
     recommendation: top
       ? `${top.lot} concentre la priorite risque: arbitrer ${top.decision} et securiser le delai.`
       : "Aucun risque prioritaire detecte sur le perimetre filtre.",
@@ -113,6 +119,12 @@ export default function RiskMatrix({ rows = [] }) {
           <span>Alertes critiques</span>
           <strong>{insight.criticalCount} zones</strong>
         </article>
+      </div>
+      <div className="scope-summary">
+        <span>Périmètre : {Number(insight.lines || riskRows.length).toLocaleString("fr-FR")} lignes</span>
+        <span>Budget : {formatMoney(insight.budget)}</span>
+        <span>Gain : {formatMoney(insight.gain)}</span>
+        <span>Source : Zones de risque agrégées</span>
       </div>
       <BIChart
         height={388}

@@ -204,6 +204,11 @@ def debug_timing(
     return sanitize_for_json(AnalyticsService(db).dashboard_timing(query, dashboard_type=dashboard_type))
 
 
+@router.get("/debug/consistency")
+def debug_consistency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).consistency_debug(query))
+
+
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())
