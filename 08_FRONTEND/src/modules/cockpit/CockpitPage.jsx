@@ -19,6 +19,7 @@ import { getScenarioContext } from "../../utils/businessContext";
 import AnalyticsCard from "../../ui/AnalyticsCard";
 import Skeleton from "../../ui/Skeleton";
 import { formatMoney } from "../../shared/formatters";
+import { buildApiUrl } from "../../services/apiClient";
 
 function navigateTo(path) {
   window.history.pushState({}, "", path);
@@ -81,6 +82,43 @@ function formatDqeDate(value) {
   }).format(date);
 }
 
+function hasDqeReference(dqe = {}) {
+  if ((dqe.status === "NOT_IMPORTED" || dqe.is_active === false) && !dqe.file_name) return false;
+  return Boolean(
+    dqe.file_name ||
+    dqe.version_number ||
+    dqe.uploaded_at ||
+    dqe.synced_at ||
+    dqe.is_active
+  );
+}
+
+function isImportedDqeName(value) {
+  return Boolean(value && !/a importer|à importer|aucun/i.test(value));
+}
+
+function resolveActiveDqe(workflow = {}, project = {}) {
+  const candidates = [workflow.dqe, workflow.activeDqe, project.activeDqe, project.active_dqe]
+    .filter(Boolean)
+    .filter(hasDqeReference);
+  const active = candidates.find((candidate) => candidate.is_active !== false) || candidates[0] || null;
+
+  if (active?.file_name) return active;
+
+  if (isImportedDqeName(project.last_dqe)) {
+    return {
+      ...(active || {}),
+      file_name: project.last_dqe,
+      version_number: active?.version_number || 1,
+      trust_score: active?.trust_score ?? project.trust_score,
+      uploaded_at: active?.uploaded_at || active?.synced_at,
+      is_active: true,
+    };
+  }
+
+  return active;
+}
+
 function moduleTone(state) {
   if (state === "done") return "ready";
   if (state === "progress" || state === "todo") return "pending";
@@ -96,7 +134,8 @@ export default function CockpitPage() {
   const { workflow } = useWorkflow(project?.id || projectKey, project);
   const primaryAction = getProjectPrimaryAction({ ...project, backendWorkflow: workflow }, state);
   const alerts = buildProjectAlerts(workflow);
-  const activeDqe = workflow.dqe || workflow.activeDqe;
+  const activeDqe = resolveActiveDqe(workflow, project);
+  const activeDqeDownloadUrl = activeDqe ? buildApiUrl("/dqe/download-active") : "";
   const scenario = getScenarioContext(state.activeScenario);
   const dqeStep = getStep(workflow, "dqe");
   const budgetStep = getStep(workflow, "budget");
@@ -132,9 +171,9 @@ export default function CockpitPage() {
             <div className={activeDqe ? "workspace-dqe-reference" : "workspace-dqe-reference empty"} aria-label="Fichier DQE de reference">
               {activeDqe ? (
                 <>
-                  <span>📄 {activeDqe.file_name || "Fichier DQE actif"}</span>
+                  <a href={activeDqeDownloadUrl} download title="Telecharger le fichier DQE actif">📄 {activeDqe.file_name || "Fichier DQE actif"}</a>
                   <span>🔖 Version {activeDqe.version_number ? `V${activeDqe.version_number}` : "-"}</span>
-                  <span>📅 {formatDqeDate(activeDqe.uploaded_at)}</span>
+                  <span>📅 {formatDqeDate(activeDqe.uploaded_at || activeDqe.synced_at)}</span>
                   <span>🎯 Trust Score : {activeDqe.trust_score ?? "-"}/100</span>
                 </>
               ) : (
