@@ -318,6 +318,117 @@ class AnalyticsService:
             **timings,
         }
 
+    def financial_reconciliation_debug(self, query: AnalyticsQuery) -> dict[str, Any]:
+        where_sql, params = self.repository.build_where_clause(query)
+        fact_metre = self._financial_scope_metrics(where_sql, params)
+        dashboard_kpis = self.repository.kpis(query)
+        dashboard = self._dashboard_financial_metrics(dashboard_kpis)
+        views = self._analytics_view_reconciliation(where_sql, params)
+        latest_dqe_audit = self._latest_dqe_audit_reconciliation()
+
+        dashboard_vs_fact_stored = {
+            "budget_local": round(dashboard["budget_local"] - fact_metre["budget_local"], 2),
+            "budget_optimise": round(dashboard["budget_optimise"] - fact_metre["budget_optimise"], 2),
+            "economie": round(dashboard["economie"] - fact_metre["economie"], 2),
+        }
+        dashboard_vs_theoretical = {
+            "budget": round(dashboard["budget_optimise"] - fact_metre["budget_import"], 2),
+            "economie": round(dashboard["economie"] - fact_metre["economie_theorique_local_import"], 2),
+            "roi_points": round((dashboard["roi"] - fact_metre["roi_theorique_local_import"]) * 100, 2),
+        }
+        dashboard_vs_reference_import = {
+            "budget": round(dashboard["budget_optimise"] - fact_metre["budget_import_reference"], 2),
+            "economie": round(dashboard["economie"] - fact_metre["economie_theorique_local_import_reference"], 2),
+            "roi_points": round((dashboard["roi"] - fact_metre["roi_theorique_local_import_reference"]) * 100, 2),
+        }
+        stored_vs_theoretical = {
+            "economie": round(fact_metre["economie"] - fact_metre["economie_theorique_local_import"], 2),
+            "budget_optimise": round(fact_metre["budget_optimise"] - fact_metre["budget_import"], 2),
+        }
+        stored_vs_reference_import = {
+            "economie": round(fact_metre["economie"] - fact_metre["economie_theorique_local_import_reference"], 2),
+            "budget_optimise": round(fact_metre["budget_optimise"] - fact_metre["budget_import_reference"], 2),
+        }
+
+        issues: list[str] = []
+        if any(abs(value) > 1 for value in dashboard_vs_fact_stored.values()):
+            issues.append("Dashboard different de FACT_METRE stocke: verifier AnalyticsRepository.kpis.")
+        if abs(stored_vs_theoretical["economie"]) > 1:
+            issues.append(
+                "ECONOMIE stockee differente de capex_local - capex_import: le cockpit affiche l'economie optimisee stockee; capex_optimise peut differer du cout import total."
+            )
+        if abs(stored_vs_theoretical["budget_optimise"]) > 1:
+            issues.append(
+                "CAPEX_OPTIMISE different de CAPEX_IMPORT: certaines lignes restent LOCAL ou appliquent un cout optimise distinct du cout import landed."
+            )
+        if abs(stored_vs_reference_import["economie"]) > 1:
+            issues.append(
+                "ECONOMIE stockee differente de capex_local - montant_import: l'import de reference DQE est enrichi en capex_import/landed cost avant affichage cockpit."
+            )
+
+        return {
+            "status": "SUCCESS",
+            "filters": query.filters.model_dump(exclude_none=True),
+            "where_clause": where_sql or "<none>",
+            "where_params": params,
+            "dqe": latest_dqe_audit,
+            "fact_metre": fact_metre,
+            "views": views,
+            "analytics_repository": {
+                **dashboard,
+                "source": "AnalyticsRepository.kpis",
+                "sql": "SELECT SUM(capex_local), SUM(capex_optimise), SUM(economie), COUNT(*) FROM fact_metre + filtres",
+            },
+            "analytics_service": {
+                **dashboard,
+                "source": "AnalyticsService._build_dashboard",
+                "transformation": "Aucun recalcul financier; enveloppe repository.kpis dans la reponse dashboard.",
+            },
+            "dashboard": dashboard,
+            "difference": {
+                "dashboard_vs_fact_metre_stored": dashboard_vs_fact_stored,
+                "dashboard_vs_theoretical_local_import": dashboard_vs_theoretical,
+                "dashboard_vs_reference_import": dashboard_vs_reference_import,
+                "stored_fact_vs_theoretical_local_import": stored_vs_theoretical,
+                "stored_fact_vs_reference_import": stored_vs_reference_import,
+            },
+            "formulas": {
+                "fact_metre_economie_stockee": "SUM(economie)",
+                "fact_metre_economie_theorique_local_import": "SUM(COALESCE(capex_local, prix_total_ht, 0) - COALESCE(capex_import, montant_import, 0))",
+                "fact_metre_economie_theorique_reference_import": "SUM(COALESCE(capex_local, prix_total_ht, 0) - COALESCE(montant_import, 0))",
+                "dashboard_budget_initial": "AnalyticsRepository.kpis -> SUM(capex_local)",
+                "dashboard_budget_optimise": "AnalyticsRepository.kpis -> SUM(capex_optimise)",
+                "dashboard_economie": "AnalyticsRepository.kpis -> SUM(economie)",
+                "dashboard_roi_import": "SUM(economie) / SUM(capex_import)",
+                "simulation_capex_import": "fob_unitaire * (1 + transport + assurance + douane + frais_portuaires + logistique_locale) * quantite",
+                "simulation_capex_optimise": "capex_import si decision IMPORT, sinon montant_local",
+                "simulation_economie_nette": "montant_local - capex_optimise",
+            },
+            "business_parameters": {
+                "taux_transport": 0.15,
+                "taux_assurance": 0.02,
+                "taux_douane": 0.20,
+                "taux_frais_portuaires": 0.10,
+                "taux_logistique_locale": 0.05,
+                "coefficient_risque": 1.10,
+                "seuil_decision_import": 0.97,
+                "source": "app.core.global_parameters",
+            },
+            "is_reconciled_with_fact_metre_stored": all(abs(value) <= 1 for value in dashboard_vs_fact_stored.values()),
+            "is_reconciled_with_theoretical_local_import": (
+                abs(dashboard_vs_theoretical["budget"]) <= 1 and abs(dashboard_vs_theoretical["economie"]) <= 1
+            ),
+            "is_reconciled_with_reference_import": (
+                abs(dashboard_vs_reference_import["budget"]) <= 1 and abs(dashboard_vs_reference_import["economie"]) <= 1
+            ),
+            "is_reconciled": not issues,
+            "issues": issues,
+            "conclusion": (
+                "Cockpit = FACT_METRE stocke via SUM(capex_local), SUM(capex_optimise), SUM(economie). "
+                "Il ne lit pas capex_local - montant_import comme economie brute DQE; montant_import est enrichi en capex_import/capex_optimise."
+            ),
+        }
+
     def consistency_debug(self, query: AnalyticsQuery) -> dict[str, Any]:
         kpis = self.repository.kpis(query)
         table, total = self.repository.table(query)
@@ -1878,6 +1989,227 @@ class AnalyticsService:
             params,
         ).mappings().one()
         return dict(row)
+
+    def _financial_scope_metrics(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
+        row = self.repository.db.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) AS lines,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS budget_local,
+                    COALESCE(SUM(COALESCE(montant_import, 0)), 0) AS budget_import_reference,
+                    COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS budget_import,
+                    COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0) AS budget_optimise,
+                    COALESCE(SUM(COALESCE(economie, economie_nette, 0)), 0) AS economie,
+                    COALESCE(
+                        SUM(
+                            COALESCE(capex_local, prix_total_ht, 0)
+                            - COALESCE(capex_import, montant_import, 0)
+                        ),
+                        0
+                    ) AS economie_theorique_local_import,
+                    COALESCE(
+                        SUM(
+                            COALESCE(capex_local, prix_total_ht, 0)
+                            - COALESCE(montant_import, 0)
+                        ),
+                        0
+                    ) AS economie_theorique_local_import_reference,
+                    COALESCE(
+                        SUM(
+                            COALESCE(capex_local, prix_total_ht, 0)
+                            - COALESCE(capex_optimise, capex_local, prix_total_ht, 0)
+                        ),
+                        0
+                    ) AS economie_recalculee_local_optimise,
+                    CASE WHEN COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(COALESCE(economie, economie_nette, 0)), 0)
+                              / NULLIF(SUM(COALESCE(capex_import, montant_import, 0)), 0)
+                    END AS roi,
+                    CASE WHEN COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) = 0 THEN 0
+                         ELSE COALESCE(
+                            SUM(
+                                COALESCE(capex_local, prix_total_ht, 0)
+                                - COALESCE(capex_import, montant_import, 0)
+                            ),
+                            0
+                         ) / NULLIF(SUM(COALESCE(capex_import, montant_import, 0)), 0)
+                    END AS roi_theorique_local_import,
+                    CASE WHEN COALESCE(SUM(COALESCE(montant_import, 0)), 0) = 0 THEN 0
+                         ELSE COALESCE(
+                            SUM(
+                                COALESCE(capex_local, prix_total_ht, 0)
+                                - COALESCE(montant_import, 0)
+                            ),
+                            0
+                         ) / NULLIF(SUM(COALESCE(montant_import, 0)), 0)
+                    END AS roi_theorique_local_import_reference,
+                    SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END) AS import_lines,
+                    SUM(CASE WHEN decision_import <> 'IMPORT' OR decision_import IS NULL THEN 1 ELSE 0 END) AS local_lines
+                FROM fact_metre
+                {where_sql}
+                """
+            ),
+            params,
+        ).mappings().one()
+        result = self.repository._json_safe(dict(row))
+        for key in (
+            "budget_local",
+            "budget_import_reference",
+            "budget_import",
+            "budget_optimise",
+            "economie",
+            "economie_theorique_local_import",
+            "economie_theorique_local_import_reference",
+            "economie_recalculee_local_optimise",
+            "roi",
+            "roi_theorique_local_import",
+            "roi_theorique_local_import_reference",
+        ):
+            result[key] = round(float(result.get(key) or 0), 4)
+        result["landed_cost_delta_vs_reference_import"] = round(
+            result["budget_import"] - result["budget_import_reference"],
+            4,
+        )
+        result["landed_cost_delta_pct_vs_reference_import"] = round(
+            result["landed_cost_delta_vs_reference_import"] / result["budget_import_reference"],
+            6,
+        ) if result["budget_import_reference"] else 0
+        result["lines"] = int(result.get("lines") or 0)
+        result["import_lines"] = int(result.get("import_lines") or 0)
+        result["local_lines"] = int(result.get("local_lines") or 0)
+        result["source"] = "fact_metre"
+        return result
+
+    def _dashboard_financial_metrics(self, kpis: dict[str, Any]) -> dict[str, Any]:
+        budget_local = round(float(kpis.get("capex_brut") or kpis.get("capex_local") or 0), 4)
+        budget_import = round(float(kpis.get("capex_import") or 0), 4)
+        budget_optimise = round(float(kpis.get("capex_optimise") or 0), 4)
+        economie = round(float(kpis.get("economie_nette") or kpis.get("economie") or 0), 4)
+        return {
+            "lines": int(kpis.get("nb_lignes") or 0),
+            "budget_local": budget_local,
+            "budget_import": budget_import,
+            "budget_optimise": budget_optimise,
+            "economie": economie,
+            "roi": round(float(kpis.get("roi_import") or 0), 6),
+            "taux_economie": round(float(kpis.get("taux_economie") or 0), 6),
+            "source": "/analytics/dashboard kpis",
+        }
+
+    def _analytics_view_reconciliation(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
+        def safe_one(sql: str, sql_params: dict[str, Any] | None = None) -> dict[str, Any]:
+            try:
+                row = self.repository.db.execute(text(sql), sql_params or {}).mappings().first()
+                return {"status": "OK", "row": self.repository._json_safe(dict(row)) if row else None}
+            except Exception as exc:
+                return {"status": "ERROR", "error": str(exc)}
+
+        filtered_equivalent = self._financial_scope_metrics(where_sql, params)
+        summary = safe_one(
+            """
+            SELECT
+                capex_brut AS budget_local,
+                capex_optimise AS budget_optimise,
+                economie_nette AS economie,
+                taux_economie,
+                nb_lignes AS lines
+            FROM vw_capex_summary
+            """
+        )
+        project = safe_one(
+            """
+            SELECT
+                capex_brut AS budget_local,
+                capex_optimise AS budget_optimise,
+                economie_nette AS economie,
+                taux_economie,
+                nb_lignes AS lines
+            FROM vw_project_kpis
+            """
+        )
+        direction = safe_one(
+            """
+            SELECT
+                capex_brut AS budget_local,
+                capex_optimise AS budget_optimise,
+                economie_nette AS economie,
+                taux_economie,
+                nb_lignes AS lines
+            FROM vw_dashboard_direction
+            """
+        )
+        import_view = safe_one(
+            """
+            SELECT
+                COALESCE(SUM(capex_brut), 0) AS budget_local,
+                COALESCE(SUM(capex_import), 0) AS budget_import,
+                COALESCE(SUM(economie_nette), 0) AS economie,
+                COALESCE(SUM(nb_lignes), 0) AS lines
+            FROM vw_dashboard_import
+            """
+        )
+        chantier = safe_one(
+            """
+            SELECT
+                COALESCE(SUM(capex_expose), 0) AS budget_expose,
+                COALESCE(SUM(nb_lignes), 0) AS lines
+            FROM vw_dashboard_chantier
+            """
+        )
+        return {
+            "filtered_equivalent_from_fact_metre": {
+                **filtered_equivalent,
+                "source": "Equivalent filtre des formules vw_* applique a fact_metre",
+            },
+            "actual_views_unfiltered": {
+                "vw_capex_summary": summary,
+                "vw_project_kpis": project,
+                "vw_dashboard_direction": direction,
+                "vw_dashboard_import": import_view,
+                "vw_dashboard_chantier": chantier,
+            },
+            "note": "Les vues globales vw_capex_summary/vw_project_kpis/vw_dashboard_direction ne portent pas les colonnes batiment/niveau/lot; le filtre est donc audite via l'equivalent SQL fact_metre.",
+        }
+
+    def _latest_dqe_audit_reconciliation(self) -> dict[str, Any]:
+        try:
+            row = self.repository.db.execute(
+                text(
+                    """
+                    SELECT
+                        fichier,
+                        capex_source,
+                        capex_fact_metre,
+                        ecart_capex,
+                        ecart_capex_pct,
+                        lignes_excel,
+                        lignes_parsees,
+                        lignes_fact_metre,
+                        created_at
+                    FROM dqe_import_audit
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                    """
+                )
+            ).mappings().first()
+        except Exception as exc:
+            return {
+                "status": "UNAVAILABLE",
+                "source": "dqe_import_audit",
+                "error": str(exc),
+            }
+        if not row:
+            return {
+                "status": "EMPTY",
+                "source": "dqe_import_audit",
+                "message": "Aucun audit DQE disponible.",
+            }
+        return {
+            "status": "OK",
+            "source": "dqe_import_audit",
+            **self.repository._json_safe(dict(row)),
+        }
 
     def _fact_metre_cache_signature(self) -> dict[str, Any]:
         row = self.repository.db.execute(
