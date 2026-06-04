@@ -12,6 +12,11 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   DEFAULT_API_URL;
+
+export function buildApiUrl(path) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL.replace(/\/$/, "")}${normalizedPath}`;
+}
 console.group("SP2I Environment");
 console.log("Origin:", window.location.origin);
 console.log("API_BASE_URL:", API_BASE_URL);

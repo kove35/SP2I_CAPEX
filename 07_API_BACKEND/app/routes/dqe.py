@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import Dict
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi import Depends
+from fastapi.responses import FileResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -31,6 +34,59 @@ def _valider_taille_upload(contenu: bytes) -> None:
             status_code=413,
             detail=f"Fichier trop volumineux. Taille maximale: {os.getenv('MAX_UPLOAD_MB', '25')} Mo.",
         )
+
+
+def _resolve_active_dqe_filename(db: Session, fallback_path: Path) -> str:
+    try:
+        filename = db.execute(
+            text("SELECT fichier FROM dqe_import_audit ORDER BY created_at DESC LIMIT 1")
+        ).scalar()
+    except Exception:
+        filename = None
+
+    if not filename:
+        try:
+            payload = json.loads(fallback_path.read_text(encoding="utf-8-sig"))
+            if isinstance(payload, dict):
+                filename = payload.get("source") or payload.get("file_name") or payload.get("fichier")
+        except Exception:
+            filename = None
+
+    if not filename:
+        return fallback_path.name
+
+    candidate_name = Path(str(filename)).name
+    if Path(candidate_name).suffix.lower() == fallback_path.suffix.lower():
+        return candidate_name
+    return f"{Path(candidate_name).stem}_reference{fallback_path.suffix}"
+
+
+def _resolve_active_dqe_file(service: ServiceDQE) -> Path | None:
+    candidates = [
+        service.chemin_source,
+        service.chemin_source.parent / "dqe_normalise.json",
+        service.chemin_source.parent / "dqe_enrichi.json",
+    ]
+    return next((path for path in candidates if path.exists() and path.is_file()), None)
+
+
+@router.get("/download-active")
+def download_active_dqe(db: Session = Depends(get_db)) -> FileResponse:
+    """Telecharge le fichier de reference DQE actuellement utilise par le cockpit."""
+    service = ServiceDQE(db)
+    active_file = _resolve_active_dqe_file(service)
+
+    if active_file is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Aucun fichier DQE actif disponible au telechargement.",
+        )
+
+    return FileResponse(
+        path=active_file,
+        filename=_resolve_active_dqe_filename(db, active_file),
+        media_type="application/octet-stream",
+    )
 
 
 @router.post("/upload")
