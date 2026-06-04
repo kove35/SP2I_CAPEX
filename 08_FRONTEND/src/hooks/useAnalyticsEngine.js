@@ -36,6 +36,12 @@ const logAnalyticsResult = (label, data, filters) => {
   }
 };
 
+const analyticsRetry = {
+  retry: 1,
+  retryDelay: 1000,
+  gcTime: 5 * 60_000,
+};
+
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
   const shouldLoadProcurementScenarios = dashboardType === "procurement";
@@ -50,7 +56,10 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     },
     onSuccess: (data) => logAnalyticsResult("dashboard", data, debouncedFilters),
     staleTime: 20_000,
+    ...analyticsRetry,
   });
+
+  const dashboardReady = Boolean(dashboard.data?.kpis) || dashboard.isSuccess;
 
   const capex = useQuery({
     queryKey: buildAnalyticsQueryKey("capex", debouncedFilters),
@@ -60,6 +69,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     },
     onSuccess: (data) => logAnalyticsResult("capex", data, debouncedFilters),
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const procurement = useQuery({
@@ -68,8 +78,10 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-procurement", debouncedFilters);
       return getAnalyticsProcurement(debouncedFilters);
     },
+    enabled: dashboardReady,
     onSuccess: (data) => logAnalyticsResult("procurement", data, debouncedFilters),
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const gainAnalysis = useQuery({
@@ -78,13 +90,17 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-gain-analysis", debouncedFilters);
       return getAnalyticsGainAnalysis(debouncedFilters);
     },
+    enabled: dashboardReady,
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const suppliers = useQuery({
     queryKey: buildAnalyticsQueryKey("suppliers", debouncedFilters),
     queryFn: () => getAnalyticsSuppliers(debouncedFilters),
+    enabled: dashboardReady,
     staleTime: 60_000,
+    ...analyticsRetry,
   });
 
   const procurementScenarios = useQuery({
@@ -100,28 +116,35 @@ export function useAnalyticsEngine(dashboardType = "direction") {
         throw error;
       });
     },
-    enabled: shouldLoadProcurementScenarios,
+    enabled: dashboardReady && shouldLoadProcurementScenarios,
     onSuccess: (data) => logAnalyticsResult("procurement-scenarios", data, debouncedFilters),
     staleTime: 30_000,
+    ...analyticsRetry,
   });
 
   const procurementLines = useQuery({
     queryKey: buildAnalyticsQueryKey("procurement-lines", debouncedFilters),
     queryFn: () => getAnalyticsProcurementLines(debouncedFilters),
+    enabled: dashboardReady,
     onSuccess: (data) => logAnalyticsResult("procurement-lines", data, debouncedFilters),
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const currency = useQuery({
     queryKey: buildAnalyticsQueryKey("currency", debouncedFilters),
     queryFn: () => getAnalyticsCurrency(debouncedFilters),
+    enabled: dashboardReady,
     staleTime: 120_000,
+    ...analyticsRetry,
   });
 
   const importRisks = useQuery({
     queryKey: buildAnalyticsQueryKey("import-risks", debouncedFilters),
     queryFn: () => getAnalyticsImportRisks(debouncedFilters),
+    enabled: dashboardReady,
     staleTime: 30_000,
+    ...analyticsRetry,
   });
 
   const heatmap = useQuery({
@@ -130,7 +153,9 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-heatmap", debouncedFilters);
       return getAnalyticsHeatmap(debouncedFilters);
     },
+    enabled: dashboardReady,
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const risk = useQuery({
@@ -139,7 +164,9 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-risk", debouncedFilters);
       return getAnalyticsRisk(debouncedFilters);
     },
+    enabled: dashboardReady,
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const timeline = useQuery({
@@ -148,7 +175,9 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-timeline", debouncedFilters);
       return getAnalyticsTimeline(debouncedFilters);
     },
+    enabled: dashboardReady,
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const drilldown = useQuery({
@@ -157,17 +186,22 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-drilldown", debouncedFilters);
       return getAnalyticsDrilldown(debouncedFilters);
     },
+    enabled: dashboardReady,
     staleTime: 20_000,
+    ...analyticsRetry,
   });
 
   const qa = useQuery({
     queryKey: buildAnalyticsQueryKey("qa-summary", debouncedFilters),
     queryFn: getAnalyticsQaSummary,
+    enabled: dashboardReady,
     staleTime: 30_000,
+    ...analyticsRetry,
   });
 
-  const criticalError = dashboard.error || capex.error;
+  const criticalError = dashboard.error && !dashboard.data?.kpis ? dashboard.error : null;
   const secondaryErrors = [
+    capex.error,
     procurement.error,
     gainAnalysis.error,
     suppliers.error,
@@ -185,6 +219,14 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     console.warn("Analytics secondary queries degraded", secondaryErrors.map((error) => error.message));
   }
 
+  console.log("Analytics engine state", {
+    dashboardType,
+    dashboard: { status: dashboard.status, isFetching: dashboard.isFetching, hasKpis: Boolean(dashboard.data?.kpis), error: dashboard.error?.message },
+    capex: { status: capex.status, isFetching: capex.isFetching, hasKpis: Boolean(capex.data?.kpis), error: capex.error?.message },
+    secondaryEnabled: dashboardReady,
+    criticalError: criticalError?.message,
+  });
+
   return {
     filters,
     dashboard,
@@ -201,9 +243,9 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     timeline,
     drilldown,
     qa,
-    isLoading: dashboard.isLoading || capex.isLoading,
-    isFetching: dashboard.isFetching || capex.isFetching,
-    backgroundFetching: procurement.isFetching || gainAnalysis.isFetching || suppliers.isFetching || procurementLines.isFetching || procurementScenarios.isFetching || currency.isFetching || importRisks.isFetching || heatmap.isFetching || risk.isFetching || timeline.isFetching || drilldown.isFetching,
+    isLoading: dashboard.isLoading && !dashboard.data?.kpis,
+    isFetching: dashboard.isFetching,
+    backgroundFetching: capex.isFetching || procurement.isFetching || gainAnalysis.isFetching || suppliers.isFetching || procurementLines.isFetching || procurementScenarios.isFetching || currency.isFetching || importRisks.isFetching || heatmap.isFetching || risk.isFetching || timeline.isFetching || drilldown.isFetching,
     error: criticalError,
     secondaryErrors,
   };
