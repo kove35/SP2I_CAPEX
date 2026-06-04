@@ -1106,6 +1106,12 @@ class AnalyticsService:
         )
         logger.info({"stage": "metadata", "elapsed_ms": timings["metadata_ms"]})
         logger.info(
+            "ANALYTICS FILTER TRACE | filters_received=%s where_clause=%s nb_lignes=%s",
+            query.filters.model_dump(exclude_none=True),
+            where_sql or "<none>",
+            filtered_metrics.get("nb_lignes"),
+        )
+        logger.info(
             "ANALYTICS TRACE | dashboard=%s source=fact_metre filters=%s injected_filters=%s raw_nb_lignes=%s raw_capex=%s filtered_nb_lignes=%s filtered_capex=%s sql_where=%s sql_params=%s",
             dashboard_type,
             query.filters.model_dump(exclude_none=True),
