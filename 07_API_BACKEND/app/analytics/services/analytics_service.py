@@ -306,6 +306,143 @@ class AnalyticsService:
             **timings,
         }
 
+    def consistency_debug(self, query: AnalyticsQuery) -> dict[str, Any]:
+        kpis = self.repository.kpis(query)
+        table, total = self.repository.table(query)
+        sankey_links = self.repository.sankey(query)
+        heatmap = self.repository.heatmap(query)
+        risk_rows = self.repository.risk_matrix(query)
+        timeline_rows = self.repository.timeline(query)
+
+        def money(value: Any) -> float:
+            return round(float(value or 0), 2)
+
+        def row_gain(rows: list[dict[str, Any]], key: str = "economie") -> float:
+            return money(sum(float(row.get(key) or 0) for row in rows))
+
+        def row_budget(rows: list[dict[str, Any]], key: str = "capex_local") -> float:
+            return money(sum(float(row.get(key) or row.get("capex_brut") or row.get("value") or 0) for row in rows))
+
+        primary_sankey = [
+            link for link in sankey_links
+            if str(link.get("source")) == "CAPEX" and str(link.get("target")) in {"IMPORT", "LOCAL"}
+        ]
+        terminal_sankey = [
+            link for link in sankey_links
+            if str(link.get("source")) not in {"CAPEX", "IMPORT", "LOCAL"}
+        ]
+        sankey_all_gain = row_gain(sankey_links, "gain")
+        sankey_primary_gain = row_gain(primary_sankey, "gain")
+        table_gain = row_gain(table)
+        table_budget = row_budget(table)
+        dashboard_gain = money(kpis.get("economie_nette"))
+        dashboard_budget = money(kpis.get("capex_brut"))
+        dashboard_lines = int(kpis.get("nb_lignes") or 0)
+
+        duplicate_row = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) AS row_count,
+                    COUNT(DISTINCT id_ligne) AS distinct_id_count
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        duplicate_count = int(duplicate_row["row_count"] or 0) - int(duplicate_row["distinct_id_count"] or 0)
+        issues: list[str] = []
+        warnings: list[str] = []
+        if duplicate_count > 0:
+            issues.append(f"{duplicate_count} id_ligne duplique(s) detecte(s) dans fact_metre.")
+        if sankey_primary_gain and abs(sankey_all_gain - sankey_primary_gain * 3) <= 1:
+            warnings.append("Le Sankey visualise 3 niveaux de liens ; additionner tous les liens triple le gain.")
+        if table_gain > dashboard_gain + 1:
+            issues.append("Le gain de la page de table depasse le gain global filtre : verifier pagination ou doublons.")
+
+        heatmap_rows = heatmap.get("rows") or []
+        risk_budget = row_budget(risk_rows, "impact")
+        risk_gain = row_gain(risk_rows)
+        timeline_last = timeline_rows[-1] if timeline_rows else {}
+
+        return {
+            "status": "SUCCESS",
+            "filters": query.filters.model_dump(exclude_none=True),
+            "dashboard": {
+                "lines": dashboard_lines,
+                "budget": dashboard_budget,
+                "budget_optimise": money(kpis.get("capex_optimise")),
+                "gain": dashboard_gain,
+                "roi": float(kpis.get("taux_economie") or 0),
+                "scope": "Projet complet filtre",
+                "source_api": "/analytics/dashboard",
+                "source_sql": "fact_metre",
+            },
+            "waterfall": {
+                "lines": dashboard_lines,
+                "budget": dashboard_budget,
+                "budget_optimise": money(kpis.get("capex_optimise")),
+                "gain": dashboard_gain,
+                "roi": float(kpis.get("taux_economie") or 0),
+                "scope": "Projet complet filtre",
+                "source_api": "/analytics/dashboard",
+                "source_sql": "fact_metre",
+            },
+            "sankey": {
+                "lines": int(sum(int(link.get("nb_lignes") or 0) for link in primary_sankey)),
+                "budget": row_budget(primary_sankey),
+                "gain": sankey_primary_gain,
+                "roi": sum(float(link.get("roi") or 0) for link in primary_sankey) / max(len(primary_sankey), 1),
+                "scope": "Flux primaires local/import",
+                "source_api": "/analytics/dashboard charts.sankey",
+                "source_sql": "fact_metre GROUP BY decision_import, famille, lot",
+                "all_visual_links_gain": sankey_all_gain,
+                "terminal_links_gain": row_gain(terminal_sankey, "gain"),
+                "visual_link_multiplier": round(sankey_all_gain / sankey_primary_gain, 2) if sankey_primary_gain else 0,
+            },
+            "table": {
+                "lines": len(table),
+                "total_filtered_lines": total,
+                "budget": table_budget,
+                "gain": table_gain,
+                "roi": table_gain / table_budget if table_budget else 0,
+                "scope": "Page courante du tableau",
+                "source_api": "/analytics/dashboard table",
+                "source_sql": "fact_metre ORDER BY capex_local DESC LIMIT page_size OFFSET",
+            },
+            "heatmap": {
+                "lines": int(sum(int(row.get("nb_lignes") or 0) for row in heatmap_rows)),
+                "budget": money(sum(float(row.get("value") or 0) for row in heatmap_rows)),
+                "gain": row_gain(heatmap_rows),
+                "scope": "Agrégat lot x famille",
+                "source_api": "/analytics/dashboard charts.heatmap",
+                "source_sql": "fact_metre GROUP BY lot, famille",
+            },
+            "risk_matrix": {
+                "lines": int(sum(int(row.get("nb_lignes") or 0) for row in risk_rows)),
+                "budget": risk_budget,
+                "gain": risk_gain,
+                "scope": "Agrégat risque par lot/famille/décision",
+                "source_api": "/analytics/risk ou /analytics/dashboard charts.risk",
+                "source_sql": "fact_metre GROUP BY lot, famille, decision_import",
+            },
+            "timeline": {
+                "lines": int(timeline_last.get("nb_lignes") or 0),
+                "budget": money(timeline_last.get("capex")),
+                "gain": money(timeline_last.get("economie")),
+                "scope": "Historique ou projection scénario actif",
+                "source_api": "/analytics/timeline ou /analytics/dashboard charts.timeline",
+                "source_sql": "fact_metre GROUP BY date_import/created_at, fallback projection",
+            },
+            "duplicates": {
+                "row_count": int(duplicate_row["row_count"] or 0),
+                "distinct_id_count": int(duplicate_row["distinct_id_count"] or 0),
+                "duplicate_count": duplicate_count,
+            },
+            "is_consistent": not issues and bool(sankey_primary_gain),
+            "issues": issues,
+            "warnings": warnings,
+        }
+
     @staticmethod
     def _to_float(*values: Any) -> float:
         for value in values:

@@ -115,6 +115,12 @@ export default function CapexWaterfall({ summary = {} }) {
           </span>
         ))}
       </div>
+      <div className="scope-summary">
+        <span>Périmètre : {Number(summary.nb_lignes || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Budget : {formatMoney(summary.capex_brut || summary.capex_local)}</span>
+        <span>Gain : {formatMoney(summary.economie_nette || summary.economie)}</span>
+        <span>Source : Projet complet, scénario actif</span>
+      </div>
       <BIChart
         height={382}
         chartKey={`waterfall-v2-${steps.map((step) => Math.round(step.value)).join("|")}`}

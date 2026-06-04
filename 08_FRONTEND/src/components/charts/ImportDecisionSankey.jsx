@@ -75,13 +75,15 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
     }));
   }, [links]);
   const kpis = React.useMemo(() => {
-    const terminal = links.filter((link) => !["CAPEX", "Budget"].includes(link.source) && link.target !== "IMPORT" && link.target !== "LOCAL");
-    const total = terminal.reduce((sum, link) => sum + Number(link.value || 0), 0) || 1;
-    const importTotal = terminal.filter((link) => link.decision === "IMPORT").reduce((sum, link) => sum + Number(link.value || 0), 0);
-    const localTotal = terminal.filter((link) => link.decision === "LOCAL").reduce((sum, link) => sum + Number(link.value || 0), 0);
-    const gain = terminal.reduce((sum, link) => sum + Number(link.gain || link.economie || 0), 0);
-    const roi = terminal.length ? terminal.reduce((sum, link) => sum + Number(link.roi || 0), 0) / terminal.length : 0;
-    return { importRate: importTotal / total, localRate: localTotal / total, gain, roi };
+    const primary = links.filter((link) => ["CAPEX", "Budget"].includes(link.source) && ["IMPORT", "LOCAL"].includes(link.target));
+    const scope = primary.length ? primary : links.filter((link) => !["CAPEX", "Budget"].includes(link.source) && link.target !== "IMPORT" && link.target !== "LOCAL");
+    const total = scope.reduce((sum, link) => sum + Number(link.value || 0), 0) || 1;
+    const importTotal = scope.filter((link) => link.decision === "IMPORT" || link.target === "IMPORT").reduce((sum, link) => sum + Number(link.value || 0), 0);
+    const localTotal = scope.filter((link) => link.decision === "LOCAL" || link.target === "LOCAL").reduce((sum, link) => sum + Number(link.value || 0), 0);
+    const gain = scope.reduce((sum, link) => sum + Number(link.gain || link.economie || 0), 0);
+    const roi = scope.length ? scope.reduce((sum, link) => sum + Number(link.roi || 0), 0) / scope.length : 0;
+    const lines = scope.reduce((sum, link) => sum + Number(link.nb_lignes || 0), 0);
+    return { importRate: importTotal / total, localRate: localTotal / total, gain, roi, lines, budget: total };
   }, [links]);
   const chartKey = `sankey-premium-${links.map((link) => `${link.source}-${link.target}-${Math.round(link.value)}`).join("|") || "empty"}`;
 
@@ -92,6 +94,12 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
         <span><strong>{formatPercent(kpis.localRate)}</strong> Local</span>
         <span><strong>{formatMoney(kpis.gain)}</strong> Gain</span>
         <span><strong>{formatPercent(kpis.roi)}</strong> ROI moy.</span>
+      </div>
+      <div className="scope-summary">
+        <span>Périmètre : {Number(kpis.lines || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Budget : {formatMoney(kpis.budget)}</span>
+        <span>Gain : {formatMoney(kpis.gain)}</span>
+        <span>Source : Projet complet, flux primaires local/import</span>
       </div>
       <BIChart
         height={330}
