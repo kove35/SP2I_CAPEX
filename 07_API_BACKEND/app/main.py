@@ -98,6 +98,19 @@ app.include_router(capex.router, tags=["BI"])
 app.include_router(monitoring.router, tags=["Monitoring"])
 
 
+def _print_startup_routes() -> None:
+    print("=" * 80)
+    print("SP2I BACKEND LOADED")
+    print(__file__)
+    print("FASTAPI ROUTES")
+    for route in app.routes:
+        print(route.path)
+    print("=" * 80)
+
+
+_print_startup_routes()
+
+
 @app.middleware("http")
 async def monitoring_middleware(request: Request, call_next):
     """
@@ -194,6 +207,9 @@ def root() -> dict:
             "analytics_kpis": "/analytics/kpis",
             "analytics_debug_pipeline": "/analytics/debug/pipeline",
             "analytics_debug_database": "/analytics/debug/database",
+            "analytics_debug_timing": "/analytics/debug/timing",
+            "analytics_debug_consistency": "/analytics/debug/consistency",
+            "analytics_debug_filter_consistency": "/analytics/debug/filter-consistency",
             "analytics_capex_reconciliation": "/analytics/debug/capex-reconciliation/{project_id}",
             "analytics_data_quality": "/analytics/data-quality",
             "docs": "/docs",
