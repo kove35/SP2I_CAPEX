@@ -3190,6 +3190,29 @@ a {
   line-height: 1.05;
 }
 
+.workspace-dqe-reference {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: #b8c7d8;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.workspace-dqe-reference span {
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, .46);
+  white-space: nowrap;
+}
+
+.workspace-dqe-reference.empty span {
+  color: #93a4b8;
+  border-color: rgba(148, 163, 184, .12);
+}
+
 .workspace-summary-hero p,
 .workspace-next-action p,
 .workspace-module-card p,
