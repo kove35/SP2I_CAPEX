@@ -195,6 +195,15 @@ def debug_database(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).database_debug())
 
 
+@router.get("/debug/timing")
+def debug_timing(
+    dashboard_type: str = "direction",
+    query=Depends(analytics_query),
+    db: Session = Depends(get_db),
+) -> dict:
+    return sanitize_for_json(AnalyticsService(db).dashboard_timing(query, dashboard_type=dashboard_type))
+
+
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())
