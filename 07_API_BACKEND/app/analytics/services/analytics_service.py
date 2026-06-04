@@ -299,6 +299,13 @@ class AnalyticsService:
             "is_neon": database_url_is_neon(),
         }
 
+    def dashboard_timing(self, query: AnalyticsQuery, dashboard_type: str = "direction") -> dict[str, Any]:
+        timings, _ = self._collect_dashboard_parts(query, dashboard_type, include_payload=False, measure_views=True)
+        return {
+            "status": "SUCCESS",
+            **timings,
+        }
+
     @staticmethod
     def _to_float(*values: Any) -> float:
         for value in values:
@@ -915,9 +922,52 @@ class AnalyticsService:
         }
 
     def _build_dashboard(self, query: AnalyticsQuery, dashboard_type: str) -> dict[str, Any]:
-        raw_metrics = self._fact_metre_raw_metrics()
+        timings, parts = self._collect_dashboard_parts(query, dashboard_type, include_payload=True, measure_views=False)
+        kpis = parts["kpis"]
+        nb_lignes = int(kpis.get("nb_lignes") or 0)
+        capex_brut = float(kpis.get("capex_brut") or 0)
+        logger.info("ANALYTICS TRACE | nb_lignes=%s capex=%s", nb_lignes, capex_brut)
+        logger.info({"stage": "dashboard_total", "elapsed_ms": timings["total_ms"]})
+        return self._response(
+            query,
+            kpis=kpis,
+            charts=parts["charts"],
+            table=parts["table"],
+            total=parts["total"],
+            metadata={
+                "dashboard": dashboard_type,
+                "engine": "SP2I Analytics Engine V1",
+                "timing": timings,
+            },
+        )
+
+    def _collect_dashboard_parts(
+        self,
+        query: AnalyticsQuery,
+        dashboard_type: str,
+        include_payload: bool,
+        measure_views: bool,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        total_start = perf_counter()
+        timings: dict[str, Any] = {}
+        parts: dict[str, Any] = {}
+
+        def measure(stage: str, builder):
+            started = perf_counter()
+            value = builder()
+            elapsed_ms = round((perf_counter() - started) * 1000, 2)
+            timings[f"{stage}_ms"] = elapsed_ms
+            logger.info({"stage": stage, "elapsed_ms": elapsed_ms})
+            return value
+
+        raw_metrics = measure("metadata_raw_fact", self._fact_metre_raw_metrics)
         where_sql, params = self.repository._where(query)
-        filtered_metrics = self._fact_metre_filtered_metrics(where_sql, params)
+        filtered_metrics = measure("metadata_filtered_fact", lambda: self._fact_metre_filtered_metrics(where_sql, params))
+        timings["metadata_ms"] = round(
+            float(timings.get("metadata_raw_fact_ms") or 0) + float(timings.get("metadata_filtered_fact_ms") or 0),
+            2,
+        )
+        logger.info({"stage": "metadata", "elapsed_ms": timings["metadata_ms"]})
         logger.info(
             "ANALYTICS TRACE | dashboard=%s source=fact_metre filters=%s injected_filters=%s raw_nb_lignes=%s raw_capex=%s filtered_nb_lignes=%s filtered_capex=%s sql_where=%s sql_params=%s",
             dashboard_type,
@@ -930,7 +980,7 @@ class AnalyticsService:
             where_sql or "<none>",
             params,
         )
-        table, total = self.repository.table(query)
+
         group_default = {
             "direction": "lot",
             "capex": "lot",
@@ -938,27 +988,84 @@ class AnalyticsService:
             "logistics": "decision_import",
             "chantier": "batiment",
         }.get(dashboard_type, "lot")
-        kpis = self.repository.kpis(query)
-        nb_lignes = int(kpis.get("nb_lignes") or 0)
-        capex_brut = float(kpis.get("capex_brut") or 0)
-        logger.info(
-            "ANALYTICS TRACE | nb_lignes=%s capex=%s",
-            nb_lignes,
-            capex_brut,
-        )
-        return self._response(
-            query,
-            kpis=kpis,
-            charts={
-                "bar": self.repository.grouped(query, default_group=group_default),
-                "heatmap": self.repository.heatmap(query),
-                "timeline": self.repository.timeline(query),
-                "sankey": self.repository.sankey(query),
-            },
-            table=table,
-            total=total,
-            metadata={"dashboard": dashboard_type, "engine": "SP2I Analytics Engine V1"},
-        )
+
+        kpis = measure("kpis", lambda: self.repository.kpis(query))
+        table_result = measure("table", lambda: self.repository.table(query))
+        drilldown = measure("drilldown", lambda: self.repository.grouped(query, default_group=group_default))
+        heatmap = measure("heatmap", lambda: self.repository.heatmap(query))
+        timeline = measure("timeline", lambda: self.repository.timeline(query))
+        sankey = measure("sankey", lambda: self.repository.sankey(query))
+
+        chart_stage_names = ("drilldown", "heatmap", "timeline", "sankey")
+        timings["charts_ms"] = round(sum(float(timings.get(f"{stage}_ms") or 0) for stage in chart_stage_names), 2)
+        logger.info({"stage": "charts", "elapsed_ms": timings["charts_ms"]})
+
+        view_timings = self._measure_dashboard_views() if measure_views else []
+        timings["views"] = view_timings
+        timings["slowest_view"] = max(view_timings, key=lambda item: item["elapsed_ms"], default=None)
+
+        sql_candidates = [
+            {"stage": "kpis", "elapsed_ms": timings.get("kpis_ms", 0), "source": "fact_metre"},
+            {"stage": "table", "elapsed_ms": timings.get("table_ms", 0), "source": "fact_metre"},
+            {"stage": "drilldown", "elapsed_ms": timings.get("drilldown_ms", 0), "source": "fact_metre"},
+            {"stage": "heatmap", "elapsed_ms": timings.get("heatmap_ms", 0), "source": "fact_metre"},
+            {"stage": "timeline", "elapsed_ms": timings.get("timeline_ms", 0), "source": "fact_metre"},
+            {"stage": "sankey", "elapsed_ms": timings.get("sankey_ms", 0), "source": "fact_metre"},
+            *[
+                {"stage": f"view:{item['view']}", "elapsed_ms": item["elapsed_ms"], "source": item["view"]}
+                for item in view_timings
+            ],
+        ]
+        timings["slowest_sql"] = max(sql_candidates, key=lambda item: item["elapsed_ms"], default=None)
+
+        stage_candidates = [
+            {"stage": key.removesuffix("_ms"), "elapsed_ms": value}
+            for key, value in timings.items()
+            if key.endswith("_ms") and isinstance(value, (int, float))
+        ]
+        timings["slowest_stage"] = max(stage_candidates, key=lambda item: item["elapsed_ms"], default=None)
+        timings["total_ms"] = round((perf_counter() - total_start) * 1000, 2)
+
+        table, total = table_result
+        if include_payload:
+            parts = {
+                "kpis": kpis,
+                "charts": {
+                    "bar": drilldown,
+                    "heatmap": heatmap,
+                    "timeline": timeline,
+                    "sankey": sankey,
+                },
+                "table": table,
+                "total": total,
+            }
+        return timings, parts
+
+    def _measure_dashboard_views(self) -> list[dict[str, Any]]:
+        view_names = [
+            "vw_capex_summary",
+            "vw_project_kpis",
+            "vw_dashboard_direction",
+            "vw_dashboard_import",
+            "vw_dashboard_chantier",
+        ]
+        timings: list[dict[str, Any]] = []
+        for view_name in view_names:
+            started = perf_counter()
+            try:
+                self.repository.db.execute(text(f"SELECT * FROM {view_name} LIMIT 1")).mappings().first()
+                status = "OK"
+                error = None
+            except Exception as exc:
+                status = "ERROR"
+                error = str(exc)
+            elapsed_ms = round((perf_counter() - started) * 1000, 2)
+            logger.info({"stage": f"view:{view_name}", "elapsed_ms": elapsed_ms, "status": status})
+            item = {"view": view_name, "elapsed_ms": elapsed_ms, "status": status}
+            if error:
+                item["error"] = error
+            timings.append(item)
+        return timings
 
     def _build_suppliers(self, query: AnalyticsQuery) -> dict[str, Any]:
         table, _ = self.repository.table(query.model_copy(update={"page": 1, "page_size": 5000}))
