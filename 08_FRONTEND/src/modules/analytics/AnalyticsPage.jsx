@@ -46,6 +46,7 @@ const dashboardCopy = {
 };
 
 function DirectionIndicatorsView({ engine, kpis, barRows, table, riskRows }) {
+  if (engine.error && !Object.keys(kpis || {}).length) return null;
   return (
     <>
       <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
@@ -221,6 +222,7 @@ function PilotageDecisionSummary({ project, workflow, primaryAction, kpis, state
 }
 
 function BudgetWorksView({ engine, kpis, heatmapRows, table, total }) {
+  if (engine.error && !Object.keys(kpis || {}).length) return null;
   return (
     <>
       <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />

@@ -84,6 +84,7 @@ export default function CockpitPage() {
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
   const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
+  const hasPrimaryKpis = Boolean(mainPayload.kpis || capexPayload.kpis);
   const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
   const total = mainPayload.pagination?.total || engine.drilldown.data?.pagination?.total || table.length;
   const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
@@ -190,7 +191,7 @@ export default function CockpitPage() {
       <GlobalAnalyticsFilters />
       {engine.isFetching ? <div className="live-refresh">Synchronisation du cockpit en cours...</div> : null}
 
-      <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />
+      {engine.error && !hasPrimaryKpis ? null : <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />}
       {engine.isLoading ? <Skeleton /> : null}
 
       <section className="analytics-command-grid">
