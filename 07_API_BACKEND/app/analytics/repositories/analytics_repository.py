@@ -41,7 +41,7 @@ class AnalyticsRepository:
         self.db = db
 
     def kpis(self, query: AnalyticsQuery) -> dict[str, Any]:
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         row = self.db.execute(
             text(
                 f"""
@@ -68,7 +68,7 @@ class AnalyticsRepository:
         return dict(row)
 
     def table(self, query: AnalyticsQuery) -> tuple[list[dict[str, Any]], int]:
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         limit = query.page_size
         offset = (query.page - 1) * query.page_size
         order_column = query.order_by if query.order_by in ALLOWED_ORDER else "capex_local"
@@ -108,7 +108,7 @@ class AnalyticsRepository:
     def grouped(self, query: AnalyticsQuery, default_group: str = "lot") -> list[dict[str, Any]]:
         group_key = query.group_by or default_group
         group_column = ALLOWED_GROUPS.get(group_key, ALLOWED_GROUPS[default_group])
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         rows = self.db.execute(
             text(
                 f"""
@@ -130,14 +130,16 @@ class AnalyticsRepository:
         return [dict(row) for row in rows]
 
     def heatmap_rows(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
                     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
                     COALESCE(famille, 'default') AS famille,
+                    COALESCE(SUM(capex_local), 0) AS budget,
                     COALESCE(SUM(capex_optimise), 0) AS value,
+                    COALESCE(SUM(economie), 0) AS economie,
                     COUNT(*) AS nb_lignes
                 FROM fact_metre
                 {where_sql}
@@ -174,7 +176,7 @@ class AnalyticsRepository:
         }
 
     def sankey(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         rows = self.db.execute(
             text(
                 f"""
@@ -255,7 +257,7 @@ class AnalyticsRepository:
         Le risque est volontairement explicable: il combine l'impact financier,
         le choix import/local, l'economie attendue et la densite de lignes.
         """
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         rows = self.db.execute(
             text(
                 f"""
@@ -339,12 +341,13 @@ class AnalyticsRepository:
         return [dict(row) for row in rows]
 
     def timeline(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
-        where_sql, params = self._where(query)
+        where_sql, params = self.build_where_clause(query)
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
                     date_trunc('day', COALESCE(date_import, created_at))::date AS periode,
+                    COALESCE(SUM(capex_local), 0) AS capex_brut,
                     COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                     COALESCE(SUM(economie), 0) AS economie_nette,
                     COUNT(*) AS nb_lignes
@@ -360,6 +363,7 @@ class AnalyticsRepository:
             return [
                 {
                     "date": str(row["periode"]),
+                    "budget_initial": float(row["capex_brut"] or 0),
                     "capex": float(row["capex_optimise"] or 0),
                     "economie": float(row["economie_nette"] or 0),
                     "roi": 0,
@@ -389,6 +393,7 @@ class AnalyticsRepository:
         return [
             {
                 "date": str(today.fromordinal(today.toordinal() + offset)),
+                "budget_initial": round(capex_brut, 2),
                 "capex": round(capex, 2),
                 "economie": round(gain, 2),
                 "roi": round(item_roi, 4),
@@ -585,7 +590,7 @@ class AnalyticsRepository:
             return normalize_display_text(value)
         return value
 
-    def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
+    def build_where_clause(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
         filters = query.filters
         clauses: list[str] = []
         params: dict[str, Any] = {}
@@ -610,6 +615,9 @@ class AnalyticsRepository:
         if not clauses:
             return "", params
         return "WHERE " + " AND ".join(clauses), params
+
+    def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
+        return self.build_where_clause(query)
 
     @staticmethod
     def drilldown_path(level: str | None) -> dict[str, Any]:

@@ -95,7 +95,7 @@ function buildInsights(steps, summary) {
   ];
 }
 
-export default function CapexWaterfall({ summary = {} }) {
+export default function CapexWaterfall({ summary = {}, filtersLabel = "Tous les filtres" }) {
   const { applyFilters, applyDrilldown } = useCrossFiltering();
   const { filters } = useAnalyticsFilters();
   const steps = React.useMemo(() => buildWaterfallModel(summary), [summary]);
@@ -117,9 +117,10 @@ export default function CapexWaterfall({ summary = {} }) {
       </div>
       <div className="scope-summary">
         <span>Périmètre : {Number(summary.nb_lignes || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(summary.capex_brut || summary.capex_local)}</span>
         <span>Gain : {formatMoney(summary.economie_nette || summary.economie)}</span>
-        <span>Source : Projet complet, scénario actif</span>
+        <span>Source : Analytics Engine</span>
       </div>
       <BIChart
         height={382}

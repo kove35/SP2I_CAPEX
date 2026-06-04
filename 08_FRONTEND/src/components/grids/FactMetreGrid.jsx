@@ -80,7 +80,7 @@ function buildDecisionReport(rows, metrics, selectedRow) {
   );
 }
 
-export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sélection courante" }) {
+export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sélection courante", filtersLabel = "Tous les filtres" }) {
   const { applyFilters, applyDrilldown } = useCrossFiltering();
   const drilldownTarget = useAnalyticsFilterStore((state) => state.drilldownTarget);
   const clearDrilldown = useAnalyticsFilterStore((state) => state.clearDrilldown);
@@ -158,9 +158,10 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
         </div>
         <div className="scope-summary">
           <span>Périmètre : {metrics.lignes.toLocaleString("fr-FR")} lignes affichées sur {Number(total || normalizedRows.length).toLocaleString("fr-FR")}</span>
+          <span>Filtres : {filtersLabel}</span>
           <span>Budget : {formatMoney(metrics.capex)}</span>
           <span>Gain : {formatMoney(metrics.savings)}</span>
-          <span>Source : {selectedRow ? "Ligne sélectionnée" : scopeLabel}</span>
+          <span>Source : {selectedRow ? "Ligne sélectionnée" : "Analytics Engine"}</span>
         </div>
         <label className="fact-grid-search">
           <Search size={15} />

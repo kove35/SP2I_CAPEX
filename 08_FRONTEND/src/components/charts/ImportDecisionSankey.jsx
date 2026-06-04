@@ -62,7 +62,7 @@ function buildFallbackLinks(rows = [], chartRows = []) {
   ]);
 }
 
-export default function ImportDecisionSankey({ rows = [], chartRows = [], sankeyRows = [] }) {
+export default function ImportDecisionSankey({ rows = [], chartRows = [], sankeyRows = [], filtersLabel = "Tous les filtres" }) {
   const { applyDrilldown } = useCrossFiltering();
   const rawLinks = sankeyRows.length ? sankeyRows : buildFallbackLinks(rows, chartRows);
   const aggregatedLinks = React.useMemo(() => aggregateLinks(rawLinks), [rawLinks]);
@@ -98,9 +98,10 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
       </div>
       <div className="scope-summary">
         <span>Périmètre : {Number(kpis.lines || 0).toLocaleString("fr-FR")} lignes</span>
+        <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(kpis.budget)}</span>
         <span>Gain : {formatMoney(kpis.gain)}</span>
-        <span>Source : Projet complet, flux primaires local/import</span>
+        <span>Source : Analytics Engine</span>
       </div>
       <BIChart
         height={330}
