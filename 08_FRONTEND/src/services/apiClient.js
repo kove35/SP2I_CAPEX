@@ -19,10 +19,41 @@ console.log("VITE_API_URL:", import.meta.env.VITE_API_URL);
 console.log("VITE_API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
 console.groupEnd();
 export const apiClient = axios.create({
-  
   baseURL: API_BASE_URL,
-  timeout: 120000,
+  timeout: 60000,
 });
+
+apiClient.interceptors.request.use((config) => ({
+  ...config,
+  metadata: {
+    ...(config.metadata || {}),
+    startedAt: performance.now(),
+  },
+}));
+
+apiClient.interceptors.response.use(
+  (response) => {
+    const startedAt = response.config.metadata?.startedAt || performance.now();
+    console.log("AXIOS TIMING", {
+      endpoint: response.config.url,
+      status: response.status,
+      elapsed_ms: Math.round(performance.now() - startedAt),
+      timeout_ms: response.config.timeout ?? apiClient.defaults.timeout,
+    });
+    return response;
+  },
+  (error) => {
+    const startedAt = error.config?.metadata?.startedAt || performance.now();
+    console.error("AXIOS ERROR TIMING", {
+      endpoint: error.config?.url,
+      status: error.response?.status,
+      elapsed_ms: Math.round(performance.now() - startedAt),
+      timeout_ms: error.config?.timeout ?? apiClient.defaults.timeout,
+      message: error.message,
+    });
+    return Promise.reject(error);
+  }
+);
 
 export function normalizeApiError(error, config = {}) {
   const endpoint = config.url || "endpoint inconnu";
@@ -44,9 +75,18 @@ export function normalizeApiError(error, config = {}) {
 }
 
 export async function request(config) {
+  const startedAt = performance.now();
+  const timeoutMs = config.timeout ?? apiClient.defaults.timeout;
   try {
     const response = await apiClient(config);
+    const elapsedMs = Math.round(performance.now() - startedAt);
     console.log(config.url, response.data);
+    console.log("API TIMING", {
+      endpoint: config.url,
+      status: response.status,
+      elapsed_ms: elapsedMs,
+      timeout_ms: timeoutMs,
+    });
     console.log("API RESPONSE", {
       url: config.url,
       method: config.method || "GET",
@@ -54,11 +94,14 @@ export async function request(config) {
     });
     return response.data;
   } catch (error) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
     console.error("API ERROR", {
       baseURL: API_BASE_URL,
       url: config.url,
       method: config.method || "GET",
       status: error.response?.status,
+      elapsed_ms: elapsedMs,
+      timeout_ms: timeoutMs,
       data: error.response?.data,
       message: error.message,
     });
