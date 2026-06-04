@@ -46,6 +46,7 @@ export function normalizeApiError(error, config = {}) {
 export async function request(config) {
   try {
     const response = await apiClient(config);
+    console.log(config.url, response.data);
     console.log("API RESPONSE", {
       url: config.url,
       method: config.method || "GET",

@@ -38,6 +38,7 @@ const logAnalyticsResult = (label, data, filters) => {
 
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
+  const shouldLoadProcurementScenarios = dashboardType === "procurement";
 
   console.log("Analytics filters", debouncedFilters);
 
@@ -88,7 +89,19 @@ export function useAnalyticsEngine(dashboardType = "direction") {
 
   const procurementScenarios = useQuery({
     queryKey: buildAnalyticsQueryKey("procurement-scenarios", debouncedFilters),
-    queryFn: () => getAnalyticsProcurementScenarios(debouncedFilters),
+    queryFn: () => {
+      console.log("Query refresh", "analytics-procurement-scenarios", debouncedFilters);
+      return getAnalyticsProcurementScenarios(debouncedFilters).catch((error) => {
+        console.error("Analytics secondary query error", {
+          endpoint: "/analytics/procurement-scenarios",
+          message: error?.message,
+          filters: debouncedFilters,
+        });
+        throw error;
+      });
+    },
+    enabled: shouldLoadProcurementScenarios,
+    onSuccess: (data) => logAnalyticsResult("procurement-scenarios", data, debouncedFilters),
     staleTime: 30_000,
   });
 
@@ -153,6 +166,25 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     staleTime: 30_000,
   });
 
+  const criticalError = dashboard.error || capex.error;
+  const secondaryErrors = [
+    procurement.error,
+    gainAnalysis.error,
+    suppliers.error,
+    procurementLines.error,
+    procurementScenarios.error,
+    currency.error,
+    importRisks.error,
+    heatmap.error,
+    risk.error,
+    timeline.error,
+    drilldown.error,
+  ].filter(Boolean);
+
+  if (secondaryErrors.length) {
+    console.warn("Analytics secondary queries degraded", secondaryErrors.map((error) => error.message));
+  }
+
   return {
     filters,
     dashboard,
@@ -170,8 +202,10 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     drilldown,
     qa,
     isLoading: dashboard.isLoading || capex.isLoading,
-    isFetching: dashboard.isFetching || capex.isFetching || drilldown.isFetching || gainAnalysis.isFetching,
-    error: dashboard.error || capex.error || procurement.error || gainAnalysis.error || suppliers.error || procurementLines.error || procurementScenarios.error || currency.error || importRisks.error || heatmap.error || risk.error || timeline.error || drilldown.error,
+    isFetching: dashboard.isFetching || capex.isFetching,
+    backgroundFetching: procurement.isFetching || gainAnalysis.isFetching || suppliers.isFetching || procurementLines.isFetching || procurementScenarios.isFetching || currency.isFetching || importRisks.isFetching || heatmap.isFetching || risk.isFetching || timeline.isFetching || drilldown.isFetching,
+    error: criticalError,
+    secondaryErrors,
   };
 }
 
