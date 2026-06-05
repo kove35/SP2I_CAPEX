@@ -17,6 +17,7 @@ import {
 } from "../services/analyticsService";
 import { buildAnalyticsQueryKey } from "../services/analyticsQueryBuilder";
 import { useAnalyticsFilters } from "./useAnalyticsFilters";
+import { markPerformance, measurePerformance } from "../services/performanceMonitor";
 
 const logAnalyticsResult = (label, data, filters) => {
   console.log("Analytics query result", label, {
@@ -51,10 +52,16 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   const dashboard = useQuery({
     queryKey: buildAnalyticsQueryKey("dashboard", debouncedFilters, { dashboardType }),
     queryFn: () => {
+      markPerformance("dashboard_request");
       console.log("Query refresh", "analytics-dashboard", debouncedFilters);
       return getAnalyticsDashboard(debouncedFilters, dashboardType);
     },
-    onSuccess: (data) => logAnalyticsResult("dashboard", data, debouncedFilters),
+    onSuccess: (data) => {
+      markPerformance("dashboard_response");
+      const elapsed = measurePerformance("dashboard_api_ms", "dashboard_request", "dashboard_response");
+      console.log("ANALYTICS PERFORMANCE", { dashboard_api_ms: elapsed });
+      logAnalyticsResult("dashboard", data, debouncedFilters);
+    },
     staleTime: 20_000,
     ...analyticsRetry,
   });

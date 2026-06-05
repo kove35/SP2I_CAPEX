@@ -5,6 +5,7 @@ import CapexTimeline from "../../components/charts/CapexTimeline";
 import CapexWaterfall from "../../components/charts/CapexWaterfall";
 import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
 import RiskMatrix from "../../components/charts/RiskMatrix";
+import { markPerformance, markPageReady, recordComponentRender } from "../../services/performanceMonitor";
 import InsightsPanel from "../../components/analytics/InsightsPanel";
 import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilters";
 import FactMetreGrid from "../../components/grids/FactMetreGrid";
@@ -344,6 +345,9 @@ export default function AnalyticsPage() {
   const { workflow } = useWorkflow(project?.id || getProjectWorkspaceKey(project), project);
   const primaryAction = getProjectPrimaryAction({ ...project, backendWorkflow: workflow }, state);
   const engine = useAnalyticsEngine(dashboard);
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+  recordComponentRender("AnalyticsPage");
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
   const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
@@ -386,6 +390,13 @@ export default function AnalyticsPage() {
       console.warn("AnalyticsPage storage parse failed", storageError);
     }
   }, [dashboard, state.activeProject, state.activeScenario, state.lastSimulation, mainPayload.kpis, capexPayload.kpis, kpis.nb_lignes, table.length, total, engine.dashboard?.queryKey, engine.capex?.queryKey, engine.procurement?.queryKey]);
+
+  React.useEffect(() => {
+    if (engine.dashboard.isSuccess && !engine.backgroundFetching) {
+      markPerformance("dashboard_render");
+      markPageReady();
+    }
+  }, [engine.dashboard.isSuccess, engine.backgroundFetching]);
 
   React.useEffect(() => {
     let cancelled = false;

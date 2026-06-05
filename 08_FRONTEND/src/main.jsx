@@ -3,7 +3,11 @@ import { createRoot } from "react-dom/client";
 import QueryProvider from "./app/QueryProvider";
 import AppRouter from "./routes/AppRouter";
 import { AppStoreProvider } from "./store/appStore.jsx";
+import { initPerformanceMonitor, markPerformance } from "./services/performanceMonitor";
 import "./styles.css";
+
+initPerformanceMonitor();
+markPerformance("app_start");
 
 window.__SP2I_ERRORS__ = [];
 window.addEventListener("error", (event) => {

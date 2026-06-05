@@ -242,12 +242,17 @@ class AnalyticsService:
         )
 
     def drilldown(self, query: AnalyticsQuery) -> dict[str, Any]:
+        endpoint_start = perf_counter()
         path = self.repository.drilldown_path(query.drilldown_level)
+        sql_start = perf_counter()
         grouped = self.repository.grouped(query, default_group=path["next"] or path["current"])
+        sql_ms = round((perf_counter() - sql_start) * 1000, 2)
         return self._trace_endpoint(
             "/analytics/drilldown",
             query,
             self._response(query, charts={"drilldown": grouped}, metadata={"drilldown": path}),
+            timings={"sql_ms": sql_ms},
+            started=endpoint_start,
         )
 
     def timeline(self, query: AnalyticsQuery) -> dict[str, Any]:
@@ -291,6 +296,19 @@ class AnalyticsService:
             "charts": {},
             "table": [],
             "metadata": analytics_cache.status(),
+        }
+
+    def debug_cache(self) -> dict[str, Any]:
+        return {
+            "status": "SUCCESS",
+            "filters": {},
+            "pagination": {},
+            "kpis": {},
+            "charts": {},
+            "table": [],
+            "metadata": {
+                "cache": analytics_cache.status(),
+            },
         }
 
     def database_debug(self) -> dict[str, Any]:
@@ -1930,7 +1948,15 @@ class AnalyticsService:
         signature = self._fact_metre_cache_signature()
         key_payload = {"query": query.model_dump(mode="json"), "source": signature}
         key = f"{prefix}:{hashlib.sha1(json.dumps(key_payload, sort_keys=True, default=str).encode()).hexdigest()}"
+
+        cache_lookup_start = perf_counter()
         cached = analytics_cache.get(key)
+        cache_lookup_ms = round((perf_counter() - cache_lookup_start) * 1000, 2)
+        timings = {
+            "cache_lookup_ms": cache_lookup_ms,
+            "cache_hit": bool(cached),
+        }
+
         if cached:
             value = json.loads(json.dumps(cached, default=str))
             value["metadata"] = {
@@ -1945,13 +1971,27 @@ class AnalyticsService:
                 key,
                 self._cache_value_summary(value),
             )
-            return self._trace_endpoint(self._endpoint_from_cache_prefix(prefix), query, value)
+            return self._trace_endpoint(
+                self._endpoint_from_cache_prefix(prefix),
+                query,
+                value,
+                timings=timings,
+                started=cache_lookup_start,
+            )
+
+        build_start = perf_counter()
         value = builder()
+        cache_build_ms = round((perf_counter() - build_start) * 1000, 2)
+        timings["cache_build_ms"] = cache_build_ms
+        timings["sql_ms"] = cache_build_ms
+
         value["metadata"] = {
             **value.get("metadata", {}),
             "cache_hit": False,
             "cache_key": key,
             "cache_source_signature": signature,
+            "cache_lookup_ms": cache_lookup_ms,
+            "cache_build_ms": cache_build_ms,
         }
         logger.info(
             "ANALYTICS CACHE | cache_hit=%s cache_key=%s cache_value=%s",
@@ -1959,8 +1999,20 @@ class AnalyticsService:
             key,
             self._cache_value_summary(value),
         )
+
+        cache_write_start = perf_counter()
         analytics_cache.set(key, json.loads(json.dumps(value, default=str)))
-        return self._trace_endpoint(self._endpoint_from_cache_prefix(prefix), query, value)
+        cache_write_ms = round((perf_counter() - cache_write_start) * 1000, 2)
+        timings["cache_write_ms"] = cache_write_ms
+        timings["cache_ms"] = round(cache_lookup_ms + cache_build_ms + cache_write_ms, 2)
+
+        return self._trace_endpoint(
+            self._endpoint_from_cache_prefix(prefix),
+            query,
+            value,
+            timings=timings,
+            started=cache_lookup_start,
+        )
 
     def _fact_metre_raw_metrics(self) -> dict[str, Any]:
         row = self.repository.db.execute(
@@ -2225,15 +2277,38 @@ class AnalyticsService:
         ).mappings().one()
         return self.repository._json_safe(dict(row))
 
-    def _trace_endpoint(self, endpoint: str, query: AnalyticsQuery, response: dict[str, Any]) -> dict[str, Any]:
+    def _trace_endpoint(
+        self,
+        endpoint: str,
+        query: AnalyticsQuery,
+        response: dict[str, Any],
+        timings: dict[str, Any] | None = None,
+        started: float | None = None,
+    ) -> dict[str, Any]:
         where_sql, params = self.repository.build_where_clause(query)
         metrics = self._fact_metre_filtered_metrics(where_sql, params)
+        timings = timings or {}
+
+        if started is not None:
+            timings["endpoint_total_ms"] = round((perf_counter() - started) * 1000, 2)
+        timings["sql_ms"] = round(float(timings.get("sql_ms") or 0), 2)
+
+        serialization_start = perf_counter()
+        try:
+            json.dumps(response, default=str)
+            timings["serialization_ms"] = round((perf_counter() - serialization_start) * 1000, 2)
+        except Exception as erreur:
+            timings["serialization_ms"] = 0
+            logger.warning("Serialization timing failed: %s", erreur)
+
         logger.info({
             "endpoint": endpoint,
             "filters_received": query.filters.model_dump(exclude_none=True),
             "where_clause": where_sql or "<none>",
             "nb_lignes": int(metrics.get("nb_lignes") or 0),
+            "timings": timings,
         })
+
         response["metadata"] = {
             **response.get("metadata", {}),
             "filter_trace": {
@@ -2241,6 +2316,7 @@ class AnalyticsService:
                 "where_clause": where_sql or "<none>",
                 "nb_lignes": int(metrics.get("nb_lignes") or 0),
             },
+            "performance": timings,
         }
         return response
 

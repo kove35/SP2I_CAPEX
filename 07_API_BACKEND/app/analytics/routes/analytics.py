@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.analytics.schemas import AnalyticsResponse
 from app.analytics.services import AnalyticsService
 from app.analytics.utils import build_query
+from app.core.startup_metrics import get_startup_status
 from app.database import get_db
 from app.utils.json_safe import sanitize_for_json
 
@@ -183,6 +184,16 @@ def query_performance(db: Session = Depends(get_db)) -> dict:
 @router.get("/cache-status", response_model=AnalyticsResponse)
 def cache_status(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).cache_status())
+
+
+@router.get("/debug/cache", response_model=AnalyticsResponse)
+def debug_cache(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).debug_cache())
+
+
+@router.get("/debug/coldstart")
+def debug_coldstart() -> dict:
+    return get_startup_status()
 
 
 @router.get("/debug/pipeline", response_model=AnalyticsResponse)
