@@ -65,6 +65,10 @@ function querySettled(query) {
   return query.isSuccess || query.isError;
 }
 
+function hasDashboardSuccess(query) {
+  return Boolean(query.data?.kpis || query.data?.status === "SUCCESS" || query.isSuccess);
+}
+
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
   const shouldLoadProcurementScenarios = dashboardType === "procurement";
@@ -91,7 +95,8 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     ...analyticsRetry,
   });
 
-  const dashboardReady = Boolean(dashboard.data?.kpis) || dashboard.isSuccess;
+  const dashboardSuccess = hasDashboardSuccess(dashboard);
+  const dashboardReady = dashboardSuccess;
 
   const capex = useQuery({
     queryKey: buildAnalyticsQueryKey("capex", debouncedFilters),
@@ -240,7 +245,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     ...analyticsRetry,
   });
 
-  const criticalError = dashboard.error && !dashboard.data?.kpis ? dashboard.error : null;
+  const criticalError = dashboard.isError && !dashboardSuccess ? dashboard.error : null;
   const secondaryErrors = [
     capex.error,
     procurement.error,
@@ -260,9 +265,33 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     console.warn("Analytics secondary queries degraded", secondaryErrors.map((error) => error.message));
   }
 
+  console.log("dashboard success", {
+    status: dashboard.status,
+    isSuccess: dashboard.isSuccess,
+    isError: dashboard.isError,
+    hasKpis: Boolean(dashboard.data?.kpis),
+    error: dashboard.error?.message,
+  });
+  console.log("dashboard error", {
+    status: dashboard.status,
+    isSuccess: dashboard.isSuccess,
+    isError: dashboard.isError,
+    hasKpis: Boolean(dashboard.data?.kpis),
+    error: dashboard.error?.message,
+    ignored_because_success: Boolean(dashboard.error && dashboardSuccess),
+  });
+  console.log("engine.error", {
+    message: criticalError?.message || null,
+    dashboardQuery: {
+      status: dashboard.status,
+      isSuccess: dashboard.isSuccess,
+      isError: dashboard.isError,
+    },
+  });
+
   console.log("Analytics engine state", {
     dashboardType,
-    dashboard: { status: dashboard.status, isFetching: dashboard.isFetching, hasKpis: Boolean(dashboard.data?.kpis), error: dashboard.error?.message },
+    dashboard: { status: dashboard.status, isFetching: dashboard.isFetching, isSuccess: dashboard.isSuccess, isError: dashboard.isError, hasKpis: Boolean(dashboard.data?.kpis), error: dashboard.error?.message },
     capex: { status: capex.status, isFetching: capex.isFetching, hasKpis: Boolean(capex.data?.kpis), error: capex.error?.message },
     gates: {
       dashboardReady,
