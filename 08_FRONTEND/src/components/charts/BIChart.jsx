@@ -1,5 +1,6 @@
 import React from "react";
 import ReactECharts from "echarts-for-react";
+import { markPerformance, recordComponentRender } from "../../services/performanceMonitor";
 
 class ChartErrorBoundary extends React.Component {
   constructor(props) {
@@ -29,6 +30,11 @@ class ChartErrorBoundary extends React.Component {
 
 export default function BIChart({ option, height = 280, onEvents, chartKey }) {
   const safeOption = React.useMemo(() => option || { series: [] }, [option]);
+
+  React.useEffect(() => {
+    recordComponentRender("BIChart");
+    markPerformance("charts_render");
+  }, [chartKey, safeOption]);
 
   return (
     <ChartErrorBoundary key={chartKey || "chart"} height={height}>

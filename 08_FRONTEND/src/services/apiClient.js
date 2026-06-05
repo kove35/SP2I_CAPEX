@@ -1,4 +1,5 @@
 import axios from "axios";
+import { markPerformance, measurePerformance, recordRequest } from "./performanceMonitor";
 
 const isLocalBrowser =
   typeof window !== "undefined" &&
@@ -34,18 +35,20 @@ function now() {
 
 apiClient.interceptors.request.use((config) => {
   const timeoutMs = config.timeout ?? apiClient.defaults.timeout;
+  const endpoint = `${(config.method || "GET").toUpperCase()} ${config.url}`;
   console.log("API URL", config.baseURL || apiClient.defaults.baseURL);
   console.log("REQUEST", {
-    endpoint: config.url,
-    method: config.method || "GET",
+    endpoint,
     params: config.params,
     timeout_ms: timeoutMs,
   });
+  markPerformance(`REQUEST_START:${endpoint}`);
   return {
     ...config,
     metadata: {
       ...(config.metadata || {}),
       startedAt: now(),
+      endpoint,
     },
   };
 });
@@ -53,32 +56,42 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => {
     const startedAt = response.config.metadata?.startedAt || now();
+    const endpoint = response.config.metadata?.endpoint || `${(response.config.method || "GET").toUpperCase()} ${response.config.url}`;
+    const elapsedMs = Math.round(now() - startedAt);
     console.log("AXIOS TIMING", {
       baseURL: response.config.baseURL || apiClient.defaults.baseURL,
-      endpoint: response.config.url,
+      endpoint,
       status: response.status,
-      elapsed_ms: Math.round(now() - startedAt),
+      elapsed_ms: elapsedMs,
       timeout_ms: response.config.timeout ?? apiClient.defaults.timeout,
     });
     console.log("AXIOS RESPONSE", {
-      endpoint: response.config.url,
+      endpoint,
       status: response.status,
       data: response.data,
     });
+    recordRequest(endpoint, elapsedMs, response.status);
+    markPerformance(`RESPONSE_RECEIVED:${endpoint}`);
+    measurePerformance(`REQUEST_DURATION:${endpoint}`, `REQUEST_START:${endpoint}`, `RESPONSE_RECEIVED:${endpoint}`);
     return response;
   },
   (error) => {
     const startedAt = error.config?.metadata?.startedAt || now();
+    const endpoint = error.config?.metadata?.endpoint || `${(error.config?.method || "GET").toUpperCase()} ${error.config?.url}`;
+    const elapsedMs = Math.round(now() - startedAt);
     console.error("AXIOS ERROR TIMING", {
       baseURL: error.config?.baseURL || apiClient.defaults.baseURL,
-      endpoint: error.config?.url,
+      endpoint,
       status: error.response?.status,
-      elapsed_ms: Math.round(now() - startedAt),
+      elapsed_ms: elapsedMs,
       timeout_ms: error.config?.timeout ?? apiClient.defaults.timeout,
       code: error.code,
       message: error.message,
       data: error.response?.data,
     });
+    recordRequest(endpoint, elapsedMs, error.response?.status || 0);
+    markPerformance(`RESPONSE_RECEIVED:${endpoint}`);
+    measurePerformance(`REQUEST_DURATION:${endpoint}`, `REQUEST_START:${endpoint}`, `RESPONSE_RECEIVED:${endpoint}`);
     return Promise.reject(error);
   }
 );
@@ -120,6 +133,7 @@ export async function request(config) {
       method: config.method || "GET",
       data: response.data,
     });
+    markPerformance(`JSON_PARSED:${config.method || "GET"} ${config.url}`);
     return response.data;
   } catch (error) {
     const elapsedMs = Math.round(now() - startedAt);

@@ -3,16 +3,20 @@ from __future__ import annotations
 import logging
 import os
 import time
+from time import perf_counter
 from importlib import import_module
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from app.middleware.json_safe_middleware import JsonSafeMiddleware
 
+from app.analytics.cache import analytics_cache
 from app.analytics.routes import router as analytics_router
 from app.approval.routes.approvals import router as approvals_router
 from app.auth.routes import router as auth_router
 from app.cloud_migrations import ensure_powerbi_schema
+from app.core.startup_metrics import mark_startup_begin, mark_startup_complete, record_startup_stage
 from app.database import Base, SessionLocal, engine
 from app.projects.routes import router as projects_router
 from app.routes import capex, decision, dqe, logistics, monitoring, procurement, simulation, upload
@@ -155,10 +159,33 @@ def startup() -> None:
     Pour un SaaS mature, on remplacera cette creation automatique par Alembic,
     mais cette approche est simple et pratique pour demarrer le projet.
     """
+    mark_startup_begin()
+    startup_begin = perf_counter()
     try:
+        database_start = perf_counter()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        database_elapsed = round((perf_counter() - database_start) * 1000, 2)
+        record_startup_stage("database_connect", database_elapsed)
+        logger.info("Startup database_connect_ms=%s", database_elapsed)
+
+        schema_start = perf_counter()
         Base.metadata.create_all(bind=engine)
-        logger.info("Tables PostgreSQL verifiees ou creees.")
         ensure_powerbi_schema(engine)
+        schema_elapsed = round((perf_counter() - schema_start) * 1000, 2)
+        record_startup_stage("schema_check", schema_elapsed)
+        logger.info("Startup schema_check_ms=%s", schema_elapsed)
+
+        cache_start = perf_counter()
+        analytics_cache.status()
+        cache_elapsed = round((perf_counter() - cache_start) * 1000, 2)
+        record_startup_stage("analytics_cache_load", cache_elapsed)
+        logger.info("Startup analytics_cache_load_ms=%s", cache_elapsed)
+
+        total_elapsed = round((perf_counter() - startup_begin) * 1000, 2)
+        record_startup_stage("startup", total_elapsed)
+        mark_startup_complete()
+        logger.info("Startup complete startup_ms=%s", total_elapsed)
     except Exception as erreur:
         logger.error("PostgreSQL indisponible au demarrage: %s", erreur)
 
