@@ -43,11 +43,36 @@ const analyticsRetry = {
   gcTime: 5 * 60_000,
 };
 
+const ANALYTICS_QUERY_PLAN = [
+  { endpoint: "/analytics/dashboard", query: "dashboard", priority: 1, trigger: "montage AnalyticsPage", enabled: "immediat" },
+  { endpoint: "/analytics/capex", query: "capex", priority: 1, trigger: "montage AnalyticsPage", enabled: "immediat" },
+  { endpoint: "/analytics/filters", query: "filters", priority: 1, trigger: "GlobalAnalyticsFilters", enabled: "immediat hors useAnalyticsEngine" },
+  { endpoint: "/analytics/risk", query: "risk", priority: 2, trigger: "dashboard + capex prets", enabled: "primaryReady" },
+  { endpoint: "/analytics/drilldown", query: "drilldown", priority: 2, trigger: "dashboard + capex prets", enabled: "primaryReady" },
+  { endpoint: "/analytics/heatmap", query: "heatmap", priority: 2, trigger: "dashboard + capex prets", enabled: "primaryReady" },
+  { endpoint: "/analytics/timeline", query: "timeline", priority: 2, trigger: "dashboard + capex prets", enabled: "primaryReady" },
+  { endpoint: "/analytics/procurement", query: "procurement", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
+  { endpoint: "/analytics/suppliers", query: "suppliers", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
+  { endpoint: "/analytics/qa-summary", query: "qa-summary", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
+  { endpoint: "/analytics/gain-analysis", query: "gain-analysis", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
+  { endpoint: "/analytics/procurement-lines", query: "procurement-lines", priority: 4, trigger: "vue procurement", enabled: "deferredProcurementReady" },
+  { endpoint: "/analytics/procurement-scenarios", query: "procurement-scenarios", priority: 4, trigger: "vue procurement", enabled: "deferredProcurementReady" },
+  { endpoint: "/analytics/currency", query: "currency", priority: 4, trigger: "vue procurement/logistics", enabled: "deferredTradeReady" },
+  { endpoint: "/analytics/import-risks", query: "import-risks", priority: 4, trigger: "vue procurement/logistics", enabled: "deferredTradeReady" },
+];
+
+function querySettled(query) {
+  return query.isSuccess || query.isError;
+}
+
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
   const shouldLoadProcurementScenarios = dashboardType === "procurement";
+  const shouldLoadProcurementDetails = dashboardType === "procurement";
+  const shouldLoadTradeDetails = dashboardType === "procurement" || dashboardType === "logistics";
 
   console.log("Analytics filters", debouncedFilters);
+  console.table(ANALYTICS_QUERY_PLAN);
 
   const dashboard = useQuery({
     queryKey: buildAnalyticsQueryKey("dashboard", debouncedFilters, { dashboardType }),
@@ -79,13 +104,62 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     ...analyticsRetry,
   });
 
+  const capexReady = Boolean(capex.data?.kpis) || capex.isSuccess;
+  const primaryReady = dashboardReady && capexReady;
+
+  const heatmap = useQuery({
+    queryKey: buildAnalyticsQueryKey("heatmap", debouncedFilters),
+    queryFn: () => {
+      console.log("Query refresh", "analytics-heatmap", debouncedFilters);
+      return getAnalyticsHeatmap(debouncedFilters);
+    },
+    enabled: primaryReady,
+    staleTime: 20_000,
+    ...analyticsRetry,
+  });
+
+  const risk = useQuery({
+    queryKey: buildAnalyticsQueryKey("risk", debouncedFilters),
+    queryFn: () => {
+      console.log("Query refresh", "analytics-risk", debouncedFilters);
+      return getAnalyticsRisk(debouncedFilters);
+    },
+    enabled: primaryReady,
+    staleTime: 20_000,
+    ...analyticsRetry,
+  });
+
+  const timeline = useQuery({
+    queryKey: buildAnalyticsQueryKey("timeline", debouncedFilters),
+    queryFn: () => {
+      console.log("Query refresh", "analytics-timeline", debouncedFilters);
+      return getAnalyticsTimeline(debouncedFilters);
+    },
+    enabled: primaryReady,
+    staleTime: 20_000,
+    ...analyticsRetry,
+  });
+
+  const drilldown = useQuery({
+    queryKey: buildAnalyticsQueryKey("drilldown", debouncedFilters),
+    queryFn: () => {
+      console.log("Query refresh", "analytics-drilldown", debouncedFilters);
+      return getAnalyticsDrilldown(debouncedFilters);
+    },
+    enabled: primaryReady,
+    staleTime: 20_000,
+    ...analyticsRetry,
+  });
+
+  const secondaryReady = [heatmap, risk, timeline, drilldown].every(querySettled);
+
   const procurement = useQuery({
     queryKey: buildAnalyticsQueryKey("procurement", debouncedFilters),
     queryFn: () => {
       console.log("Query refresh", "analytics-procurement", debouncedFilters);
       return getAnalyticsProcurement(debouncedFilters);
     },
-    enabled: dashboardReady,
+    enabled: secondaryReady,
     onSuccess: (data) => logAnalyticsResult("procurement", data, debouncedFilters),
     staleTime: 20_000,
     ...analyticsRetry,
@@ -97,7 +171,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
       console.log("Query refresh", "analytics-gain-analysis", debouncedFilters);
       return getAnalyticsGainAnalysis(debouncedFilters);
     },
-    enabled: dashboardReady,
+    enabled: secondaryReady,
     staleTime: 20_000,
     ...analyticsRetry,
   });
@@ -105,10 +179,22 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   const suppliers = useQuery({
     queryKey: buildAnalyticsQueryKey("suppliers", debouncedFilters),
     queryFn: () => getAnalyticsSuppliers(debouncedFilters),
-    enabled: dashboardReady,
+    enabled: secondaryReady,
     staleTime: 60_000,
     ...analyticsRetry,
   });
+
+  const qa = useQuery({
+    queryKey: buildAnalyticsQueryKey("qa-summary", debouncedFilters),
+    queryFn: getAnalyticsQaSummary,
+    enabled: secondaryReady,
+    staleTime: 30_000,
+    ...analyticsRetry,
+  });
+
+  const tertiaryReady = [procurement, gainAnalysis, suppliers, qa].every(querySettled);
+  const deferredProcurementReady = tertiaryReady && shouldLoadProcurementDetails;
+  const deferredTradeReady = tertiaryReady && shouldLoadTradeDetails;
 
   const procurementScenarios = useQuery({
     queryKey: buildAnalyticsQueryKey("procurement-scenarios", debouncedFilters),
@@ -123,7 +209,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
         throw error;
       });
     },
-    enabled: dashboardReady && shouldLoadProcurementScenarios,
+    enabled: deferredProcurementReady && shouldLoadProcurementScenarios,
     onSuccess: (data) => logAnalyticsResult("procurement-scenarios", data, debouncedFilters),
     staleTime: 30_000,
     ...analyticsRetry,
@@ -132,7 +218,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   const procurementLines = useQuery({
     queryKey: buildAnalyticsQueryKey("procurement-lines", debouncedFilters),
     queryFn: () => getAnalyticsProcurementLines(debouncedFilters),
-    enabled: dashboardReady,
+    enabled: deferredProcurementReady,
     onSuccess: (data) => logAnalyticsResult("procurement-lines", data, debouncedFilters),
     staleTime: 20_000,
     ...analyticsRetry,
@@ -141,7 +227,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   const currency = useQuery({
     queryKey: buildAnalyticsQueryKey("currency", debouncedFilters),
     queryFn: () => getAnalyticsCurrency(debouncedFilters),
-    enabled: dashboardReady,
+    enabled: deferredTradeReady,
     staleTime: 120_000,
     ...analyticsRetry,
   });
@@ -149,59 +235,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   const importRisks = useQuery({
     queryKey: buildAnalyticsQueryKey("import-risks", debouncedFilters),
     queryFn: () => getAnalyticsImportRisks(debouncedFilters),
-    enabled: dashboardReady,
-    staleTime: 30_000,
-    ...analyticsRetry,
-  });
-
-  const heatmap = useQuery({
-    queryKey: buildAnalyticsQueryKey("heatmap", debouncedFilters),
-    queryFn: () => {
-      console.log("Query refresh", "analytics-heatmap", debouncedFilters);
-      return getAnalyticsHeatmap(debouncedFilters);
-    },
-    enabled: dashboardReady,
-    staleTime: 20_000,
-    ...analyticsRetry,
-  });
-
-  const risk = useQuery({
-    queryKey: buildAnalyticsQueryKey("risk", debouncedFilters),
-    queryFn: () => {
-      console.log("Query refresh", "analytics-risk", debouncedFilters);
-      return getAnalyticsRisk(debouncedFilters);
-    },
-    enabled: dashboardReady,
-    staleTime: 20_000,
-    ...analyticsRetry,
-  });
-
-  const timeline = useQuery({
-    queryKey: buildAnalyticsQueryKey("timeline", debouncedFilters),
-    queryFn: () => {
-      console.log("Query refresh", "analytics-timeline", debouncedFilters);
-      return getAnalyticsTimeline(debouncedFilters);
-    },
-    enabled: dashboardReady,
-    staleTime: 20_000,
-    ...analyticsRetry,
-  });
-
-  const drilldown = useQuery({
-    queryKey: buildAnalyticsQueryKey("drilldown", debouncedFilters),
-    queryFn: () => {
-      console.log("Query refresh", "analytics-drilldown", debouncedFilters);
-      return getAnalyticsDrilldown(debouncedFilters);
-    },
-    enabled: dashboardReady,
-    staleTime: 20_000,
-    ...analyticsRetry,
-  });
-
-  const qa = useQuery({
-    queryKey: buildAnalyticsQueryKey("qa-summary", debouncedFilters),
-    queryFn: getAnalyticsQaSummary,
-    enabled: dashboardReady,
+    enabled: deferredTradeReady,
     staleTime: 30_000,
     ...analyticsRetry,
   });
@@ -230,7 +264,15 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     dashboardType,
     dashboard: { status: dashboard.status, isFetching: dashboard.isFetching, hasKpis: Boolean(dashboard.data?.kpis), error: dashboard.error?.message },
     capex: { status: capex.status, isFetching: capex.isFetching, hasKpis: Boolean(capex.data?.kpis), error: capex.error?.message },
-    secondaryEnabled: dashboardReady,
+    gates: {
+      dashboardReady,
+      capexReady,
+      primaryReady,
+      secondaryReady,
+      tertiaryReady,
+      deferredProcurementReady,
+      deferredTradeReady,
+    },
     criticalError: criticalError?.message,
   });
 

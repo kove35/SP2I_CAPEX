@@ -29,13 +29,32 @@ export const apiClient = axios.create({
   timeout: 60000,
 });
 
+let activeAnalyticsRequests = 0;
+let maxConcurrentAnalyticsRequests = 0;
+
 function now() {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
+
+function isAnalyticsEndpoint(url = "") {
+  return String(url || "").startsWith("/analytics/");
 }
 
 apiClient.interceptors.request.use((config) => {
   const timeoutMs = config.timeout ?? apiClient.defaults.timeout;
   const endpoint = `${(config.method || "GET").toUpperCase()} ${config.url}`;
+  const analyticsEndpoint = isAnalyticsEndpoint(config.url);
+  if (analyticsEndpoint) {
+    activeAnalyticsRequests += 1;
+    maxConcurrentAnalyticsRequests = Math.max(maxConcurrentAnalyticsRequests, activeAnalyticsRequests);
+    console.log("analytics_request_started", {
+      endpoint: config.url,
+      timestamp: new Date().toISOString(),
+      active_requests: activeAnalyticsRequests,
+      max_concurrent_requests: maxConcurrentAnalyticsRequests,
+      timeout_ms: timeoutMs,
+    });
+  }
   console.log("API URL", config.baseURL || apiClient.defaults.baseURL);
   console.log("REQUEST", {
     endpoint,
@@ -49,6 +68,7 @@ apiClient.interceptors.request.use((config) => {
       ...(config.metadata || {}),
       startedAt: now(),
       endpoint,
+      analyticsEndpoint,
     },
   };
 });
@@ -58,6 +78,17 @@ apiClient.interceptors.response.use(
     const startedAt = response.config.metadata?.startedAt || now();
     const endpoint = response.config.metadata?.endpoint || `${(response.config.method || "GET").toUpperCase()} ${response.config.url}`;
     const elapsedMs = Math.round(now() - startedAt);
+    if (response.config.metadata?.analyticsEndpoint) {
+      activeAnalyticsRequests = Math.max(activeAnalyticsRequests - 1, 0);
+      console.log("analytics_request_finished", {
+        endpoint: response.config.url,
+        status: response.status,
+        timestamp: new Date().toISOString(),
+        elapsed_ms: elapsedMs,
+        active_requests: activeAnalyticsRequests,
+        max_concurrent_requests: maxConcurrentAnalyticsRequests,
+      });
+    }
     console.log("AXIOS TIMING", {
       baseURL: response.config.baseURL || apiClient.defaults.baseURL,
       endpoint,
@@ -79,6 +110,18 @@ apiClient.interceptors.response.use(
     const startedAt = error.config?.metadata?.startedAt || now();
     const endpoint = error.config?.metadata?.endpoint || `${(error.config?.method || "GET").toUpperCase()} ${error.config?.url}`;
     const elapsedMs = Math.round(now() - startedAt);
+    if (error.config?.metadata?.analyticsEndpoint) {
+      activeAnalyticsRequests = Math.max(activeAnalyticsRequests - 1, 0);
+      console.log("analytics_request_finished", {
+        endpoint: error.config?.url,
+        status: error.response?.status,
+        code: error.code,
+        timestamp: new Date().toISOString(),
+        elapsed_ms: elapsedMs,
+        active_requests: activeAnalyticsRequests,
+        max_concurrent_requests: maxConcurrentAnalyticsRequests,
+      });
+    }
     console.error("AXIOS ERROR TIMING", {
       baseURL: error.config?.baseURL || apiClient.defaults.baseURL,
       endpoint,
