@@ -306,6 +306,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS sous_lot VARCHAR(255) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS appart VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS piece VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS piece_type VARCHAR(100) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS type_zone VARCHAR(100) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS formule TEXT NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS bim_object_id VARCHAR(150) NOT NULL DEFAULT '',
@@ -517,6 +518,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     CREATE INDEX IF NOT EXISTS ix_fact_metre_piece_id ON fact_metre (piece_id);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_objet_bim_id ON fact_metre (objet_bim_id);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_spatial ON fact_metre (batiment, niveau, piece);
+    CREATE INDEX IF NOT EXISTS ix_fact_metre_bim_scope ON fact_metre (batiment, niveau, appartement_id, piece, lot);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_ifc_guid ON fact_metre (ifc_guid);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_famille_id ON fact_metre (famille_id);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_project_execution ON fact_metre (projet_id, execution_status);

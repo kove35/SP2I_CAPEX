@@ -3,6 +3,8 @@ const apiFieldMap = {
   scenario: "scenario",
   batiment: "batiment",
   niveau: "niveau",
+  appartement: "appartement",
+  piece: "piece",
   lot: "lot",
   famille: "famille",
   fournisseur: "fournisseur",

@@ -113,6 +113,8 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
       { field: "famille", headerName: "Famille metier", minWidth: 170, tooltipField: "famille", filter: "agSetColumnFilter" },
       { field: "batiment", headerName: "Batiment", minWidth: 170, filter: "agSetColumnFilter" },
       { field: "niveau", headerName: "Niveau", minWidth: 140, filter: "agSetColumnFilter" },
+      { field: "appartement", headerName: "Appartement", minWidth: 150, filter: "agSetColumnFilter" },
+      { field: "piece", headerName: "Piece", minWidth: 150, filter: "agSetColumnFilter" },
       { field: "fournisseur", headerName: "Fournisseur", minWidth: 160, filter: "agSetColumnFilter" },
       { field: "delai", headerName: "Delai", minWidth: 95, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))} j`, type: "numericColumn" },
       { field: "risque", headerName: "Risque", minWidth: 105, valueFormatter: ({ value }) => `${Math.round(Number(value || 0))}/100`, type: "numericColumn" },
@@ -132,7 +134,16 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
 
   const handleRowSelected = (row) => {
     setSelectedRow(row);
-    const filters = { lot: row.lot, famille: row.famille, batiment: row.batiment, niveau: row.niveau, importLocal: row.decision_import, decisionImport: row.decision_import };
+    const filters = {
+      lot: row.lot,
+      famille: row.famille,
+      batiment: row.batiment,
+      niveau: row.niveau,
+      appartement: row.appartement,
+      piece: row.piece,
+      importLocal: row.decision_import,
+      decisionImport: row.decision_import,
+    };
     applyFilters(filters);
     applyDrilldown(filters, {
       source: "ag-grid",
