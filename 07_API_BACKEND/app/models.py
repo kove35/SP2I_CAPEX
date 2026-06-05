@@ -49,6 +49,7 @@ class FactMetre(Base):
     piece: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     piece_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     piece_code: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     type_zone: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     zone_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     formule: Mapped[str] = mapped_column(Text, nullable=False, default="")

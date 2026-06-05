@@ -11,6 +11,8 @@ export async function getAnalyticsFilters() {
   return {
     batiments: toSelectOptions(data.batiments || []),
     niveaux: toSelectOptions(data.niveaux || []),
+    appartements: toSelectOptions(data.appartements || []),
+    pieces: toSelectOptions(data.pieces || []),
     lots: toSelectOptions(data.lots || []),
     familles: toSelectOptions(data.familles || []),
     importLocal: toSelectOptions(data.import_local || ["IMPORT", "LOCAL"]),

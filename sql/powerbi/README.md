@@ -9,6 +9,7 @@ Power BI doit se connecter a Neon et consommer uniquement les vues de ce dossier
 - `vw_dashboard_direction`
 - `vw_dashboard_import`
 - `vw_dashboard_chantier`
+- `vw_bim_dashboard`
 
 ## Installation sur Neon
 
@@ -27,5 +28,11 @@ SELECT * FROM vw_project_kpis;
 SELECT * FROM vw_dashboard_direction;
 SELECT * FROM vw_dashboard_import;
 SELECT * FROM vw_dashboard_chantier LIMIT 20;
+SELECT * FROM vw_bim_dashboard LIMIT 20;
 ```
 
+## BIM_READY
+
+`vw_bim_dashboard` expose le chemin Projet / Batiment / Niveau / Appartement / Piece / Lot / Famille / Article.
+
+Mesures disponibles : `capex_local`, `capex_import`, `economie`, `nb_lignes`.

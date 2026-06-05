@@ -267,6 +267,8 @@ class AnalyticsService:
         return normalize_payload_labels({
             "batiments": options.get("batiments", []),
             "niveaux": options.get("niveaux", []),
+            "appartements": options.get("appartements", []),
+            "pieces": options.get("pieces", []),
             "lots": options.get("lots", []),
             "familles": options.get("familles", []),
             "import_local": options.get("import_local", []),

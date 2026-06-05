@@ -33,8 +33,40 @@ CREATE OR REPLACE VIEW vw_dashboard_chantier AS
 SELECT
     COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
     COALESCE(niveau, 'GLOBAL') AS niveau,
+    COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
+    COALESCE(piece, 'NON_RENSEIGNE') AS piece,
     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
     COUNT(*) AS nb_lignes,
     ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_expose
 FROM fact_metre
-GROUP BY COALESCE(batiment, 'NON_RENSEIGNE'), COALESCE(niveau, 'GLOBAL'), COALESCE(lot, 'NON_RENSEIGNE');
+GROUP BY
+    COALESCE(batiment, 'NON_RENSEIGNE'),
+    COALESCE(niveau, 'GLOBAL'),
+    COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN'),
+    COALESCE(piece, 'NON_RENSEIGNE'),
+    COALESCE(lot, 'NON_RENSEIGNE');
+
+CREATE OR REPLACE VIEW vw_bim_dashboard AS
+SELECT
+    COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT') AS projet,
+    COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
+    COALESCE(niveau, 'GLOBAL') AS niveau,
+    COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
+    COALESCE(piece, 'NON_RENSEIGNE') AS piece,
+    COALESCE(lot, 'NON_RENSEIGNE') AS lot,
+    COALESCE(famille, 'default') AS famille,
+    COALESCE(NULLIF(code_article, ''), NULLIF(article_id, ''), NULLIF(designation, ''), 'NON_RENSEIGNE') AS article,
+    ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_local,
+    ROUND(COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0)::numeric, 2) AS capex_import,
+    ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie,
+    COUNT(*) AS nb_lignes
+FROM fact_metre
+GROUP BY
+    COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT'),
+    COALESCE(batiment, 'NON_RENSEIGNE'),
+    COALESCE(niveau, 'GLOBAL'),
+    COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN'),
+    COALESCE(piece, 'NON_RENSEIGNE'),
+    COALESCE(lot, 'NON_RENSEIGNE'),
+    COALESCE(famille, 'default'),
+    COALESCE(NULLIF(code_article, ''), NULLIF(article_id, ''), NULLIF(designation, ''), 'NON_RENSEIGNE');

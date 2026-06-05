@@ -15,6 +15,8 @@ ALLOWED_GROUPS = {
     "projet": "projet_id",
     "batiment": "batiment",
     "niveau": "niveau",
+    "appartement": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
+    "piece": "piece",
     "lot": "lot",
     "famille": "famille",
     "decision_import": "decision_import",
@@ -28,10 +30,13 @@ ALLOWED_ORDER = {
     "famille",
     "batiment",
     "niveau",
+    "appartement_id",
+    "appart",
+    "piece",
     "decision_import",
 }
 
-DRILLDOWN = ["projet", "batiment", "niveau", "lot", "famille", "article"]
+DRILLDOWN = ["projet", "batiment", "niveau", "appartement", "piece", "lot", "famille", "article"]
 
 
 class AnalyticsRepository:
@@ -85,6 +90,12 @@ class AnalyticsRepository:
                     famille,
                     batiment,
                     niveau,
+                    COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, '')) AS appartement,
+                    piece,
+                    COALESCE(NULLIF(piece_type, ''), NULLIF(type_zone, '')) AS piece_type,
+                    ifc_guid,
+                    ifc_type,
+                    bim_object,
                     quantite,
                     pu_local,
                     pu_import,
@@ -410,6 +421,8 @@ class AnalyticsRepository:
         fields = {
             "batiments": "batiment",
             "niveaux": "niveau",
+            "appartements": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
+            "pieces": "piece",
             "lots": "lot",
             "familles": "famille",
             "import_local": "decision_import",
@@ -422,7 +435,7 @@ class AnalyticsRepository:
                     SELECT DISTINCT {column} AS value
                     FROM fact_metre
                     WHERE {column} IS NOT NULL AND TRIM(CAST({column} AS text)) <> ''
-                    ORDER BY {column}
+                    ORDER BY value
                     LIMIT 500
                     """
                 )
@@ -595,10 +608,19 @@ class AnalyticsRepository:
         clauses: list[str] = []
         params: dict[str, Any] = {}
 
-        for field in ("batiment", "niveau", "lot", "famille"):
+        filter_columns = {
+            "batiment": "batiment",
+            "niveau": "niveau",
+            "appartement": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
+            "piece": "piece",
+            "lot": "lot",
+            "famille": "famille",
+        }
+
+        for field, column in filter_columns.items():
             value = getattr(filters, field)
             if value:
-                clauses.append(f"LOWER({field}) LIKE LOWER(:{field})")
+                clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
                 params[field] = f"%{value}%"
 
         if filters.decision_import:

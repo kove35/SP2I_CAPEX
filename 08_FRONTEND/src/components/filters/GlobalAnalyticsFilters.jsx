@@ -9,6 +9,8 @@ import AnalyticsSelect from "./AnalyticsSelect";
 const selectFields = [
   ["batiment", "Batiment", "Tous", "batiments"],
   ["niveau", "Niveau", "Tous", "niveaux"],
+  ["appartement", "Appartement", "Tous", "appartements"],
+  ["piece", "Piece", "Toutes", "pieces"],
   ["lot", "Lot", "Tous", "lots"],
   ["famille", "Famille", "Toutes", "familles"],
   ["importLocal", "Import/local", "Tous", "importLocal"],
