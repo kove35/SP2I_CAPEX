@@ -351,6 +351,7 @@ export default function AnalyticsPage() {
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
   const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
+  const hasPrimaryKpis = Boolean(mainPayload.kpis || capexPayload.kpis);
   const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
   const total = mainPayload.pagination?.total || engine.drilldown.data?.pagination?.total || table.length;
   const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
@@ -488,7 +489,7 @@ export default function AnalyticsPage() {
 
       <GlobalAnalyticsFilters />
 
-      {engine.error ? <div className="analytics-error">{engine.error.message}</div> : null}
+      {engine.error && !hasPrimaryKpis ? <div className="analytics-error">{engine.error.message}</div> : null}
       {engine.isFetching ? <div className="live-refresh">Mise a jour des indicateurs en cours...</div> : null}
       <PilotageDecisionSummary project={project} workflow={workflow} primaryAction={primaryAction} kpis={kpis} state={state} workflowEvents={workflowEvents} />
       {workflow.status !== "ACTIVE" ? (
