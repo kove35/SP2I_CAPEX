@@ -102,7 +102,7 @@ class AnalyticsRepository:
         order_column = query.order_by if query.order_by in ALLOWED_ORDER and self._fact_column_exists(query.order_by) else "capex_local"
         order_dir = "ASC" if query.order_dir == "asc" else "DESC"
         appartement_sql = self._appartement_sql()
-        piece_sql = self._optional_text_column("piece")
+        piece_sql = self._piece_sql()
         piece_type_sql = self._piece_type_sql()
         ifc_guid_sql = self._optional_text_column("ifc_guid")
         ifc_type_sql = self._optional_text_column("ifc_type")
@@ -451,13 +451,16 @@ class AnalyticsRepository:
             "batiments": "batiment",
             "niveaux": "niveau",
             "appartements": self._appartement_sql(),
-            "pieces": self._optional_text_column("piece"),
+            "pieces": self._piece_sql(),
             "lots": "lot",
             "familles": "famille",
             "import_local": "decision_import",
         }
         result: dict[str, list[str]] = {}
         for key, column in fields.items():
+            if key == "pieces":
+                result[key] = self._piece_filter_options()
+                continue
             if column == "NULL":
                 result[key] = []
                 continue
@@ -474,6 +477,66 @@ class AnalyticsRepository:
             ).scalars().all()
             result[key] = [normalize_display_text(str(value)) for value in rows if value]
         return result
+
+    def _piece_filter_options(self) -> list[str]:
+        """Options Piece robustes PLAN_READY: FACT_METRE puis DIM_PIECE si disponible."""
+        piece_sql = self._piece_sql()
+        unions = [
+            f"""
+            SELECT DISTINCT value
+            FROM (
+                SELECT {piece_sql} AS value
+                FROM fact_metre
+            ) fact_pieces
+            WHERE value IS NOT NULL AND TRIM(CAST(value AS text)) <> ''
+            """
+        ]
+        dim_piece_columns = load_table_columns(self.db, "dim_piece")
+        dim_piece_candidates = [
+            f"NULLIF(TRIM(CAST({column} AS text)), '')"
+            for column in ("piece_nom", "piece", "piece_code")
+            if column in dim_piece_columns
+        ]
+        if dim_piece_candidates:
+            dim_piece_sql = f"COALESCE({', '.join(dim_piece_candidates)})"
+            unions.append(
+                f"""
+                SELECT DISTINCT {self._normalise_piece_sql(dim_piece_sql)} AS value
+                FROM dim_piece
+                WHERE {dim_piece_sql} IS NOT NULL
+                """
+            )
+        rows = self.db.execute(
+            text(
+                f"""
+                WITH piece_values AS (
+                    {" UNION ".join(unions)}
+                )
+                SELECT value
+                FROM piece_values
+                ORDER BY
+                    CASE value
+                        WHEN 'ENTREE' THEN 1
+                        WHEN 'SEJOUR' THEN 2
+                        WHEN 'CUISINE' THEN 3
+                        WHEN 'CHAMBRE_1' THEN 4
+                        WHEN 'CHAMBRE_2' THEN 5
+                        WHEN 'CHAMBRE_3' THEN 6
+                        WHEN 'SDB_1' THEN 7
+                        WHEN 'SDB_2' THEN 8
+                        WHEN 'SDB_3' THEN 9
+                        WHEN 'DRESSING' THEN 10
+                        WHEN 'WC_VISITEUR' THEN 11
+                        WHEN 'DEGAGEMENT' THEN 12
+                        WHEN 'BALCON' THEN 13
+                        ELSE 99
+                    END,
+                    value
+                LIMIT 500
+                """
+            )
+        ).scalars().all()
+        return [normalize_display_text(str(value)) for value in rows if value]
 
     def quality_metrics(self) -> dict[str, Any]:
         row = self.db.execute(
@@ -644,7 +707,7 @@ class AnalyticsRepository:
             "batiment": "batiment",
             "niveau": "niveau",
             "appartement": self._appartement_sql(),
-            "piece": self._optional_text_column("piece"),
+            "piece": self._piece_sql(),
             "lot": "lot",
             "famille": "famille",
         }
@@ -691,6 +754,45 @@ class AnalyticsRepository:
             ("appartement_id", "appartement_code", "appart"),
         )
 
+    def _piece_sql(self) -> str:
+        columns = self._fact_columns()
+        available: list[str] = []
+        for column in ("piece", "piece_code"):
+            if column in columns:
+                available.append(f"NULLIF(TRIM(CAST({column} AS text)), '')")
+        dim_piece_columns = load_table_columns(self.db, "dim_piece")
+        if "piece_id" in columns and "piece_id" in dim_piece_columns:
+            dim_labels = [
+                f"NULLIF(TRIM(CAST(dp.{column} AS text)), '')"
+                for column in ("piece_nom", "piece", "piece_code")
+                if column in dim_piece_columns
+            ]
+            if dim_labels:
+                available.append(
+                    f"""
+                    (
+                        SELECT COALESCE({', '.join(dim_labels)})
+                        FROM dim_piece dp
+                        WHERE CAST(dp.piece_id AS text) = CAST(fact_metre.piece_id AS text)
+                        LIMIT 1
+                    )
+                    """
+                )
+        if "piece_id" in columns:
+            available.append("NULLIF(TRIM(CAST(piece_id AS text)), '')")
+        if not available:
+            return "NULL"
+        return self._normalise_piece_sql(f"COALESCE({', '.join(available)})")
+
+    @staticmethod
+    def _normalise_piece_sql(expression: str) -> str:
+        return f"""
+        CASE
+            WHEN {expression} IN ('SDB_PARENTALE', 'SDB_PARENT') THEN 'SDB_1'
+            ELSE {expression}
+        END
+        """
+
     def _piece_type_sql(self) -> str:
         return first_non_empty_sql(self._fact_columns(), ("piece_type", "type_zone"))
 
@@ -701,13 +803,13 @@ class AnalyticsRepository:
         if group_key == "appartement":
             return self._appartement_sql()
         if group_key == "piece":
-            return self._optional_text_column("piece")
+            return self._piece_sql()
         if group_key in ALLOWED_GROUPS:
             return ALLOWED_GROUPS[group_key]
         if default_group == "appartement":
             return self._appartement_sql()
         if default_group == "piece":
-            return self._optional_text_column("piece")
+            return self._piece_sql()
         return ALLOWED_GROUPS.get(default_group, ALLOWED_GROUPS["lot"])
 
     @staticmethod

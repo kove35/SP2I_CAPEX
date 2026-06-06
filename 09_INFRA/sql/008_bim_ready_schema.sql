@@ -39,7 +39,7 @@ CREATE INDEX IF NOT EXISTS ix_fact_metre_ifc_guid
 
 CREATE OR REPLACE VIEW vw_bim_dashboard AS
 SELECT
-    COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT') AS projet,
+    COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA') AS projet,
     COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
     COALESCE(niveau, 'GLOBAL') AS niveau,
     COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
@@ -53,7 +53,7 @@ SELECT
     COUNT(*) AS nb_lignes
 FROM fact_metre
 GROUP BY
-    COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT'),
+    COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA'),
     COALESCE(batiment, 'NON_RENSEIGNE'),
     COALESCE(niveau, 'GLOBAL'),
     COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN'),

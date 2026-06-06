@@ -307,7 +307,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ON dim_famille (famille_id);
 
     INSERT INTO dim_projet (projet_code, projet_nom, ville, pays, devise)
-    VALUES ('SP2I_DEFAULT', 'Centre medical Pointe Noire', 'Pointe Noire', 'Congo', 'FCFA')
+    VALUES ('PROJET_MPEMBA', 'Complexe immobilier Mpemba', 'Pointe Noire', 'Congo', 'FCFA')
     ON CONFLICT (projet_code) DO UPDATE SET updated_at = now();
 
     INSERT INTO dim_supplier (supplier_name, country)
@@ -659,7 +659,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ),
         scenario_id = COALESCE(f.scenario_id, 1)
     FROM dim_projet p, dim_lot l, dim_niveau n, dim_batiment b, dim_famille df
-    WHERE p.projet_code = 'SP2I_DEFAULT'
+    WHERE p.projet_code = 'PROJET_MPEMBA'
       AND l.lot = COALESCE(NULLIF(trim(f.lot), ''), 'NON_RENSEIGNE')
       AND n.niveau = COALESCE(NULLIF(trim(f.niveau), ''), 'GLOBAL')
       AND b.batiment = COALESCE(NULLIF(trim(f.batiment), ''), 'NON_RENSEIGNE')

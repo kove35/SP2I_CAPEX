@@ -1,10 +1,10 @@
 import { demoProjects } from "../services/projectService";
 
 export const PROJECT_CONTEXT = {
-  code: "Pointe-Noire CAPEX",
-  label: "Centre medical Pointe-Noire",
+  code: "PROJET_MPEMBA",
+  label: "Complexe immobilier Mpemba",
   location: "Pointe-Noire, Congo-Brazzaville",
-  type: "Etablissement de sante",
+  type: "Projet immobilier residentiel",
   status: "Projet actif",
 };
 

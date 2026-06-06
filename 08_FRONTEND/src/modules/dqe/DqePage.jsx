@@ -50,7 +50,7 @@ function getSeedVersions(projectId) {
       id: "seed-dqe-v1",
       project_id: projectId,
       version_number: 1,
-      file_name: "DQE_PROJECT_SP2I.xlsx",
+      file_name: "SP2I_BIM_DQE_MASTER.xlsx",
       file_type: "XLSX",
       uploaded_by: "SP2I",
       uploaded_at: new Date().toISOString(),
