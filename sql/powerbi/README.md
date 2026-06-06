@@ -11,6 +11,7 @@ Power BI doit se connecter a Neon et consommer uniquement les vues de ce dossier
 - `vw_dashboard_chantier`
 - `vw_bim_dashboard`
 - `vw_spatial_dashboard`
+- `vw_spatial_analytics`
 
 ## Installation sur Neon
 
@@ -19,6 +20,7 @@ PowerShell :
 ```powershell
 $NEON_URL="postgresql://USER:PASSWORD@HOST.neon.tech/neondb?sslmode=require"
 psql $NEON_URL -f 09_INFRA/sql/009_plan_ready_schema.sql
+psql $NEON_URL -f 09_INFRA/sql/010_spatial_analytics_schema.sql
 psql $NEON_URL -f sql/powerbi/001_powerbi_views.sql
 ```
 
@@ -32,6 +34,7 @@ SELECT * FROM vw_dashboard_import;
 SELECT * FROM vw_dashboard_chantier LIMIT 20;
 SELECT * FROM vw_bim_dashboard LIMIT 20;
 SELECT * FROM vw_spatial_dashboard LIMIT 20;
+SELECT * FROM vw_spatial_analytics LIMIT 20;
 ```
 
 ## BIM_READY
@@ -45,5 +48,11 @@ Mesures disponibles : `capex_local`, `capex_import`, `economie`, `nb_lignes`.
 `vw_spatial_dashboard` expose le pilotage plans 2D / DQE sans dependance IFC/Revit.
 
 Chemin disponible : Projet / Batiment / Niveau / Appartement / Piece / Type piece / Lot / Famille / Article.
+
+Mesures disponibles : `surface_m2`, `capex_local`, `capex_import`, `capex_optimise`, `economie`, `capex_m2`, `nb_lignes`.
+
+## SPATIAL_ANALYTICS
+
+`vw_spatial_analytics` expose le pilotage Projet / Batiment / Niveau / Appartement / Zone / Piece / Lot / Sous-lot / Article.
 
 Mesures disponibles : `surface_m2`, `capex_local`, `capex_import`, `capex_optimise`, `economie`, `capex_m2`, `nb_lignes`.

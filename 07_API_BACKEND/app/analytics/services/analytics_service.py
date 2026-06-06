@@ -269,6 +269,9 @@ class AnalyticsService:
     def spatial(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("spatial", query, lambda: self._build_spatial(query))
 
+    def spatial_dashboard(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._cached("spatial-dashboard", query, lambda: self._build_spatial(query))
+
     def filter_options(self) -> dict[str, Any]:
         options = self.repository.filter_options()
         return normalize_payload_labels({
@@ -1370,7 +1373,7 @@ class AnalyticsService:
                 COALESCE(SUM(capex_local), 0) AS capex_local,
                 COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                 COALESCE(SUM(economie), 0) AS economie
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY batiment
             ORDER BY capex_optimise DESC
@@ -1385,7 +1388,7 @@ class AnalyticsService:
                 COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
                 COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                 COALESCE(SUM(economie), 0) AS economie
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY batiment, niveau
             ORDER BY batiment, niveau
@@ -1405,7 +1408,7 @@ class AnalyticsService:
                 CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
                      ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
                 END AS capex_m2
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY batiment, niveau, appartement
             ORDER BY capex_optimise DESC
@@ -1425,7 +1428,7 @@ class AnalyticsService:
                 CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
                      ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
                 END AS capex_m2
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY appartement, piece, type_piece
             ORDER BY appartement, capex_optimise DESC
@@ -1435,6 +1438,25 @@ class AnalyticsService:
             if not row.get("type_piece") or row.get("type_piece") == "AUTRE":
                 row["type_piece"] = infer_piece_type(row.get("piece"))
 
+        zones = rows(
+            f"""
+            SELECT
+                zone,
+                type_piece,
+                COUNT(*) AS nb_groupes,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(SUM(DISTINCT surface_m2), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(SUM(DISTINCT surface_m2), 0)
+                END AS capex_m2
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY zone, type_piece
+            ORDER BY capex_optimise DESC
+            """
+        )
+
         capex_par_piece = rows(
             f"""
             SELECT
@@ -1443,7 +1465,7 @@ class AnalyticsService:
                 type_piece,
                 COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                 COALESCE(SUM(economie), 0) AS economie
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY appartement, piece, type_piece
             ORDER BY appartement, capex_optimise DESC
@@ -1458,7 +1480,7 @@ class AnalyticsService:
                 appartement,
                 COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                 COALESCE(SUM(economie), 0) AS economie
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY batiment, niveau, appartement
             ORDER BY capex_optimise DESC
@@ -1472,12 +1494,27 @@ class AnalyticsService:
                 COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                 COALESCE(SUM(economie), 0) AS economie,
                 COALESCE(SUM(nb_lignes), 0) AS nb_lignes
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY type_piece
             ORDER BY capex_optimise DESC
             """
         )
+        capex_zone = rows(
+            f"""
+            SELECT
+                zone,
+                type_piece,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY zone, type_piece
+            ORDER BY capex_optimise DESC
+            """
+        )
+
         capex_m2 = rows(
             f"""
             SELECT 'BATIMENT' AS scope_type, batiment AS scope, SUM(DISTINCT surface_m2) AS surface_m2,
@@ -1485,7 +1522,7 @@ class AnalyticsService:
                    CASE WHEN COALESCE(SUM(DISTINCT surface_m2), 0) = 0 THEN 0
                         ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(SUM(DISTINCT surface_m2), 0)
                    END AS capex_m2
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY batiment
             UNION ALL
@@ -1494,7 +1531,7 @@ class AnalyticsService:
                    CASE WHEN COALESCE(SUM(DISTINCT surface_m2), 0) = 0 THEN 0
                         ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(SUM(DISTINCT surface_m2), 0)
                    END AS capex_m2
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY batiment, niveau
             UNION ALL
@@ -1503,16 +1540,25 @@ class AnalyticsService:
                    CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
                         ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
                    END AS capex_m2
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY appartement
+            UNION ALL
+            SELECT 'ZONE' AS scope_type, zone AS scope, SUM(DISTINCT surface_m2) AS surface_m2,
+                   COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                   CASE WHEN COALESCE(SUM(DISTINCT surface_m2), 0) = 0 THEN 0
+                        ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(SUM(DISTINCT surface_m2), 0)
+                   END AS capex_m2
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY zone
             UNION ALL
             SELECT 'PIECE' AS scope_type, appartement || ' / ' || piece AS scope, MAX(surface_m2) AS surface_m2,
                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                    CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
                         ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
                    END AS capex_m2
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
             GROUP BY appartement, piece
             ORDER BY capex_m2 DESC
@@ -1523,12 +1569,13 @@ class AnalyticsService:
             f"""
             SELECT
                 appartement,
+                zone,
                 piece,
                 COALESCE(SUM(capex_optimise), 0) AS capex
-            FROM vw_spatial_dashboard
+            FROM vw_spatial_analytics
             {where_sql}
-            GROUP BY appartement, piece
-            ORDER BY appartement, capex DESC
+            GROUP BY appartement, zone, piece
+            ORDER BY appartement, zone, capex DESC
             LIMIT 1000
             """
         )
@@ -1539,15 +1586,22 @@ class AnalyticsService:
             "batiments": batiments,
             "niveaux": niveaux,
             "appartements": appartements,
+            "zones": zones,
             "pieces": pieces,
+            "capex_batiment": batiments,
+            "capex_niveau": niveaux,
             "capex_par_piece": capex_par_piece,
             "capex_par_appartement": capex_par_appartement,
+            "capex_appartement": capex_par_appartement,
+            "capex_piece": capex_par_piece,
+            "capex_zone": capex_zone,
             "capex_type_piece": capex_type_piece,
             "capex_m2": capex_m2,
             "heatmap_spatiale": heatmap_spatiale,
+            "heatmap": heatmap_spatiale,
             "metadata": {
                 "engine": "SP2I PLAN_READY Spatial Analytics",
-                "source": "vw_spatial_dashboard",
+                "source": "vw_spatial_analytics",
                 "scope": "Plans 2D / DQE / Metres",
             },
         })
@@ -1561,11 +1615,13 @@ class AnalyticsService:
             "niveau": "niveau",
             "appartement": "appartement",
             "piece": "piece",
+            "zone": "zone",
             "lot": "lot",
+            "sous_lot": "sous_lot",
             "famille": "famille",
         }
         for field, column in filter_columns.items():
-            value = getattr(filters, field)
+            value = getattr(filters, field, None)
             if value:
                 clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
                 params[field] = f"%{value}%"
