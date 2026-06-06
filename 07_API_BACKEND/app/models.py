@@ -114,6 +114,60 @@ class DimFamille(Base):
     )
 
 
+class DimAppartement(Base):
+    """Dimension PLAN_READY : logement ou unite spatiale issue plans/DQE."""
+
+    __tablename__ = "dim_appartement"
+
+    appartement_id: Mapped[str] = mapped_column(String(150), primary_key=True)
+    niveau_id: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    appartement_code: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    batiment: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    niveau: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    surface: Mapped[float | None] = mapped_column(Float, nullable=True)
+    surface_m2: Mapped[float | None] = mapped_column(Float, nullable=True)
+    type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    type_appartement: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    nb_chambres: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    nb_sdb: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    description: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_dim_appartement_scope", "batiment", "niveau", "appartement_code"),
+    )
+
+
+class DimPiece(Base):
+    """Dimension PLAN_READY : piece exploitable sans dependance IFC/Revit."""
+
+    __tablename__ = "dim_piece"
+
+    piece_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    appartement_id: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece_code: Mapped[str] = mapped_column(String(180), nullable=False, unique=True, default="")
+    batiment: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    niveau: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    appart: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece_nom: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    type_piece: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    piece_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    surface_m2: Mapped[float | None] = mapped_column(Float, nullable=True)
+    volume_m3: Mapped[float | None] = mapped_column(Float, nullable=True)
+    zone: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    description: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_dim_piece_scope", "appartement_id", "piece_nom", "piece_type"),
+    )
+
+
 class MonitoringLog(Base):
     """
     Journal de monitoring.

@@ -235,6 +235,7 @@ def root() -> dict:
             "monitoring": "/monitoring/status",
             "analytics_dashboard": "/analytics/dashboard",
             "analytics_kpis": "/analytics/kpis",
+            "analytics_spatial": "/analytics/spatial",
             "analytics_debug_pipeline": "/analytics/debug/pipeline",
             "analytics_debug_database": "/analytics/debug/database",
             "analytics_debug_timing": "/analytics/debug/timing",

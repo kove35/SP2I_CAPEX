@@ -162,6 +162,30 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    ALTER TABLE dim_appartement
+        ADD COLUMN IF NOT EXISTS appartement_code VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS batiment VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS niveau VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS surface_m2 DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS type_appartement VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS nb_chambres INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS nb_sdb INTEGER NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+    ALTER TABLE dim_piece
+        ADD COLUMN IF NOT EXISTS appartement_id VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS piece_nom VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS piece_type VARCHAR(100) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS surface_m2 DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS volume_m3 DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS zone VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS description VARCHAR(255) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
     CREATE TABLE IF NOT EXISTS dim_sous_lot_complet (
         sous_lot_id VARCHAR(150) PRIMARY KEY,
         lot_id VARCHAR(150) NOT NULL DEFAULT '',
@@ -358,6 +382,17 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     VALUES ('TOITURE', 'TOITURE', 'Technique')
     ON CONFLICT (piece_code) DO UPDATE SET updated_at = now();
 
+    UPDATE dim_appartement
+    SET appartement_code = COALESCE(NULLIF(appartement_code, ''), appartement_id),
+        type_appartement = COALESCE(NULLIF(type_appartement, ''), NULLIF(type, ''), ''),
+        surface_m2 = COALESCE(surface_m2, surface),
+        updated_at = now();
+
+    UPDATE dim_piece
+    SET piece_nom = COALESCE(NULLIF(piece_nom, ''), NULLIF(piece, ''), piece_code),
+        piece_type = COALESCE(NULLIF(piece_type, ''), NULLIF(type_piece, ''), ''),
+        updated_at = now();
+
     INSERT INTO dim_sous_lot_complet (sous_lot_id, lot_id, description)
     VALUES
         ('CAR_SOL', 'REVETEMENTS', 'Carrelage sols'),
@@ -447,6 +482,83 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     FROM fact_metre
     ON CONFLICT (famille) DO NOTHING;
 
+    INSERT INTO dim_appartement (
+        appartement_id,
+        appartement_code,
+        batiment,
+        niveau,
+        type_appartement,
+        description
+    )
+    SELECT DISTINCT ON (COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'))
+        COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN') AS appartement_id,
+        COALESCE(NULLIF(trim(appartement_code), ''), NULLIF(trim(appartement_id), ''), NULLIF(trim(appart), ''), 'COMMUN') AS appartement_code,
+        COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE') AS batiment,
+        COALESCE(NULLIF(trim(niveau), ''), 'GLOBAL') AS niveau,
+        '',
+        'Appartement detecte depuis FACT_METRE'
+    FROM fact_metre
+    WHERE COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), '')) IS NOT NULL
+    ORDER BY COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'), batiment, niveau
+    ON CONFLICT (appartement_id) DO UPDATE SET
+        appartement_code = COALESCE(NULLIF(dim_appartement.appartement_code, ''), EXCLUDED.appartement_code),
+        batiment = COALESCE(NULLIF(dim_appartement.batiment, ''), EXCLUDED.batiment),
+        niveau = COALESCE(NULLIF(dim_appartement.niveau, ''), EXCLUDED.niveau),
+        updated_at = now();
+
+    INSERT INTO dim_piece (
+        piece_code,
+        appartement_id,
+        piece,
+        piece_nom,
+        type_piece,
+        piece_type,
+        zone,
+        description
+    )
+    SELECT DISTINCT ON (COALESCE(NULLIF(trim(piece_code), ''), concat_ws('_',
+            COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'),
+            COALESCE(NULLIF(trim(piece), ''), 'PIECE')
+        )))
+        COALESCE(NULLIF(trim(piece_code), ''), concat_ws('_',
+            COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'),
+            COALESCE(NULLIF(trim(piece), ''), 'PIECE')
+        )) AS piece_code,
+        COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN') AS appartement_id,
+        COALESCE(NULLIF(trim(piece), ''), 'NON_RENSEIGNE') AS piece,
+        COALESCE(NULLIF(trim(piece), ''), 'NON_RENSEIGNE') AS piece_nom,
+        CASE
+            WHEN upper(coalesce(piece, '')) LIKE '%SEJOUR%' OR upper(coalesce(piece, '')) LIKE '%SALON%' OR upper(coalesce(piece, '')) LIKE '%CUISINE%' THEN 'JOUR'
+            WHEN upper(coalesce(piece, '')) LIKE '%CHAMBRE%' OR upper(coalesce(piece, '')) LIKE '%DRESSING%' THEN 'NUIT'
+            WHEN upper(coalesce(piece, '')) LIKE '%SDE%' OR upper(coalesce(piece, '')) LIKE '%SDB%' OR upper(coalesce(piece, '')) LIKE '%WC%' THEN 'SANITAIRE'
+            WHEN upper(coalesce(piece, '')) LIKE '%COULOIR%' OR upper(coalesce(piece, '')) LIKE '%ESCALIER%' THEN 'CIRCULATION'
+            WHEN upper(coalesce(piece, '')) LIKE '%BALCON%' OR upper(coalesce(piece, '')) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            ELSE 'AUTRE'
+        END AS type_piece,
+        CASE
+            WHEN upper(coalesce(piece, '')) LIKE '%SEJOUR%' OR upper(coalesce(piece, '')) LIKE '%SALON%' OR upper(coalesce(piece, '')) LIKE '%CUISINE%' THEN 'JOUR'
+            WHEN upper(coalesce(piece, '')) LIKE '%CHAMBRE%' OR upper(coalesce(piece, '')) LIKE '%DRESSING%' THEN 'NUIT'
+            WHEN upper(coalesce(piece, '')) LIKE '%SDE%' OR upper(coalesce(piece, '')) LIKE '%SDB%' OR upper(coalesce(piece, '')) LIKE '%WC%' THEN 'SANITAIRE'
+            WHEN upper(coalesce(piece, '')) LIKE '%COULOIR%' OR upper(coalesce(piece, '')) LIKE '%ESCALIER%' THEN 'CIRCULATION'
+            WHEN upper(coalesce(piece, '')) LIKE '%BALCON%' OR upper(coalesce(piece, '')) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            ELSE 'AUTRE'
+        END AS piece_type,
+        COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE') || '/' || COALESCE(NULLIF(trim(niveau), ''), 'GLOBAL') AS zone,
+        'Piece detectee depuis FACT_METRE'
+    FROM fact_metre
+    WHERE COALESCE(NULLIF(trim(piece), ''), NULLIF(trim(piece_code), '')) IS NOT NULL
+    ORDER BY COALESCE(NULLIF(trim(piece_code), ''), concat_ws('_',
+            COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'),
+            COALESCE(NULLIF(trim(piece), ''), 'PIECE')
+        )), batiment, niveau, piece
+    ON CONFLICT (piece_code) DO UPDATE SET
+        appartement_id = COALESCE(NULLIF(dim_piece.appartement_id, ''), EXCLUDED.appartement_id),
+        piece_nom = COALESCE(NULLIF(dim_piece.piece_nom, ''), EXCLUDED.piece_nom),
+        piece_type = COALESCE(NULLIF(dim_piece.piece_type, ''), EXCLUDED.piece_type),
+        type_piece = COALESCE(NULLIF(dim_piece.type_piece, ''), EXCLUDED.type_piece),
+        zone = COALESCE(NULLIF(dim_piece.zone, ''), EXCLUDED.zone),
+        updated_at = now();
+
     UPDATE fact_metre f
     SET
         projet_id = COALESCE(f.projet_id, p.projet_id),
@@ -526,6 +638,10 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     CREATE INDEX IF NOT EXISTS ix_fact_metre_project_eta ON fact_metre (projet_id, eta);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_article_id ON fact_metre (article_id);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_sous_lot_id ON fact_metre (sous_lot_id);
+    CREATE INDEX IF NOT EXISTS ix_dim_appartement_plan_scope
+        ON dim_appartement (batiment, niveau, appartement_code);
+    CREATE INDEX IF NOT EXISTS ix_dim_piece_plan_scope
+        ON dim_piece (appartement_id, piece_nom, piece_type);
     CREATE INDEX IF NOT EXISTS ix_fact_metre_enterprise_upsert
         ON fact_metre (article_id, ifc_guid, niveau_code, appartement_id, piece_code);
     CREATE INDEX IF NOT EXISTS ix_dim_sous_lot_lot ON dim_sous_lot (lot);

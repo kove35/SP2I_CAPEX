@@ -113,4 +113,76 @@ GROUP BY
     COALESCE(lot, 'NON_RENSEIGNE'),
     COALESCE(famille, 'default'),
     COALESCE(NULLIF(code_article, ''), NULLIF(article_id, ''), NULLIF(designation, ''), 'NON_RENSEIGNE');
+
+CREATE OR REPLACE VIEW vw_spatial_dashboard AS
+WITH spatial_fact AS (
+    SELECT
+        COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT') AS projet,
+        COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
+        COALESCE(niveau, 'GLOBAL') AS niveau,
+        COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
+        COALESCE(NULLIF(piece, ''), NULLIF(piece_code, ''), 'NON_RENSEIGNE') AS piece,
+        COALESCE(lot, 'NON_RENSEIGNE') AS lot,
+        COALESCE(famille, 'default') AS famille,
+        COALESCE(NULLIF(code_article, ''), NULLIF(article_id, ''), NULLIF(designation, ''), 'NON_RENSEIGNE') AS article,
+        COALESCE(capex_local, prix_total_ht, 0) AS capex_local,
+        COALESCE(capex_import, montant_import, 0) AS capex_import,
+        COALESCE(capex_optimise, capex_local, prix_total_ht, 0) AS capex_optimise,
+        COALESCE(economie, 0) AS economie
+    FROM fact_metre
+)
+SELECT
+    f.projet,
+    f.batiment,
+    f.niveau,
+    f.appartement,
+    f.piece,
+    COALESCE(NULLIF(dp.piece_type, ''), NULLIF(dp.type_piece, ''),
+        CASE
+            WHEN UPPER(f.piece) LIKE '%SEJOUR%' OR UPPER(f.piece) LIKE '%SALON%' OR UPPER(f.piece) LIKE '%CUISINE%' THEN 'JOUR'
+            WHEN UPPER(f.piece) LIKE '%CHAMBRE%' OR UPPER(f.piece) LIKE '%DRESSING%' THEN 'NUIT'
+            WHEN UPPER(f.piece) LIKE '%SDE%' OR UPPER(f.piece) LIKE '%SDB%' OR UPPER(f.piece) LIKE '%WC%' THEN 'SANITAIRE'
+            WHEN UPPER(f.piece) LIKE '%COULOIR%' OR UPPER(f.piece) LIKE '%ESCALIER%' THEN 'CIRCULATION'
+            WHEN UPPER(f.piece) LIKE '%BALCON%' OR UPPER(f.piece) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            ELSE 'AUTRE'
+        END
+    ) AS type_piece,
+    COALESCE(dp.surface_m2, da.surface_m2) AS surface_m2,
+    f.lot,
+    f.famille,
+    f.article,
+    ROUND(COALESCE(SUM(f.capex_local), 0)::numeric, 2) AS capex_local,
+    ROUND(COALESCE(SUM(f.capex_import), 0)::numeric, 2) AS capex_import,
+    ROUND(COALESCE(SUM(f.capex_optimise), 0)::numeric, 2) AS capex_optimise,
+    ROUND(COALESCE(SUM(f.economie), 0)::numeric, 2) AS economie,
+    ROUND(
+        CASE WHEN COALESCE(MAX(COALESCE(dp.surface_m2, da.surface_m2)), 0) = 0 THEN 0
+             ELSE COALESCE(SUM(f.capex_optimise), 0)::numeric / NULLIF(MAX(COALESCE(dp.surface_m2, da.surface_m2)), 0)::numeric
+        END,
+        2
+    ) AS capex_m2,
+    COUNT(*) AS nb_lignes
+FROM spatial_fact f
+LEFT JOIN dim_appartement da ON da.appartement_id = f.appartement
+LEFT JOIN dim_piece dp ON dp.appartement_id = f.appartement AND (dp.piece_nom = f.piece OR dp.piece = f.piece OR dp.piece_code = f.piece)
+GROUP BY
+    f.projet,
+    f.batiment,
+    f.niveau,
+    f.appartement,
+    f.piece,
+    COALESCE(NULLIF(dp.piece_type, ''), NULLIF(dp.type_piece, ''),
+        CASE
+            WHEN UPPER(f.piece) LIKE '%SEJOUR%' OR UPPER(f.piece) LIKE '%SALON%' OR UPPER(f.piece) LIKE '%CUISINE%' THEN 'JOUR'
+            WHEN UPPER(f.piece) LIKE '%CHAMBRE%' OR UPPER(f.piece) LIKE '%DRESSING%' THEN 'NUIT'
+            WHEN UPPER(f.piece) LIKE '%SDE%' OR UPPER(f.piece) LIKE '%SDB%' OR UPPER(f.piece) LIKE '%WC%' THEN 'SANITAIRE'
+            WHEN UPPER(f.piece) LIKE '%COULOIR%' OR UPPER(f.piece) LIKE '%ESCALIER%' THEN 'CIRCULATION'
+            WHEN UPPER(f.piece) LIKE '%BALCON%' OR UPPER(f.piece) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            ELSE 'AUTRE'
+        END
+    ),
+    COALESCE(dp.surface_m2, da.surface_m2),
+    f.lot,
+    f.famille,
+    f.article;
 """
