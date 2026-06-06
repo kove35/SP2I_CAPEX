@@ -18,6 +18,7 @@ from app.analytics.cache import analytics_cache
 from app.analytics.repositories import AnalyticsRepository
 from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_payload_labels
+from app.analytics.utils.schema_utils import column_exists, first_non_empty_sql, load_table_columns, schema_capabilities
 from app.database import database_url_host, database_url_is_neon
 
 
@@ -349,6 +350,22 @@ class AnalyticsService:
             "ifc_ready": ifc_ready,
             "maturity": maturity,
             "roadmap": self._bim_enterprise_roadmap(fact, spatial_quality, ifc_ready, maturity),
+        }
+
+    def schema_capabilities_debug(self) -> dict[str, Any]:
+        return {
+            "status": "SUCCESS",
+            **self.repository.schema_capabilities(),
+            "dim_piece": schema_capabilities(
+                self.repository.db,
+                "dim_piece",
+                columns=("ifc_guid", "ifc_type", "bim_object", "piece", "type_piece"),
+            ),
+            "dim_appartement": schema_capabilities(
+                self.repository.db,
+                "dim_appartement",
+                columns=("ifc_guid", "ifc_type", "bim_object", "appartement_id", "description", "type"),
+            ),
         }
 
     def dashboard_timing(self, query: AnalyticsQuery, dashboard_type: str = "direction") -> dict[str, Any]:
@@ -2286,22 +2303,38 @@ class AnalyticsService:
         }
 
     def _bim_fact_completion(self) -> dict[str, Any]:
+        columns = load_table_columns(self.repository.db, "fact_metre")
+        appartement_sql = first_non_empty_sql(columns, ("appartement_id", "appartement_code", "appart"))
+        piece_sql = first_non_empty_sql(columns, ("piece", "piece_code"))
+        piece_type_sql = first_non_empty_sql(columns, ("piece_type", "type_zone"))
+        ifc_guid_sql = first_non_empty_sql(columns, ("ifc_guid",))
+        ifc_type_sql = first_non_empty_sql(columns, ("ifc_type",))
+        bim_object_sql = first_non_empty_sql(columns, ("bim_object", "bim_object_id"))
+
+        def count_not_null(column_name: str) -> str:
+            if column_name not in columns:
+                return "0"
+            return f"COUNT(*) FILTER (WHERE {column_name} IS NOT NULL)"
+
+        def count_filled(expression: str) -> str:
+            if expression == "NULL":
+                return "0"
+            return f"COUNT(*) FILTER (WHERE {expression} IS NOT NULL)"
+
         row = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) AS fact_metre_rows,
-                    COUNT(*) FILTER (WHERE appartement_id IS NOT NULL) AS rows_with_appartement_not_null,
-                    COUNT(*) FILTER (WHERE piece IS NOT NULL) AS rows_with_piece_not_null,
-                    COUNT(*) FILTER (WHERE piece_type IS NOT NULL) AS rows_with_piece_type_not_null,
-                    COUNT(*) FILTER (
-                        WHERE COALESCE(NULLIF(TRIM(appartement_id), ''), NULLIF(TRIM(appartement_code), ''), NULLIF(TRIM(appart), '')) IS NOT NULL
-                    ) AS rows_with_appartement,
-                    COUNT(*) FILTER (WHERE COALESCE(NULLIF(TRIM(piece), ''), NULLIF(TRIM(piece_code), '')) IS NOT NULL) AS rows_with_piece,
-                    COUNT(*) FILTER (WHERE COALESCE(NULLIF(TRIM(piece_type), ''), NULLIF(TRIM(type_zone), '')) IS NOT NULL) AS rows_with_piece_type,
-                    COUNT(*) FILTER (WHERE NULLIF(TRIM(ifc_guid), '') IS NOT NULL) AS rows_with_ifc_guid,
-                    COUNT(*) FILTER (WHERE NULLIF(TRIM(ifc_type), '') IS NOT NULL) AS rows_with_ifc_type,
-                    COUNT(*) FILTER (WHERE COALESCE(NULLIF(TRIM(bim_object), ''), NULLIF(TRIM(bim_object_id), '')) IS NOT NULL) AS rows_with_bim_object,
+                    {count_not_null("appartement_id")} AS rows_with_appartement_not_null,
+                    {count_not_null("piece")} AS rows_with_piece_not_null,
+                    {count_not_null("piece_type")} AS rows_with_piece_type_not_null,
+                    {count_filled(appartement_sql)} AS rows_with_appartement,
+                    {count_filled(piece_sql)} AS rows_with_piece,
+                    {count_filled(piece_type_sql)} AS rows_with_piece_type,
+                    {count_filled(ifc_guid_sql)} AS rows_with_ifc_guid,
+                    {count_filled(ifc_type_sql)} AS rows_with_ifc_type,
+                    {count_filled(bim_object_sql)} AS rows_with_bim_object,
                     COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local,
                     COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS capex_import,
                     COALESCE(SUM(economie), 0) AS economie
@@ -2339,15 +2372,17 @@ class AnalyticsService:
         return result
 
     def _bim_spatial_quality(self) -> dict[str, Any]:
+        columns = load_table_columns(self.repository.db, "fact_metre")
+        piece_sql = first_non_empty_sql(columns, ("piece", "piece_code"), default_sql="'NON_DISPONIBLE'")
         rows = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT
-                    COALESCE(NULLIF(TRIM(piece), ''), 'NON_RENSEIGNE') AS piece,
+                    COALESCE({piece_sql}, 'NON_RENSEIGNE') AS piece,
                     COUNT(*) AS nb_lignes,
                     COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local
                 FROM fact_metre
-                GROUP BY COALESCE(NULLIF(TRIM(piece), ''), 'NON_RENSEIGNE')
+                GROUP BY COALESCE({piece_sql}, 'NON_RENSEIGNE')
                 ORDER BY nb_lignes DESC, piece
                 """
             )
@@ -2380,31 +2415,36 @@ class AnalyticsService:
         }
 
     def _bim_drilldown_audit(self) -> dict[str, Any]:
+        columns = load_table_columns(self.repository.db, "fact_metre")
         levels = {
-            "projet": "COALESCE(NULLIF(project_code, ''), projet_id::text)",
-            "batiment": "batiment",
-            "niveau": "niveau",
-            "appartement": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
-            "piece": "piece",
-            "lot": "lot",
-            "famille": "famille",
-            "article": "COALESCE(NULLIF(code_article, ''), NULLIF(article_id, ''), NULLIF(designation, ''))",
+            "projet": first_non_empty_sql(columns, ("project_code", "projet_id")),
+            "batiment": first_non_empty_sql(columns, ("batiment",)),
+            "niveau": first_non_empty_sql(columns, ("niveau",)),
+            "appartement": first_non_empty_sql(columns, ("appartement_id", "appartement_code", "appart")),
+            "piece": first_non_empty_sql(columns, ("piece", "piece_code")),
+            "lot": first_non_empty_sql(columns, ("lot",)),
+            "famille": first_non_empty_sql(columns, ("famille",)),
+            "article": first_non_empty_sql(columns, ("code_article", "article_id", "designation")),
         }
         details: dict[str, Any] = {}
         booleans: dict[str, bool] = {}
         for level, expression in levels.items():
-            row = self.repository.db.execute(
-                text(
-                    f"""
-                    SELECT
-                        COUNT(*) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS filled_rows,
-                        COUNT(DISTINCT {expression}) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS distinct_values
-                    FROM fact_metre
-                    """
-                )
-            ).mappings().one()
-            filled_rows = int(row["filled_rows"] or 0)
-            distinct_values = int(row["distinct_values"] or 0)
+            if expression == "NULL":
+                filled_rows = 0
+                distinct_values = 0
+            else:
+                row = self.repository.db.execute(
+                    text(
+                        f"""
+                        SELECT
+                            COUNT(*) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS filled_rows,
+                            COUNT(DISTINCT {expression}) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS distinct_values
+                        FROM fact_metre
+                        """
+                    )
+                ).mappings().one()
+                filled_rows = int(row["filled_rows"] or 0)
+                distinct_values = int(row["distinct_values"] or 0)
             booleans[level] = filled_rows > 0 and distinct_values > 0
             details[level] = {
                 "ready": booleans[level],
@@ -2585,21 +2625,7 @@ class AnalyticsService:
         return sorted(actions, key=lambda item: item["priority"])
 
     def _column_exists(self, table_name: str, column_name: str) -> bool:
-        row = self.repository.db.execute(
-            text(
-                """
-                SELECT EXISTS (
-                    SELECT 1
-                    FROM information_schema.columns
-                    WHERE table_schema = current_schema()
-                      AND table_name = :table_name
-                      AND column_name = :column_name
-                )
-                """
-            ),
-            {"table_name": table_name, "column_name": column_name},
-        ).scalar_one()
-        return bool(row)
+        return column_exists(self.repository.db, table_name, column_name)
 
     @staticmethod
     def _bim_normalize_label(value: Any) -> str:

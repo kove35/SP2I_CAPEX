@@ -13,6 +13,7 @@ from app.middleware.json_safe_middleware import JsonSafeMiddleware
 
 from app.analytics.cache import analytics_cache
 from app.analytics.routes import router as analytics_router
+from app.analytics.utils.schema_utils import preload_schema_capabilities
 from app.approval.routes.approvals import router as approvals_router
 from app.auth.routes import router as auth_router
 from app.cloud_migrations import ensure_powerbi_schema
@@ -172,6 +173,8 @@ def startup() -> None:
         schema_start = perf_counter()
         Base.metadata.create_all(bind=engine)
         ensure_powerbi_schema(engine)
+        with SessionLocal() as schema_db:
+            preload_schema_capabilities(schema_db)
         schema_elapsed = round((perf_counter() - schema_start) * 1000, 2)
         record_startup_stage("schema_check", schema_elapsed)
         logger.info("Startup schema_check_ms=%s", schema_elapsed)
@@ -237,6 +240,8 @@ def root() -> dict:
             "analytics_debug_timing": "/analytics/debug/timing",
             "analytics_debug_consistency": "/analytics/debug/consistency",
             "analytics_debug_filter_consistency": "/analytics/debug/filter-consistency",
+            "analytics_debug_schema_capabilities": "/analytics/debug/schema-capabilities",
+            "analytics_debug_bim_maturity": "/analytics/debug/bim-maturity",
             "analytics_capex_reconciliation": "/analytics/debug/capex-reconciliation/{project_id}",
             "analytics_data_quality": "/analytics/data-quality",
             "docs": "/docs",
