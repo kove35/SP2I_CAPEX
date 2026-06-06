@@ -4,6 +4,8 @@ import csv
 import hashlib
 import json
 import logging
+import re
+import unicodedata
 from io import BytesIO
 from pathlib import Path
 from time import perf_counter
@@ -329,6 +331,24 @@ class AnalyticsService:
             **self.repository._json_safe(dict(row)),
             "database_url_host": database_url_host(),
             "is_neon": database_url_is_neon(),
+        }
+
+    def bim_maturity_debug(self) -> dict[str, Any]:
+        fact = self._bim_fact_completion()
+        spatial_quality = self._bim_spatial_quality()
+        drilldown = self._bim_drilldown_audit()
+        powerbi = self._bim_powerbi_audit()
+        ifc_ready = self._bim_ifc_readiness()
+        maturity = self._bim_maturity_score(fact, drilldown, powerbi, ifc_ready)
+        return {
+            "status": "SUCCESS",
+            "data_audit": fact,
+            "spatial_quality": spatial_quality,
+            "drilldown_bim": drilldown,
+            "powerbi_bim": powerbi,
+            "ifc_ready": ifc_ready,
+            "maturity": maturity,
+            "roadmap": self._bim_enterprise_roadmap(fact, spatial_quality, ifc_ready, maturity),
         }
 
     def dashboard_timing(self, query: AnalyticsQuery, dashboard_type: str = "direction") -> dict[str, Any]:
@@ -2264,6 +2284,360 @@ class AnalyticsService:
             "source": "dqe_import_audit",
             **self.repository._json_safe(dict(row)),
         }
+
+    def _bim_fact_completion(self) -> dict[str, Any]:
+        row = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) AS fact_metre_rows,
+                    COUNT(*) FILTER (WHERE appartement_id IS NOT NULL) AS rows_with_appartement_not_null,
+                    COUNT(*) FILTER (WHERE piece IS NOT NULL) AS rows_with_piece_not_null,
+                    COUNT(*) FILTER (WHERE piece_type IS NOT NULL) AS rows_with_piece_type_not_null,
+                    COUNT(*) FILTER (
+                        WHERE COALESCE(NULLIF(TRIM(appartement_id), ''), NULLIF(TRIM(appartement_code), ''), NULLIF(TRIM(appart), '')) IS NOT NULL
+                    ) AS rows_with_appartement,
+                    COUNT(*) FILTER (WHERE COALESCE(NULLIF(TRIM(piece), ''), NULLIF(TRIM(piece_code), '')) IS NOT NULL) AS rows_with_piece,
+                    COUNT(*) FILTER (WHERE COALESCE(NULLIF(TRIM(piece_type), ''), NULLIF(TRIM(type_zone), '')) IS NOT NULL) AS rows_with_piece_type,
+                    COUNT(*) FILTER (WHERE NULLIF(TRIM(ifc_guid), '') IS NOT NULL) AS rows_with_ifc_guid,
+                    COUNT(*) FILTER (WHERE NULLIF(TRIM(ifc_type), '') IS NOT NULL) AS rows_with_ifc_type,
+                    COUNT(*) FILTER (WHERE COALESCE(NULLIF(TRIM(bim_object), ''), NULLIF(TRIM(bim_object_id), '')) IS NOT NULL) AS rows_with_bim_object,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local,
+                    COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS capex_import,
+                    COALESCE(SUM(economie), 0) AS economie
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        result = self.repository._json_safe(dict(row))
+        total = int(result.get("fact_metre_rows") or 0)
+
+        def rate(key: str) -> float:
+            return round((float(result.get(key) or 0) / total) * 100, 2) if total else 0.0
+
+        result.update({
+            "taux_bim_appartement": rate("rows_with_appartement"),
+            "taux_bim_piece": rate("rows_with_piece"),
+            "taux_bim_piece_type": rate("rows_with_piece_type"),
+            "taux_ifc_guid": rate("rows_with_ifc_guid"),
+            "taux_ifc_type": rate("rows_with_ifc_type"),
+            "taux_bim_object": rate("rows_with_bim_object"),
+        })
+        result["bim_completion_rate"] = round(
+            (
+                result["taux_bim_appartement"]
+                + result["taux_bim_piece"]
+                + result["taux_bim_piece_type"]
+            )
+            / 3,
+            2,
+        )
+        result["ifc_completion_rate"] = round(
+            (result["taux_ifc_guid"] + result["taux_ifc_type"] + result["taux_bim_object"]) / 3,
+            2,
+        )
+        return result
+
+    def _bim_spatial_quality(self) -> dict[str, Any]:
+        rows = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    COALESCE(NULLIF(TRIM(piece), ''), 'NON_RENSEIGNE') AS piece,
+                    COUNT(*) AS nb_lignes,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local
+                FROM fact_metre
+                GROUP BY COALESCE(NULLIF(TRIM(piece), ''), 'NON_RENSEIGNE')
+                ORDER BY nb_lignes DESC, piece
+                """
+            )
+        ).mappings().all()
+        pieces = [self.repository._json_safe(dict(row)) for row in rows]
+
+        variants: dict[str, set[str]] = {}
+        for row in pieces:
+            label = str(row.get("piece") or "")
+            key = self._bim_normalize_label(label)
+            variants.setdefault(key, set()).add(label)
+
+        duplicates = [
+            {"normalized_key": key, "variants": sorted(values)}
+            for key, values in variants.items()
+            if len(values) > 1
+        ]
+        semantic_aliases = self._bim_semantic_piece_aliases(pieces)
+        incoherent = [
+            row
+            for row in pieces
+            if str(row.get("piece") or "").upper() in {"", "N/A", "NA", "NULL", "NONE", "NON_RENSEIGNE", "UNKNOWN"}
+        ]
+        return {
+            "piece_distribution": pieces,
+            "duplicates": duplicates,
+            "semantic_aliases": semantic_aliases,
+            "incoherent_or_missing": incoherent,
+            "normalization_recommended": bool(duplicates or semantic_aliases or incoherent),
+        }
+
+    def _bim_drilldown_audit(self) -> dict[str, Any]:
+        levels = {
+            "projet": "COALESCE(NULLIF(project_code, ''), projet_id::text)",
+            "batiment": "batiment",
+            "niveau": "niveau",
+            "appartement": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
+            "piece": "piece",
+            "lot": "lot",
+            "famille": "famille",
+            "article": "COALESCE(NULLIF(code_article, ''), NULLIF(article_id, ''), NULLIF(designation, ''))",
+        }
+        details: dict[str, Any] = {}
+        booleans: dict[str, bool] = {}
+        for level, expression in levels.items():
+            row = self.repository.db.execute(
+                text(
+                    f"""
+                    SELECT
+                        COUNT(*) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS filled_rows,
+                        COUNT(DISTINCT {expression}) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS distinct_values
+                    FROM fact_metre
+                    """
+                )
+            ).mappings().one()
+            filled_rows = int(row["filled_rows"] or 0)
+            distinct_values = int(row["distinct_values"] or 0)
+            booleans[level] = filled_rows > 0 and distinct_values > 0
+            details[level] = {
+                "ready": booleans[level],
+                "filled_rows": filled_rows,
+                "distinct_values": distinct_values,
+            }
+        return {
+            **booleans,
+            "path": ["projet", "batiment", "niveau", "appartement", "piece", "lot", "famille", "article"],
+            "details": details,
+        }
+
+    def _bim_powerbi_audit(self) -> dict[str, Any]:
+        fact = self.repository.db.execute(
+            text(
+                """
+                SELECT
+                    COUNT(*) AS nb_lignes,
+                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local,
+                    COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS capex_import,
+                    COALESCE(SUM(economie), 0) AS economie
+                FROM fact_metre
+                """
+            )
+        ).mappings().one()
+        try:
+            view = self.repository.db.execute(
+                text(
+                    """
+                    SELECT
+                        COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
+                        COALESCE(SUM(capex_local), 0) AS capex_local,
+                        COALESCE(SUM(capex_import), 0) AS capex_import,
+                        COALESCE(SUM(economie), 0) AS economie
+                    FROM vw_bim_dashboard
+                    """
+                )
+            ).mappings().one()
+            view_status = "OK"
+            view_row = self.repository._json_safe(dict(view))
+            error = None
+        except Exception as exc:
+            view_status = "ERROR"
+            view_row = {"nb_lignes": 0, "capex_local": 0, "capex_import": 0, "economie": 0}
+            error = str(exc)
+
+        fact_row = self.repository._json_safe(dict(fact))
+        deltas = {
+            "nb_lignes": int(view_row.get("nb_lignes") or 0) - int(fact_row.get("nb_lignes") or 0),
+            "capex_local": round(float(view_row.get("capex_local") or 0) - float(fact_row.get("capex_local") or 0), 2),
+            "capex_import": round(float(view_row.get("capex_import") or 0) - float(fact_row.get("capex_import") or 0), 2),
+            "economie": round(float(view_row.get("economie") or 0) - float(fact_row.get("economie") or 0), 2),
+        }
+        return {
+            "view": "vw_bim_dashboard",
+            "status": view_status,
+            "error": error,
+            "fact_metre": fact_row,
+            "vw_bim_dashboard": view_row,
+            "deltas": deltas,
+            "is_reconciled": view_status == "OK" and all(abs(float(value)) <= 1 for value in deltas.values()),
+        }
+
+    def _bim_ifc_readiness(self) -> dict[str, Any]:
+        expected = ("ifc_guid", "ifc_type", "bim_object")
+        tables = ("fact_metre", "dim_piece", "dim_appartement")
+        per_table = {
+            table_name: {
+                column: self._column_exists(table_name, column)
+                for column in expected
+            }
+            for table_name in tables
+        }
+        fact = self._bim_fact_completion()
+        return {
+            "ifc_guid": per_table["fact_metre"]["ifc_guid"],
+            "ifc_type": per_table["fact_metre"]["ifc_type"],
+            "bim_object": per_table["fact_metre"]["bim_object"],
+            "per_table": per_table,
+            "data_completion": {
+                "ifc_guid": fact["taux_ifc_guid"],
+                "ifc_type": fact["taux_ifc_type"],
+                "bim_object": fact["taux_bim_object"],
+                "ifc_completion_rate": fact["ifc_completion_rate"],
+            },
+        }
+
+    def _bim_maturity_score(
+        self,
+        fact: dict[str, Any],
+        drilldown: dict[str, Any],
+        powerbi: dict[str, Any],
+        ifc_ready: dict[str, Any],
+    ) -> dict[str, Any]:
+        total_rows = int(fact.get("fact_metre_rows") or 0)
+        capex_ready = 100 if total_rows and float(fact.get("capex_local") or 0) > 0 else 0
+        analytics_levels = [level for level in drilldown["path"] if level in drilldown]
+        analytics_ready = round(
+            sum(1 for level in analytics_levels if drilldown.get(level)) / len(analytics_levels) * 100,
+            2,
+        ) if analytics_levels else 0
+        powerbi_ready = 100 if powerbi.get("is_reconciled") else 0
+        bim_ready = float(fact.get("bim_completion_rate") or 0)
+        ifc_score = float(ifc_ready.get("data_completion", {}).get("ifc_completion_rate") or 0)
+        scores = {
+            "CAPEX_READY": capex_ready,
+            "ANALYTICS_READY": analytics_ready,
+            "POWERBI_READY": powerbi_ready,
+            "BIM_READY": round(bim_ready, 2),
+            "IFC_READY": round(ifc_score, 2),
+        }
+        final_score = round(
+            scores["CAPEX_READY"] * 0.20
+            + scores["ANALYTICS_READY"] * 0.20
+            + scores["POWERBI_READY"] * 0.20
+            + scores["BIM_READY"] * 0.25
+            + scores["IFC_READY"] * 0.15,
+            2,
+        )
+        if final_score >= 85 and ifc_score >= 70:
+            level = "BIM_ENTERPRISE"
+        elif final_score >= 70 and bim_ready >= 60:
+            level = "BIM_READY"
+        elif final_score >= 45:
+            level = "BIM_LITE"
+        else:
+            level = "CAPEX_READY"
+        return {
+            **scores,
+            "score_final": final_score,
+            "niveau_bim_actuel": level,
+            "interpretation": self._bim_maturity_interpretation(level, bim_ready, ifc_score),
+        }
+
+    def _bim_enterprise_roadmap(
+        self,
+        fact: dict[str, Any],
+        spatial_quality: dict[str, Any],
+        ifc_ready: dict[str, Any],
+        maturity: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        actions: list[dict[str, Any]] = []
+        if float(fact.get("taux_bim_appartement") or 0) < 95:
+            actions.append({
+                "priority": 1,
+                "action": "Renseigner et normaliser appartement_id/appartement_code sur 100% des lignes DQE.",
+                "target": "taux_bim_appartement >= 95%",
+            })
+        if float(fact.get("taux_bim_piece") or 0) < 95:
+            actions.append({
+                "priority": 2,
+                "action": "Renseigner piece et piece_code depuis la maquette spatiale ou le DQE enrichi.",
+                "target": "taux_bim_piece >= 95%",
+            })
+        if float(fact.get("taux_bim_piece_type") or 0) < 90:
+            actions.append({
+                "priority": 3,
+                "action": "Classifier les pieces par type fonctionnel: cuisine, chambre, sanitaire, circulation, technique.",
+                "target": "taux_bim_piece_type >= 90%",
+            })
+        if spatial_quality.get("normalization_recommended"):
+            actions.append({
+                "priority": 4,
+                "action": "Creer une table de correspondance des libelles pieces et appliquer une normalisation avant chargement.",
+                "target": "0 variante incoherente: CUISINE/Cuisine/KITCHEN -> CUISINE",
+            })
+        if float(ifc_ready.get("data_completion", {}).get("ifc_completion_rate") or 0) < 80:
+            actions.append({
+                "priority": 5,
+                "action": "Importer les GlobalId IFC/Revit et les rattacher aux lignes metrees.",
+                "target": "IFC_READY >= 80%",
+            })
+        actions.append({
+            "priority": 6,
+            "action": "Connecter Revit/IFC via un export standardise: GlobalId, IfcType, RevitFamily, Level, Space/Room, ElementId.",
+            "target": "BIM_ENTERPRISE score >= 85",
+        })
+        return sorted(actions, key=lambda item: item["priority"])
+
+    def _column_exists(self, table_name: str, column_name: str) -> bool:
+        row = self.repository.db.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = current_schema()
+                      AND table_name = :table_name
+                      AND column_name = :column_name
+                )
+                """
+            ),
+            {"table_name": table_name, "column_name": column_name},
+        ).scalar_one()
+        return bool(row)
+
+    @staticmethod
+    def _bim_normalize_label(value: Any) -> str:
+        text_value = str(value or "").strip().lower()
+        text_value = unicodedata.normalize("NFKD", text_value)
+        text_value = "".join(character for character in text_value if not unicodedata.combining(character))
+        text_value = re.sub(r"[^a-z0-9]+", "_", text_value)
+        return text_value.strip("_") or "non_renseigne"
+
+    def _bim_semantic_piece_aliases(self, pieces: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        alias_groups = {
+            "CUISINE": {"cuisine", "kitchen"},
+            "CHAMBRE": {"chambre", "bedroom", "room"},
+            "SALLE_DE_BAIN": {"salle_de_bain", "sdb", "bathroom", "toilette", "wc"},
+            "SALON": {"salon", "sejour", "living_room"},
+        }
+        normalized_to_original = {
+            self._bim_normalize_label(row.get("piece")): str(row.get("piece") or "")
+            for row in pieces
+        }
+        aliases: list[dict[str, Any]] = []
+        for canonical, values in alias_groups.items():
+            present = sorted({normalized_to_original[value] for value in values if value in normalized_to_original})
+            if len(present) > 1:
+                aliases.append({"canonical": canonical, "variants": present})
+        return aliases
+
+    @staticmethod
+    def _bim_maturity_interpretation(level: str, bim_ready: float, ifc_score: float) -> str:
+        if level == "BIM_ENTERPRISE":
+            return "Donnee spatiale et objets IFC suffisamment renseignes pour un pilotage CAPEX/Revit avance."
+        if level == "BIM_READY":
+            return "Structure BIM exploitable; renforcer encore les identifiants IFC pour le lien objet maquette."
+        if level == "BIM_LITE":
+            return "SP2I sait piloter par espace, mais la donnee spatiale est partielle ou heterogene."
+        if bim_ready == 0 and ifc_score == 0:
+            return "Structure technique prete, mais FACT_METRE ne contient pas encore de vraie donnee spatiale/IFC."
+        return "CAPEX stable; enrichissement BIM requis avant integration IFC/Revit."
 
     def _fact_metre_cache_signature(self) -> dict[str, Any]:
         row = self.repository.db.execute(
