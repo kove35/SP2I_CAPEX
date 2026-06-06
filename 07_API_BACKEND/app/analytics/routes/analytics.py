@@ -234,6 +234,11 @@ def debug_reconciliation(query=Depends(analytics_query), db: Session = Depends(g
     return sanitize_for_json(AnalyticsService(db).financial_reconciliation_debug(query))
 
 
+@router.get("/debug/bim-maturity")
+def debug_bim_maturity(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).bim_maturity_debug())
+
+
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())
