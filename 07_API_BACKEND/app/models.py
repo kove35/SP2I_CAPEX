@@ -214,6 +214,19 @@ class DimPiece(Base):
     )
 
 
+class DimArticleBpu(Base):
+    """Referentiel article BPU simple issu du classeur maitre."""
+
+    __tablename__ = "dim_article_bpu"
+
+    code_article: Mapped[str] = mapped_column(String(150), primary_key=True)
+    designation: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    marque: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    unite: Mapped[str] = mapped_column(String(50), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class MonitoringLog(Base):
     """
     Journal de monitoring.
