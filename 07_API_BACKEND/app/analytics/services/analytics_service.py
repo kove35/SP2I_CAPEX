@@ -272,6 +272,13 @@ class AnalyticsService:
     def spatial_dashboard(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("spatial-dashboard", query, lambda: self._build_spatial(query))
 
+    def cost_intelligence(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._cached("cost-intelligence", query, lambda: self._build_cost_intelligence(query))
+
+    def detect_cost_anomalies(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        where_sql, params = self._spatial_view_where(query)
+        return self._detect_cost_anomalies(where_sql, params)
+
     def filter_options(self) -> dict[str, Any]:
         options = self.repository.filter_options()
         return normalize_payload_labels({
@@ -1605,6 +1612,432 @@ class AnalyticsService:
                 "scope": "Plans 2D / DQE / Metres",
             },
         })
+
+    def _build_cost_intelligence(self, query: AnalyticsQuery) -> dict[str, Any]:
+        where_sql, params = self._spatial_view_where(query)
+        source_sql, source_name = self._cost_source_sql()
+
+        def rows(sql: str) -> list[dict[str, Any]]:
+            sql = sql.replace("vw_spatial_analytics", source_sql)
+            return [
+                self.repository._json_safe(dict(row))
+                for row in self.repository.db.execute(text(sql), params).mappings().all()
+            ]
+
+        capex_m2 = {
+            "batiments": rows(self._cost_capex_m2_sql("BATIMENT", ["batiment"], "batiment", "SUM(DISTINCT surface_m2)", where_sql)),
+            "niveaux": rows(self._cost_capex_m2_sql("NIVEAU", ["batiment", "niveau"], "batiment || ' / ' || niveau", "SUM(DISTINCT surface_m2)", where_sql)),
+            "appartements": rows(self._cost_capex_m2_sql("APPARTEMENT", ["batiment", "niveau", "appartement"], "appartement", "MAX(surface_m2)", where_sql)),
+            "zones": rows(self._cost_capex_m2_sql("ZONE", ["zone"], "zone", "SUM(DISTINCT surface_m2)", where_sql)),
+            "pieces": rows(self._cost_capex_m2_sql("PIECE", ["appartement", "zone", "piece"], "appartement || ' / ' || piece", "MAX(surface_m2)", where_sql)),
+        }
+        top_costs = {
+            "pieces": rows(self._top_cost_sql("piece", "piece", where_sql)),
+            "lots": rows(self._top_cost_sql("lot", "lot", where_sql)),
+            "sous_lots": rows(self._top_cost_sql("sous_lot", "sous_lot", where_sql)),
+            "articles": rows(self._top_cost_sql("article", "article", where_sql)),
+            "economies": rows(self._top_savings_sql(where_sql)),
+        }
+        anomalies = self._detect_cost_anomalies(where_sql, params, source_sql)
+        top_costs["risks"] = anomalies[:10]
+        pareto = {
+            "articles": rows(self._pareto_sql("article", where_sql)),
+            "lots": rows(self._pareto_sql("lot", where_sql)),
+            "sous_lots": rows(self._pareto_sql("sous_lot", where_sql)),
+        }
+        apartment_rows = rows(
+            f"""
+            SELECT
+                appartement,
+                MIN(batiment) AS batiment,
+                MIN(niveau) AS niveau,
+                MAX(surface_m2) AS surface_m2,
+                COALESCE(SUM(capex_local), 0) AS capex,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                END AS capex_m2,
+                CASE WHEN COALESCE(SUM(capex_optimise), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_optimise), 0)
+                END AS roi,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY appartement
+            HAVING appartement IN ('A101', 'A201', 'A301', 'B101', 'B201', 'B301')
+            ORDER BY appartement
+            """
+        )
+        benchmark = {
+            "appartements": self._add_benchmark_deviations(apartment_rows),
+            "pieces": {
+                "chambres": rows(self._piece_benchmark_sql(["CHAMBRE_1", "CHAMBRE_2", "CHAMBRE_3"], where_sql)),
+                "sdb": rows(self._piece_benchmark_sql(["SDB_1", "SDB_2", "SDB_3"], where_sql)),
+            },
+        }
+        heatmap = rows(
+            f"""
+            SELECT
+                appartement,
+                zone,
+                piece,
+                COALESCE(SUM(capex_local), 0) AS capex,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                END AS capex_m2,
+                CASE WHEN COALESCE(SUM(capex_optimise), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_optimise), 0)
+                END AS roi,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY appartement, zone, piece
+            ORDER BY appartement, zone, capex_optimise DESC
+            LIMIT 1000
+            """
+        )
+
+        return normalize_payload_labels({
+            "status": "SUCCESS",
+            "filters": query.filters.model_dump(exclude_none=True),
+            "capex_m2": capex_m2,
+            "top_costs": top_costs,
+            "pareto": pareto,
+            "benchmark": benchmark,
+            "anomalies": {
+                "items": anomalies,
+                "count": len(anomalies),
+                "critical": sum(1 for row in anomalies if row.get("criticite") == "HIGH"),
+            },
+            "heatmap": heatmap,
+            "metadata": {
+                "engine": "SP2I Cost Intelligence V1",
+                "source": source_name,
+                "powerbi_view": "vw_cost_intelligence",
+                "scope": "CAPEX / Procurement / Spatial aggregations",
+            },
+        })
+
+    def _cost_source_sql(self) -> tuple[str, str]:
+        has_spatial_view = bool(self.repository.db.execute(text("SELECT to_regclass('vw_spatial_analytics') IS NOT NULL")).scalar())
+        if has_spatial_view:
+            return "vw_spatial_analytics", "vw_spatial_analytics"
+
+        columns = load_table_columns(self.repository.db, "fact_metre")
+
+        def number_sql(candidates: list[str], default_sql: str = "0") -> str:
+            available = [column for column in candidates if column in columns]
+            for column in candidates:
+                if column not in columns:
+                    logger.warning("Optional column missing: fact_metre.%s", column)
+            if not available:
+                return default_sql
+            return f"COALESCE({', '.join(available)}, {default_sql})"
+
+        projet = first_non_empty_sql(columns, ["project_code", "projet_id"], "'PROJET_MPEMBA'")
+        batiment = first_non_empty_sql(columns, ["batiment", "batiment_code"], "'NON_RENSEIGNE'")
+        niveau = first_non_empty_sql(columns, ["niveau", "niveau_code"], "'GLOBAL'")
+        appartement = first_non_empty_sql(columns, ["appartement_id", "appartement_code", "appart", "appart_id"], "'COMMUN'")
+        piece = first_non_empty_sql(columns, ["piece", "piece_code", "piece_id"], "'NON_RENSEIGNE'")
+        lot = first_non_empty_sql(columns, ["lot", "lot_code", "lot_id"], "'NON_RENSEIGNE'")
+        sous_lot = first_non_empty_sql(columns, ["sous_lot", "sous_lot_id"], "'NON_RENSEIGNE'")
+        famille = first_non_empty_sql(columns, ["famille", "famille_id"], "'default'")
+        article = first_non_empty_sql(columns, ["code_article", "article_id", "designation"], "'NON_RENSEIGNE'")
+        type_piece_base = first_non_empty_sql(columns, ["piece_type", "type_zone"], "NULL")
+        zone_base = first_non_empty_sql(columns, ["zone_id", "type_zone"], "NULL")
+        capex_local = number_sql(["capex_local", "prix_total_ht"])
+        capex_import = number_sql(["capex_import", "montant_import"])
+        capex_optimise = number_sql(["capex_optimise", "capex_local", "prix_total_ht"])
+        economie = number_sql(["economie", "economie_nette"], f"({capex_local} - {capex_optimise})")
+        piece_type_case = f"""
+            CASE
+                WHEN UPPER({piece}) LIKE '%SEJOUR%' OR UPPER({piece}) LIKE '%SALON%' OR UPPER({piece}) LIKE '%CUISINE%' THEN 'JOUR'
+                WHEN UPPER({piece}) LIKE '%CHAMBRE%' OR UPPER({piece}) LIKE '%DRESSING%' THEN 'NUIT'
+                WHEN UPPER({piece}) LIKE '%SDE%' OR UPPER({piece}) LIKE '%SDB%' OR UPPER({piece}) LIKE '%WC%' THEN 'SANITAIRE'
+                WHEN UPPER({piece}) LIKE '%COULOIR%' OR UPPER({piece}) LIKE '%ESCALIER%' OR UPPER({piece}) LIKE '%DEGAGEMENT%' THEN 'CIRCULATION'
+                WHEN UPPER({piece}) LIKE '%BALCON%' OR UPPER({piece}) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+                ELSE 'TECHNIQUE'
+            END
+        """
+        type_piece = f"COALESCE({type_piece_base}, {piece_type_case})"
+        zone = f"""
+            COALESCE(
+                {zone_base},
+                CASE {type_piece}
+                    WHEN 'JOUR' THEN 'ZONE_JOUR'
+                    WHEN 'NUIT' THEN 'ZONE_NUIT'
+                    WHEN 'SANITAIRE' THEN 'ZONE_SANITAIRE'
+                    WHEN 'CIRCULATION' THEN 'ZONE_CIRCULATION'
+                    WHEN 'EXTERIEUR' THEN 'ZONE_EXTERIEURE'
+                    ELSE 'ZONE_TECHNIQUE'
+                END
+            )
+        """
+
+        return f"""
+            (
+                SELECT
+                    {projet} AS projet,
+                    {batiment} AS batiment,
+                    {niveau} AS niveau,
+                    {appartement} AS appartement,
+                    {zone} AS zone,
+                    {piece} AS piece,
+                    {type_piece} AS type_piece,
+                    0::numeric AS surface_m2,
+                    {lot} AS lot,
+                    {sous_lot} AS sous_lot,
+                    {famille} AS famille,
+                    {article} AS article,
+                    {capex_local} AS capex_local,
+                    {capex_import} AS capex_import,
+                    {capex_optimise} AS capex_optimise,
+                    {economie} AS economie,
+                    0::numeric AS capex_m2,
+                    1 AS nb_lignes
+                FROM fact_metre
+            ) cost_source
+        """, "fact_metre schema-aware fallback"
+
+    @staticmethod
+    def _cost_capex_m2_sql(scope_type: str, group_columns: list[str], scope_expr: str, surface_expr: str, where_sql: str) -> str:
+        group_by = ", ".join(group_columns)
+        return f"""
+            SELECT
+                '{scope_type}' AS scope_type,
+                {scope_expr} AS scope,
+                {group_by},
+                {surface_expr} AS surface_m2,
+                COALESCE(SUM(capex_local), 0) AS capex,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE({surface_expr}, 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF({surface_expr}, 0)
+                END AS capex_m2,
+                CASE WHEN COALESCE(SUM(capex_optimise), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_optimise), 0)
+                END AS roi,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY {group_by}
+            ORDER BY capex_m2 DESC
+            LIMIT 500
+        """
+
+    @staticmethod
+    def _top_cost_sql(scope_column: str, label_expr: str, where_sql: str) -> str:
+        return f"""
+            SELECT
+                {label_expr} AS label,
+                {scope_column} AS scope,
+                COALESCE(SUM(capex_local), 0) AS capex,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(SUM(capex_optimise), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_optimise), 0)
+                END AS roi,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY {scope_column}
+            ORDER BY capex_optimise DESC
+            LIMIT 10
+        """
+
+    @staticmethod
+    def _top_savings_sql(where_sql: str) -> str:
+        return f"""
+            SELECT
+                article AS label,
+                lot,
+                sous_lot,
+                piece,
+                COALESCE(SUM(capex_local), 0) AS capex,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(SUM(capex_optimise), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_optimise), 0)
+                END AS roi,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_analytics
+            {where_sql}
+            GROUP BY article, lot, sous_lot, piece
+            ORDER BY economie DESC
+            LIMIT 10
+        """
+
+    @staticmethod
+    def _pareto_sql(scope_column: str, where_sql: str) -> str:
+        return f"""
+            WITH grouped AS (
+                SELECT
+                    {scope_column} AS label,
+                    COALESCE(SUM(capex_local), 0) AS capex,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(economie), 0) AS economie
+                FROM vw_spatial_analytics
+                {where_sql}
+                GROUP BY {scope_column}
+            ),
+            ranked AS (
+                SELECT
+                    label,
+                    capex,
+                    capex_optimise,
+                    economie,
+                    ROW_NUMBER() OVER (ORDER BY capex_optimise DESC) AS rank,
+                    COUNT(*) OVER () AS total_items,
+                    SUM(capex_optimise) OVER () AS total_capex,
+                    SUM(capex_optimise) OVER (ORDER BY capex_optimise DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_capex
+                FROM grouped
+            )
+            SELECT
+                label,
+                capex,
+                capex_optimise,
+                economie,
+                rank,
+                total_items,
+                total_capex,
+                cumulative_capex,
+                CASE WHEN COALESCE(total_capex, 0) = 0 THEN 0 ELSE cumulative_capex / NULLIF(total_capex, 0) END AS cumulative_pct,
+                CASE WHEN COALESCE(total_items, 0) = 0 THEN 0 ELSE rank::numeric / NULLIF(total_items, 0)::numeric END AS item_pct,
+                CASE WHEN COALESCE(total_capex, 0) = 0 THEN false ELSE cumulative_capex <= total_capex * 0.8 END AS pareto_core
+            FROM ranked
+            ORDER BY rank
+            LIMIT 100
+        """
+
+    @staticmethod
+    def _piece_benchmark_sql(piece_codes: list[str], where_sql: str) -> str:
+        quoted = ", ".join(f"'{code}'" for code in piece_codes)
+        filter_prefix = "AND" if where_sql else "WHERE"
+        return f"""
+            WITH piece_rows AS (
+                SELECT
+                    piece,
+                    appartement,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                    END AS capex_m2,
+                    COALESCE(SUM(economie), 0) AS economie
+                FROM vw_spatial_analytics
+                {where_sql}
+                {filter_prefix} piece IN ({quoted})
+                GROUP BY piece, appartement
+            )
+            SELECT
+                piece,
+                COUNT(*) AS nb_occurrences,
+                AVG(capex_optimise) AS capex_moyen,
+                PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY capex_optimise) AS capex_median,
+                COALESCE(STDDEV_SAMP(capex_optimise), 0) AS capex_ecart_type,
+                AVG(capex_m2) AS capex_m2_moyen,
+                AVG(economie) AS economie_moyenne
+            FROM piece_rows
+            GROUP BY piece
+            ORDER BY piece
+        """
+
+    def _detect_cost_anomalies(self, where_sql: str, params: dict[str, Any], source_sql: str = "vw_spatial_analytics") -> list[dict[str, Any]]:
+        sql = f"""
+            WITH grouped AS (
+                SELECT
+                    niveau,
+                    appartement,
+                    zone,
+                    piece,
+                    lot,
+                    article,
+                    MAX(surface_m2) AS surface_m2,
+                    COALESCE(SUM(capex_local), 0) AS capex,
+                    COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(economie), 0) AS economie,
+                    CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                    END AS capex_m2
+                FROM vw_spatial_analytics
+                {where_sql}
+                GROUP BY niveau, appartement, zone, piece, lot, article
+            ),
+            stats AS (
+                SELECT AVG(capex_m2) AS avg_capex_m2, COALESCE(STDDEV_SAMP(capex_m2), 0) AS std_capex_m2
+                FROM grouped
+                WHERE capex_m2 > 0
+            )
+            SELECT
+                g.niveau,
+                g.appartement,
+                g.zone,
+                g.piece,
+                g.lot,
+                g.article,
+                g.capex,
+                g.capex_optimise,
+                g.economie,
+                g.capex_m2,
+                s.avg_capex_m2,
+                s.std_capex_m2,
+                CASE
+                    WHEN g.capex_m2 > s.avg_capex_m2 + 2 * s.std_capex_m2 THEN 'CAPEX_M2_HIGH'
+                    WHEN g.capex_m2 < s.avg_capex_m2 - 2 * s.std_capex_m2 THEN 'CAPEX_M2_LOW'
+                    ELSE 'NORMAL'
+                END AS motif,
+                CASE
+                    WHEN ABS(g.capex_m2 - s.avg_capex_m2) >= 3 * s.std_capex_m2 THEN 'HIGH'
+                    ELSE 'MEDIUM'
+                END AS criticite
+            FROM grouped g
+            CROSS JOIN stats s
+            WHERE s.std_capex_m2 > 0
+              AND (
+                g.capex_m2 > s.avg_capex_m2 + 2 * s.std_capex_m2
+                OR g.capex_m2 < s.avg_capex_m2 - 2 * s.std_capex_m2
+              )
+            ORDER BY ABS(g.capex_m2 - s.avg_capex_m2) DESC
+            LIMIT 100
+        """
+        sql = sql.replace("vw_spatial_analytics", source_sql)
+        return [
+            self.repository._json_safe(dict(row))
+            for row in self.repository.db.execute(text(sql), params).mappings().all()
+        ]
+
+    @staticmethod
+    def _add_benchmark_deviations(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        groups = {"A": [], "B": []}
+        for row in rows:
+            code = str(row.get("appartement") or "")
+            prefix = code[:1].upper()
+            if prefix in groups:
+                groups[prefix].append(row)
+
+        def decorate(group_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            if not group_rows:
+                return []
+            metrics = ("capex", "capex_m2", "economie", "roi")
+            averages = {
+                metric: sum(float(row.get(metric) or 0) for row in group_rows) / len(group_rows)
+                for metric in metrics
+            }
+            decorated: list[dict[str, Any]] = []
+            for row in group_rows:
+                enriched = dict(row)
+                for metric, average in averages.items():
+                    enriched[f"ecart_{metric}"] = round(float(row.get(metric) or 0) - average, 2)
+                decorated.append(enriched)
+            return decorated
+
+        return {
+            "A101_A201_A301": decorate(groups["A"]),
+            "B101_B201_B301": decorate(groups["B"]),
+            "all": decorate(rows),
+        }
 
     def _spatial_view_where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
         filters = query.filters

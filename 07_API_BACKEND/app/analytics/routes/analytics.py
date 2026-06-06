@@ -175,6 +175,11 @@ def spatial_dashboard(query=Depends(analytics_query), db: Session = Depends(get_
     return sanitize_for_json(AnalyticsService(db).spatial_dashboard(query))
 
 
+@router.get("/cost-intelligence")
+def cost_intelligence(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).cost_intelligence(query))
+
+
 @router.get("/filters")
 def filters(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).filter_options())

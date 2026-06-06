@@ -42,6 +42,10 @@ export function getAnalyticsGainAnalysis(filters, extras = {}) {
   return request({ url: "/analytics/gain-analysis", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
 }
 
+export function getAnalyticsCostIntelligence(filters, extras = {}) {
+  return request({ url: "/analytics/cost-intelligence", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
+}
+
 export async function exportAnalyticsProcurementFile(filters, extras = {}) {
   const response = await apiClient({
     url: "/analytics/procurement-export",
