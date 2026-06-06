@@ -9,14 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_display_text
+from app.analytics.utils.schema_utils import first_non_empty_sql, load_table_columns, optional_column_sql
 
 
 ALLOWED_GROUPS = {
     "projet": "projet_id",
     "batiment": "batiment",
     "niveau": "niveau",
-    "appartement": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
-    "piece": "piece",
     "lot": "lot",
     "famille": "famille",
     "decision_import": "decision_import",
@@ -44,6 +43,30 @@ class AnalyticsRepository:
 
     def __init__(self, db: Session) -> None:
         self.db = db
+
+    def schema_capabilities(self) -> dict[str, dict[str, bool]]:
+        columns = self._fact_columns()
+        return {
+            "fact_metre": {
+                column: column in columns
+                for column in (
+                    "appartement_id",
+                    "appartement_code",
+                    "appart",
+                    "piece",
+                    "piece_id",
+                    "piece_type",
+                    "type_zone",
+                    "ifc_guid",
+                    "ifc_type",
+                    "bim_object",
+                    "bim_object_id",
+                    "omniclass",
+                    "uniclass",
+                    "classification",
+                )
+            }
+        }
 
     def kpis(self, query: AnalyticsQuery) -> dict[str, Any]:
         where_sql, params = self.build_where_clause(query)
@@ -76,8 +99,14 @@ class AnalyticsRepository:
         where_sql, params = self.build_where_clause(query)
         limit = query.page_size
         offset = (query.page - 1) * query.page_size
-        order_column = query.order_by if query.order_by in ALLOWED_ORDER else "capex_local"
+        order_column = query.order_by if query.order_by in ALLOWED_ORDER and self._fact_column_exists(query.order_by) else "capex_local"
         order_dir = "ASC" if query.order_dir == "asc" else "DESC"
+        appartement_sql = self._appartement_sql()
+        piece_sql = self._optional_text_column("piece")
+        piece_type_sql = self._piece_type_sql()
+        ifc_guid_sql = self._optional_text_column("ifc_guid")
+        ifc_type_sql = self._optional_text_column("ifc_type")
+        bim_object_sql = self._bim_object_sql()
 
         total = self.db.execute(text(f"SELECT COUNT(*) FROM fact_metre {where_sql}"), params).scalar_one()
         rows = self.db.execute(
@@ -90,12 +119,12 @@ class AnalyticsRepository:
                     famille,
                     batiment,
                     niveau,
-                    COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, '')) AS appartement,
-                    piece,
-                    COALESCE(NULLIF(piece_type, ''), NULLIF(type_zone, '')) AS piece_type,
-                    ifc_guid,
-                    ifc_type,
-                    bim_object,
+                    {appartement_sql} AS appartement,
+                    {piece_sql} AS piece,
+                    {piece_type_sql} AS piece_type,
+                    {ifc_guid_sql} AS ifc_guid,
+                    {ifc_type_sql} AS ifc_type,
+                    {bim_object_sql} AS bim_object,
                     quantite,
                     pu_local,
                     pu_import,
@@ -118,7 +147,7 @@ class AnalyticsRepository:
 
     def grouped(self, query: AnalyticsQuery, default_group: str = "lot") -> list[dict[str, Any]]:
         group_key = query.group_by or default_group
-        group_column = ALLOWED_GROUPS.get(group_key, ALLOWED_GROUPS[default_group])
+        group_column = self._group_column(group_key, default_group)
         where_sql, params = self.build_where_clause(query)
         rows = self.db.execute(
             text(
@@ -421,14 +450,17 @@ class AnalyticsRepository:
         fields = {
             "batiments": "batiment",
             "niveaux": "niveau",
-            "appartements": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
-            "pieces": "piece",
+            "appartements": self._appartement_sql(),
+            "pieces": self._optional_text_column("piece"),
             "lots": "lot",
             "familles": "famille",
             "import_local": "decision_import",
         }
         result: dict[str, list[str]] = {}
         for key, column in fields.items():
+            if column == "NULL":
+                result[key] = []
+                continue
             rows = self.db.execute(
                 text(
                     f"""
@@ -611,8 +643,8 @@ class AnalyticsRepository:
         filter_columns = {
             "batiment": "batiment",
             "niveau": "niveau",
-            "appartement": "COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''))",
-            "piece": "piece",
+            "appartement": self._appartement_sql(),
+            "piece": self._optional_text_column("piece"),
             "lot": "lot",
             "famille": "famille",
         }
@@ -620,6 +652,9 @@ class AnalyticsRepository:
         for field, column in filter_columns.items():
             value = getattr(filters, field)
             if value:
+                if column == "NULL":
+                    clauses.append("1 = 0")
+                    continue
                 clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
                 params[field] = f"%{value}%"
 
@@ -640,6 +675,40 @@ class AnalyticsRepository:
 
     def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
         return self.build_where_clause(query)
+
+    def _fact_columns(self) -> set[str]:
+        return load_table_columns(self.db, "fact_metre")
+
+    def _fact_column_exists(self, column_name: str | None) -> bool:
+        return bool(column_name) and column_name in self._fact_columns()
+
+    def _optional_text_column(self, column_name: str, default_sql: str = "NULL") -> str:
+        return optional_column_sql(self._fact_columns(), column_name, default_sql=default_sql)
+
+    def _appartement_sql(self) -> str:
+        return first_non_empty_sql(
+            self._fact_columns(),
+            ("appartement_id", "appartement_code", "appart"),
+        )
+
+    def _piece_type_sql(self) -> str:
+        return first_non_empty_sql(self._fact_columns(), ("piece_type", "type_zone"))
+
+    def _bim_object_sql(self) -> str:
+        return first_non_empty_sql(self._fact_columns(), ("bim_object", "bim_object_id"))
+
+    def _group_column(self, group_key: str, default_group: str) -> str:
+        if group_key == "appartement":
+            return self._appartement_sql()
+        if group_key == "piece":
+            return self._optional_text_column("piece")
+        if group_key in ALLOWED_GROUPS:
+            return ALLOWED_GROUPS[group_key]
+        if default_group == "appartement":
+            return self._appartement_sql()
+        if default_group == "piece":
+            return self._optional_text_column("piece")
+        return ALLOWED_GROUPS.get(default_group, ALLOWED_GROUPS["lot"])
 
     @staticmethod
     def drilldown_path(level: str | None) -> dict[str, Any]:

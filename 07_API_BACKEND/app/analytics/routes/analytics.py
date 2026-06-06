@@ -239,6 +239,11 @@ def debug_bim_maturity(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).bim_maturity_debug())
 
 
+@router.get("/debug/schema-capabilities")
+def debug_schema_capabilities(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).schema_capabilities_debug())
+
+
 @router.get("/qa-summary", response_model=AnalyticsResponse)
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())
