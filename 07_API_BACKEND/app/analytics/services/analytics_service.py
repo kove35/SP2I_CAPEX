@@ -20,6 +20,7 @@ from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_payload_labels
 from app.analytics.utils.schema_utils import column_exists, first_non_empty_sql, load_table_columns, schema_capabilities
 from app.database import database_url_host, database_url_is_neon
+from app.spatial.enrichment import infer_piece_type
 
 
 logger = logging.getLogger("sp2i-capex-api.analytics")
@@ -264,6 +265,9 @@ class AnalyticsService:
             query,
             self._response(query, charts={"timeline": self.repository.timeline(query)}),
         )
+
+    def spatial(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._cached("spatial", query, lambda: self._build_spatial(query))
 
     def filter_options(self) -> dict[str, Any]:
         options = self.repository.filter_options()
@@ -1347,6 +1351,225 @@ class AnalyticsService:
                 "timing": timings,
             },
         )
+
+    def _build_spatial(self, query: AnalyticsQuery) -> dict[str, Any]:
+        where_sql, params = self._spatial_view_where(query)
+
+        def rows(sql: str) -> list[dict[str, Any]]:
+            return [
+                self.repository._json_safe(dict(row))
+                for row in self.repository.db.execute(text(sql), params).mappings().all()
+            ]
+
+        batiments = rows(
+            f"""
+            SELECT
+                batiment,
+                COUNT(*) AS nb_groupes,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
+                COALESCE(SUM(capex_local), 0) AS capex_local,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY batiment
+            ORDER BY capex_optimise DESC
+            """
+        )
+        niveaux = rows(
+            f"""
+            SELECT
+                batiment,
+                niveau,
+                COUNT(*) AS nb_groupes,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY batiment, niveau
+            ORDER BY batiment, niveau
+            """
+        )
+        appartements = rows(
+            f"""
+            SELECT
+                batiment,
+                niveau,
+                appartement,
+                MAX(surface_m2) AS surface_m2,
+                COUNT(*) AS nb_groupes,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                END AS capex_m2
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY batiment, niveau, appartement
+            ORDER BY capex_optimise DESC
+            """
+        )
+        pieces = rows(
+            f"""
+            SELECT
+                appartement,
+                piece,
+                type_piece,
+                MAX(surface_m2) AS surface_m2,
+                COUNT(*) AS nb_groupes,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                     ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                END AS capex_m2
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY appartement, piece, type_piece
+            ORDER BY appartement, capex_optimise DESC
+            """
+        )
+        for row in pieces:
+            if not row.get("type_piece") or row.get("type_piece") == "AUTRE":
+                row["type_piece"] = infer_piece_type(row.get("piece"))
+
+        capex_par_piece = rows(
+            f"""
+            SELECT
+                appartement,
+                piece,
+                type_piece,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY appartement, piece, type_piece
+            ORDER BY appartement, capex_optimise DESC
+            LIMIT 500
+            """
+        )
+        capex_par_appartement = rows(
+            f"""
+            SELECT
+                batiment,
+                niveau,
+                appartement,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY batiment, niveau, appartement
+            ORDER BY capex_optimise DESC
+            LIMIT 500
+            """
+        )
+        capex_type_piece = rows(
+            f"""
+            SELECT
+                type_piece,
+                COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                COALESCE(SUM(economie), 0) AS economie,
+                COALESCE(SUM(nb_lignes), 0) AS nb_lignes
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY type_piece
+            ORDER BY capex_optimise DESC
+            """
+        )
+        capex_m2 = rows(
+            f"""
+            SELECT 'BATIMENT' AS scope_type, batiment AS scope, SUM(DISTINCT surface_m2) AS surface_m2,
+                   COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                   CASE WHEN COALESCE(SUM(DISTINCT surface_m2), 0) = 0 THEN 0
+                        ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(SUM(DISTINCT surface_m2), 0)
+                   END AS capex_m2
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY batiment
+            UNION ALL
+            SELECT 'NIVEAU' AS scope_type, batiment || ' / ' || niveau AS scope, SUM(DISTINCT surface_m2) AS surface_m2,
+                   COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                   CASE WHEN COALESCE(SUM(DISTINCT surface_m2), 0) = 0 THEN 0
+                        ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(SUM(DISTINCT surface_m2), 0)
+                   END AS capex_m2
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY batiment, niveau
+            UNION ALL
+            SELECT 'APPARTEMENT' AS scope_type, appartement AS scope, MAX(surface_m2) AS surface_m2,
+                   COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                   CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                        ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                   END AS capex_m2
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY appartement
+            UNION ALL
+            SELECT 'PIECE' AS scope_type, appartement || ' / ' || piece AS scope, MAX(surface_m2) AS surface_m2,
+                   COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
+                   CASE WHEN COALESCE(MAX(surface_m2), 0) = 0 THEN 0
+                        ELSE COALESCE(SUM(capex_optimise), 0) / NULLIF(MAX(surface_m2), 0)
+                   END AS capex_m2
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY appartement, piece
+            ORDER BY capex_m2 DESC
+            LIMIT 500
+            """
+        )
+        heatmap_spatiale = rows(
+            f"""
+            SELECT
+                appartement,
+                piece,
+                COALESCE(SUM(capex_optimise), 0) AS capex
+            FROM vw_spatial_dashboard
+            {where_sql}
+            GROUP BY appartement, piece
+            ORDER BY appartement, capex DESC
+            LIMIT 1000
+            """
+        )
+
+        return normalize_payload_labels({
+            "status": "SUCCESS",
+            "filters": query.filters.model_dump(exclude_none=True),
+            "batiments": batiments,
+            "niveaux": niveaux,
+            "appartements": appartements,
+            "pieces": pieces,
+            "capex_par_piece": capex_par_piece,
+            "capex_par_appartement": capex_par_appartement,
+            "capex_type_piece": capex_type_piece,
+            "capex_m2": capex_m2,
+            "heatmap_spatiale": heatmap_spatiale,
+            "metadata": {
+                "engine": "SP2I PLAN_READY Spatial Analytics",
+                "source": "vw_spatial_dashboard",
+                "scope": "Plans 2D / DQE / Metres",
+            },
+        })
+
+    def _spatial_view_where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
+        filters = query.filters
+        clauses: list[str] = []
+        params: dict[str, Any] = {}
+        filter_columns = {
+            "batiment": "batiment",
+            "niveau": "niveau",
+            "appartement": "appartement",
+            "piece": "piece",
+            "lot": "lot",
+            "famille": "famille",
+        }
+        for field, column in filter_columns.items():
+            value = getattr(filters, field)
+            if value:
+                clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
+                params[field] = f"%{value}%"
+        return ("WHERE " + " AND ".join(clauses), params) if clauses else ("", params)
 
     def _collect_dashboard_parts(
         self,

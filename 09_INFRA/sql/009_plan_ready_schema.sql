@@ -1,0 +1,35 @@
+-- SP2I CAPEX - PLAN_READY spatial layer
+-- Idempotent SQL for a lightweight 2D plan / DQE spatial model.
+
+ALTER TABLE dim_appartement
+    ADD COLUMN IF NOT EXISTS appartement_code VARCHAR(150) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS batiment VARCHAR(150) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS niveau VARCHAR(100) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS surface_m2 DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS type_appartement VARCHAR(100) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS nb_chambres INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS nb_sdb INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+ALTER TABLE dim_piece
+    ADD COLUMN IF NOT EXISTS appartement_id VARCHAR(150) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS piece_nom VARCHAR(150) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS piece_type VARCHAR(100) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS surface_m2 DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS volume_m3 DOUBLE PRECISION,
+    ADD COLUMN IF NOT EXISTS zone VARCHAR(150) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS description VARCHAR(255) NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS ix_dim_appartement_plan_scope
+    ON dim_appartement (batiment, niveau, appartement_code);
+
+CREATE INDEX IF NOT EXISTS ix_dim_piece_plan_scope
+    ON dim_piece (appartement_id, piece_nom, piece_type);
+
+-- Install/update the reporting view with:
+-- psql "$DATABASE_URL" -f sql/powerbi/001_powerbi_views.sql

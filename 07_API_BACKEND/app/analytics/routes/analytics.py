@@ -161,6 +161,11 @@ def timeline(query=Depends(analytics_query), db: Session = Depends(get_db)) -> d
     return sanitize_for_json(AnalyticsService(db).timeline(query))
 
 
+@router.get("/spatial")
+def spatial(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).spatial(query))
+
+
 @router.get("/filters")
 def filters(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).filter_options())
