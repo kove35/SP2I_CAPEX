@@ -64,7 +64,7 @@ class ProjectResponse(BaseModel):
     status: str
     created_at: datetime | None = None
     trust_score: int = 87
-    last_dqe: str = "DQE_PROJECT_SP2I.xlsx"
+    last_dqe: str = "SP2I_BIM_DQE_MASTER.xlsx"
     budget: float = 0
     workflow_status: str = "CONFIG_REQUIRED"
     backend_workflow: dict[str, Any] | None = None

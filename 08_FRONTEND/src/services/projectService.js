@@ -5,17 +5,17 @@ const LOCAL_PROJECTS_KEY = "sp2i:projects";
 
 export const demoProjects = [
   {
-    id: "demo-pnr-medical",
-    workspace_key: "Pointe-Noire CAPEX",
-    name: "Centre medical Pointe-Noire",
+    id: "projet-mpemba",
+    workspace_key: "PROJET_MPEMBA",
+    name: "Complexe immobilier Mpemba",
     client_name: "SP2I",
     city: "Pointe-Noire",
     country: "Congo-Brazzaville",
     currency: "FCFA",
     status: "ACTIVE",
     trust_score: 87,
-    last_dqe: "DQE_PROJECT_SP2I.xlsx",
-    budget: 1129667152,
+    last_dqe: "SP2I_BIM_DQE_MASTER.xlsx",
+    budget: 113928000,
     updated_at: "Derniere synchronisation governance",
     setup_status: "CONFIGURED",
     workflow_status: "ACTIVE",
@@ -77,7 +77,7 @@ function normalizeBackendWorkflow(backendWorkflow) {
 }
 
 export function getProjectWorkspaceKey(project) {
-  return project?.workspace_key || project?.code || project?.id || project?.name || "Pointe-Noire CAPEX";
+  return project?.workspace_key || project?.code || project?.id || project?.name || "PROJET_MPEMBA";
 }
 
 function readDqeVersions(project) {
@@ -91,11 +91,11 @@ function readDqeVersions(project) {
   } catch {
     return [];
   }
-  if (key === "Pointe-Noire CAPEX") {
+  if (key === "PROJET_MPEMBA") {
     return [{
       id: "seed-dqe-v1",
       version_number: 1,
-      file_name: "DQE_PROJECT_SP2I.xlsx",
+      file_name: "SP2I_BIM_DQE_MASTER.xlsx",
       status: "SYNCED",
       trust_score: 87,
       normalized_lines_count: 46,
@@ -109,7 +109,7 @@ function readDqeVersions(project) {
 }
 
 function hasMinimumSetup(project = {}) {
-  if (getProjectWorkspaceKey(project) === "Pointe-Noire CAPEX") return true;
+  if (getProjectWorkspaceKey(project) === "PROJET_MPEMBA") return true;
   return Boolean(project.name && project.city && project.country && project.currency && project.client_name && project.project_manager);
 }
 

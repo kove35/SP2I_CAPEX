@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS dim_batiment (
 );
 
 INSERT INTO dim_projet (projet_code, projet_nom, ville, pays, devise)
-VALUES ('SP2I_DEFAULT', 'Centre medical Pointe Noire', 'Pointe Noire', 'Congo', 'FCFA')
+VALUES ('PROJET_MPEMBA', 'Complexe immobilier Mpemba', 'Pointe Noire', 'Congo', 'FCFA')
 ON CONFLICT (projet_code) DO UPDATE SET
     projet_nom = EXCLUDED.projet_nom,
     ville = EXCLUDED.ville,
@@ -167,7 +167,7 @@ SET
     taux_economie = CASE WHEN COALESCE(f.prix_total_ht, 0) <> 0 THEN f.economie_nette / f.prix_total_ht ELSE 0 END,
     scenario_id = COALESCE(f.scenario_id, 1)
 FROM dim_projet p, dim_lot l, dim_niveau n, dim_batiment b, dim_famille df
-WHERE p.projet_code = 'SP2I_DEFAULT'
+WHERE p.projet_code = 'PROJET_MPEMBA'
   AND l.lot = COALESCE(NULLIF(trim(f.lot), ''), 'NON_RENSEIGNE')
   AND n.niveau = COALESCE(NULLIF(trim(f.niveau), ''), 'GLOBAL')
   AND b.batiment = COALESCE(NULLIF(trim(f.batiment), ''), 'NON_RENSEIGNE')
@@ -186,7 +186,7 @@ DECLARE
     v_projet_id BIGINT;
 BEGIN
     INSERT INTO dim_projet (projet_code, projet_nom, ville, pays, devise)
-    VALUES ('SP2I_DEFAULT', 'Centre medical Pointe Noire', 'Pointe Noire', 'Congo', 'FCFA')
+    VALUES ('PROJET_MPEMBA', 'Complexe immobilier Mpemba', 'Pointe Noire', 'Congo', 'FCFA')
     ON CONFLICT (projet_code) DO UPDATE SET updated_at = now()
     RETURNING projet_id INTO v_projet_id;
 

@@ -55,7 +55,7 @@ function readDqeVersions(projectId) {
     return [{
       id: "seed-dqe-v1",
       version_number: 1,
-      file_name: "DQE_PROJECT_SP2I.xlsx",
+      file_name: "SP2I_BIM_DQE_MASTER.xlsx",
       status: "SYNCED",
       trust_score: 87,
       normalized_lines_count: 46,

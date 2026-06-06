@@ -108,7 +108,7 @@ def serialize_project(project: Project, db: Session | None = None, include_workf
     workflow_state: dict[str, Any] | None = None
     backend_workflow: dict[str, Any] | None = None
     trust_score = 87
-    last_dqe = "DQE_PROJECT_SP2I.xlsx"
+    last_dqe = "SP2I_BIM_DQE_MASTER.xlsx"
     budget = project.target_budget or 0
     workflow_status = project.setup_status or "CONFIG_REQUIRED"
     if db is not None and include_workflow:
@@ -921,12 +921,12 @@ def _ensure_demo_project(db: Session, user: User) -> None:
     if count:
         return
     project = Project(
-        name="Centre medical Pointe-Noire",
+        name="Complexe immobilier Mpemba",
         client_name="SP2I",
         city="Pointe-Noire",
         country="Congo-Brazzaville",
         currency="FCFA",
-        project_type="Etablissement de sante",
+        project_type="Projet immobilier residentiel",
         project_manager="Direction SP2I",
         setup_status="CONFIGURED",
         setup_completed_at=datetime.now(timezone.utc),

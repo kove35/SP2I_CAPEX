@@ -48,7 +48,7 @@ GROUP BY
 
 CREATE OR REPLACE VIEW vw_bim_dashboard AS
 SELECT
-    COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT') AS projet,
+    COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA') AS projet,
     COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
     COALESCE(niveau, 'GLOBAL') AS niveau,
     COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
@@ -62,7 +62,7 @@ SELECT
     COUNT(*) AS nb_lignes
 FROM fact_metre
 GROUP BY
-    COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT'),
+    COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA'),
     COALESCE(batiment, 'NON_RENSEIGNE'),
     COALESCE(niveau, 'GLOBAL'),
     COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN'),
@@ -74,7 +74,7 @@ GROUP BY
 CREATE OR REPLACE VIEW vw_spatial_dashboard AS
 WITH spatial_fact AS (
     SELECT
-        COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT') AS projet,
+        COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA') AS projet,
         COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
         COALESCE(niveau, 'GLOBAL') AS niveau,
         COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
@@ -146,7 +146,7 @@ GROUP BY
 CREATE OR REPLACE VIEW vw_spatial_analytics AS
 WITH spatial_fact AS (
     SELECT
-        COALESCE(project_code, projet_id::text, 'SP2I_DEFAULT') AS projet,
+        COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA') AS projet,
         COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
         COALESCE(niveau, 'GLOBAL') AS niveau,
         COALESCE(NULLIF(appartement_id, ''), NULLIF(appartement_code, ''), NULLIF(appart, ''), 'COMMUN') AS appartement,
