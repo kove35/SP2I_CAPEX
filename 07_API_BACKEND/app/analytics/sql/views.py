@@ -1,6 +1,21 @@
 from __future__ import annotations
 
 ANALYTICS_VIEWS_SQL = """
+DROP VIEW IF EXISTS vw_cost_intelligence CASCADE;
+DROP VIEW IF EXISTS vw_spatial_analytics CASCADE;
+DROP VIEW IF EXISTS vw_spatial_dashboard CASCADE;
+DROP VIEW IF EXISTS vw_bim_dashboard CASCADE;
+DROP VIEW IF EXISTS vw_dashboard_chantier CASCADE;
+DROP VIEW IF EXISTS vw_dashboard_import CASCADE;
+DROP VIEW IF EXISTS vw_dashboard_direction CASCADE;
+DROP VIEW IF EXISTS vw_project_kpis CASCADE;
+DROP VIEW IF EXISTS vw_logistics_summary CASCADE;
+DROP VIEW IF EXISTS vw_procurement_risk CASCADE;
+DROP VIEW IF EXISTS vw_import_analysis CASCADE;
+DROP VIEW IF EXISTS vw_capex_by_building CASCADE;
+DROP VIEW IF EXISTS vw_capex_by_lot CASCADE;
+DROP VIEW IF EXISTS vw_capex_summary CASCADE;
+
 CREATE OR REPLACE VIEW vw_capex_summary AS
 SELECT
     ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_brut,
@@ -280,4 +295,29 @@ GROUP BY
     t.sous_lot,
     t.famille,
     t.article;
+
+CREATE OR REPLACE VIEW vw_cost_intelligence AS
+SELECT
+    projet,
+    batiment,
+    niveau,
+    appartement,
+    zone,
+    piece,
+    type_piece,
+    lot,
+    sous_lot,
+    famille,
+    article,
+    surface_m2,
+    capex_local,
+    capex_import,
+    capex_optimise,
+    economie,
+    capex_m2,
+    CASE WHEN COALESCE(capex_optimise, 0) = 0 THEN 0
+         ELSE ROUND((economie / NULLIF(capex_optimise, 0))::numeric, 6)
+    END AS roi,
+    nb_lignes
+FROM vw_spatial_analytics;
 """

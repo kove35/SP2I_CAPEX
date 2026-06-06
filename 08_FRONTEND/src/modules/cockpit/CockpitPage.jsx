@@ -125,6 +125,58 @@ function moduleTone(state) {
   return "blocked";
 }
 
+function formatPercentValue(value) {
+  const number = Number(value || 0);
+  return `${(number * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%`;
+}
+
+function buildCostSignals(costPayload = {}) {
+  const topCosts = costPayload.top_costs || {};
+  const anomalies = costPayload.anomalies?.items || [];
+  const piece = topCosts.pieces?.[0];
+  const lot = topCosts.lots?.[0];
+  const saving = topCosts.economies?.[0];
+  const anomaly = anomalies[0];
+  const signals = [];
+
+  if (piece) {
+    signals.push({
+      label: "Piece la plus couteuse",
+      value: piece.label || piece.scope || "-",
+      detail: formatMoney(piece.capex_optimise || piece.capex),
+    });
+  }
+  if (lot) {
+    signals.push({
+      label: "Lot le plus couteux",
+      value: lot.label || lot.scope || "-",
+      detail: `${formatMoney(lot.capex_optimise || lot.capex)} - ROI ${formatPercentValue(lot.roi)}`,
+    });
+  }
+  if (saving) {
+    signals.push({
+      label: "Top economie",
+      value: saving.label || saving.article || "-",
+      detail: formatMoney(saving.economie),
+    });
+  }
+  if (anomaly) {
+    signals.push({
+      label: "Anomalie detectee",
+      value: [anomaly.appartement, anomaly.piece].filter(Boolean).join(" / ") || anomaly.article || "-",
+      detail: `${anomaly.motif || "CAPEX/m2"} - ${formatMoney(anomaly.capex_optimise || anomaly.capex)}`,
+    });
+  } else if (costPayload.anomalies) {
+    signals.push({
+      label: "Anomalies detectees",
+      value: "Aucune anomalie critique",
+      detail: "CAPEX/m2 dans les seuils",
+    });
+  }
+
+  return signals;
+}
+
 export default function CockpitPage() {
   const { state } = useAppStore();
   const engine = useAnalyticsEngine("direction");
@@ -144,6 +196,8 @@ export default function CockpitPage() {
   const executionStep = getStep(workflow, "execution");
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
+  const costPayload = engine.costIntelligence.data || {};
+  const costSignals = buildCostSignals(costPayload);
   const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
   const hasPrimaryKpis = Boolean(mainPayload.kpis || capexPayload.kpis);
   const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
@@ -266,6 +320,17 @@ export default function CockpitPage() {
       {engine.isFetching ? <div className="live-refresh">Synchronisation du cockpit en cours...</div> : null}
 
       {engine.error && !hasPrimaryKpis ? null : <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />}
+      {costSignals.length ? (
+        <section className="cost-intelligence-strip" aria-label="Cost Intelligence">
+          {costSignals.map((signal) => (
+            <article className="cost-intelligence-card" key={signal.label}>
+              <span>{signal.label}</span>
+              <strong>{signal.value}</strong>
+              <small>{signal.detail}</small>
+            </article>
+          ))}
+        </section>
+      ) : null}
       {engine.isLoading ? <Skeleton /> : null}
 
       <section className="analytics-command-grid">
