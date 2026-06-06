@@ -114,6 +114,52 @@ class DimFamille(Base):
     )
 
 
+class DimBatiment(Base):
+    """Dimension spatiale avancee : batiment issu plans 2D / DQE."""
+
+    __tablename__ = "dim_batiment"
+
+    batiment_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    batiment: Mapped[str] = mapped_column(String(150), nullable=False, unique=True, default="")
+    batiment_code: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    nom: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    nb_niveaux: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    nb_appartements: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    surface_totale_m2: Mapped[float | None] = mapped_column(Float, nullable=True)
+    type_batiment: Mapped[str] = mapped_column(String(100), nullable=False, default="A_CLASSER")
+    description: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_dim_batiment_code", "batiment_code"),
+    )
+
+
+class DimZone(Base):
+    """Dimension spatiale avancee : zone fonctionnelle de piece."""
+
+    __tablename__ = "dim_zone"
+
+    zone_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    zone_code: Mapped[str] = mapped_column(String(180), nullable=False, unique=True, default="")
+    zone_nom: Mapped[str] = mapped_column(String(180), nullable=False, default="")
+    batiment: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    niveau: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    appart: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    piece: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    type_zone: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    description: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    is_active: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("ix_dim_zone_code", "zone_code"),
+    )
+
+
 class DimAppartement(Base):
     """Dimension PLAN_READY : logement ou unite spatiale issue plans/DQE."""
 

@@ -11,7 +11,9 @@ class AnalyticsFilters(BaseModel):
     batiment: str | None = None
     niveau: str | None = None
     appartement: str | None = None
+    zone: str | None = None
     piece: str | None = None
+    sous_lot: str | None = None
     lot: str | None = None
     famille: str | None = None
     fournisseur: str | None = None

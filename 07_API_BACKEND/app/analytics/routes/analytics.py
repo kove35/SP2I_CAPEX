@@ -21,7 +21,9 @@ def analytics_query(
     batiment: str | None = None,
     niveau: str | None = None,
     appartement: str | None = None,
+    zone: str | None = None,
     piece: str | None = None,
+    sous_lot: str | None = None,
     lot: str | None = None,
     famille: str | None = None,
     fournisseur: str | None = None,
@@ -47,7 +49,9 @@ def analytics_query(
         batiment=batiment,
         niveau=niveau,
         appartement=appartement,
+        zone=zone,
         piece=piece,
+        sous_lot=sous_lot,
         lot=lot,
         famille=famille,
         fournisseur=fournisseur,
@@ -164,6 +168,11 @@ def timeline(query=Depends(analytics_query), db: Session = Depends(get_db)) -> d
 @router.get("/spatial")
 def spatial(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).spatial(query))
+
+
+@router.get("/spatial/dashboard")
+def spatial_dashboard(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).spatial_dashboard(query))
 
 
 @router.get("/filters")
