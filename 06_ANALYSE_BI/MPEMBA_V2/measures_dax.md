@@ -6,77 +6,77 @@ Creer une table vide `Mesures SP2I`, puis ranger les mesures dans les dossiers i
 
 ```DAX
 CAPEX Total =
-SUM ( fact_metre[capex_local] )
+COALESCE ( SUM ( fact_metre[capex_local] ), 0 )
 ```
 
 ```DAX
 CAPEX Local =
-SUM ( fact_metre[capex_local] )
+COALESCE ( SUM ( fact_metre[capex_local] ), 0 )
 ```
 
 ```DAX
 CAPEX Optimise =
-SUM ( fact_metre[capex_optimise] )
+COALESCE ( SUM ( fact_metre[capex_optimise] ), 0 )
 ```
 
 ```DAX
 CAPEX Import =
-SUM ( fact_metre[capex_import] )
+COALESCE ( SUM ( fact_metre[capex_import] ), 0 )
 ```
 
 ```DAX
 Economie =
-SUM ( fact_metre[economie] )
+COALESCE ( SUM ( fact_metre[economie] ), 0 )
 ```
 
 ```DAX
 Taux Economie =
-DIVIDE ( [Economie], [CAPEX Total] )
+DIVIDE ( [Economie], [CAPEX Total], 0 )
 ```
 
 ```DAX
 Surface Totale =
-SUM ( dim_piece[surface_m2] )
+COALESCE ( SUM ( dim_piece[surface_m2] ), 0 )
 ```
 
 ```DAX
 CAPEX/m2 =
-DIVIDE ( [CAPEX Optimise], [Surface Totale] )
+DIVIDE ( [CAPEX Optimise], [Surface Totale], 0 )
 ```
 
 ```DAX
 Nb Batiments =
-DISTINCTCOUNT ( dim_batiment[batiment_id] )
+COALESCE ( DISTINCTCOUNT ( dim_batiment[batiment_id] ), 0 )
 ```
 
 ```DAX
 Nb Niveaux =
-DISTINCTCOUNT ( dim_niveau[niveau_id] )
+COALESCE ( DISTINCTCOUNT ( dim_niveau[niveau_id] ), 0 )
 ```
 
 ```DAX
 Nb Appartements =
-DISTINCTCOUNT ( dim_appartement[appartement_id] )
+COALESCE ( DISTINCTCOUNT ( dim_appartement[appartement_id] ), 0 )
 ```
 
 ```DAX
 Nb Pieces =
-DISTINCTCOUNT ( dim_piece[piece_id] )
+COALESCE ( DISTINCTCOUNT ( dim_piece[piece_id] ), 0 )
 ```
 
 ```DAX
 Nb Lots =
-DISTINCTCOUNT ( dim_lot[lot_id] )
+COALESCE ( DISTINCTCOUNT ( dim_lot[lot_id] ), 0 )
 ```
 
 ```DAX
 Nb Sous-lots =
-DISTINCTCOUNT ( dim_sous_lot_complet[sous_lot_id] )
+COALESCE ( DISTINCTCOUNT ( dim_sous_lot_complet[sous_lot_id] ), 0 )
 ```
 
 ```DAX
 Nb Articles =
-DISTINCTCOUNT ( dim_article_bpu[article_id] )
+COALESCE ( DISTINCTCOUNT ( dim_article_bpu[code_article] ), 0 )
 ```
 
 ## _KPI_COST_INTELLIGENCE
@@ -84,7 +84,7 @@ DISTINCTCOUNT ( dim_article_bpu[article_id] )
 ```DAX
 Rang CAPEX Article =
 RANKX (
-    ALLSELECTED ( dim_article_bpu[article_id] ),
+    ALLSELECTED ( dim_article_bpu[code_article] ),
     [CAPEX Optimise],
     ,
     DESC,
@@ -98,7 +98,7 @@ VAR CurrentRank = [Rang CAPEX Article]
 RETURN
 SUMX (
     FILTER (
-        ALLSELECTED ( dim_article_bpu[article_id] ),
+        ALLSELECTED ( dim_article_bpu[code_article] ),
         [Rang CAPEX Article] <= CurrentRank
     ),
     [CAPEX Optimise]
@@ -107,7 +107,7 @@ SUMX (
 
 ```DAX
 Pareto % Article =
-DIVIDE ( [CAPEX Cumul Article], CALCULATE ( [CAPEX Optimise], ALLSELECTED ( dim_article_bpu[article_id] ) ) )
+DIVIDE ( [CAPEX Cumul Article], CALCULATE ( [CAPEX Optimise], ALLSELECTED ( dim_article_bpu[code_article] ) ), 0 )
 ```
 
 ```DAX
@@ -117,7 +117,7 @@ IF ( [Pareto % Article] <= 0.8, 1, 0 )
 
 ```DAX
 CAPEX Appartement Moyen =
-AVERAGEX ( VALUES ( dim_appartement[appartement_id] ), [CAPEX Optimise] )
+COALESCE ( AVERAGEX ( VALUES ( dim_appartement[appartement_id] ), [CAPEX Optimise] ), 0 )
 ```
 
 ```DAX
@@ -127,7 +127,7 @@ Ecart CAPEX Appartement =
 
 ```DAX
 CAPEX Piece Moyen =
-AVERAGEX ( VALUES ( dim_piece[piece_id] ), [CAPEX Optimise] )
+COALESCE ( AVERAGEX ( VALUES ( dim_piece[piece_id] ), [CAPEX Optimise] ), 0 )
 ```
 
 ```DAX
@@ -137,7 +137,7 @@ CAPEX Piece Ecart =
 
 ```DAX
 CAPEX/m2 Moyen Piece =
-AVERAGEX ( VALUES ( dim_piece[piece_id] ), [CAPEX/m2] )
+COALESCE ( AVERAGEX ( VALUES ( dim_piece[piece_id] ), [CAPEX/m2] ), 0 )
 ```
 
 ```DAX
@@ -183,44 +183,44 @@ SWITCH (
 
 ```DAX
 CAPEX Importable =
-CALCULATE ( [CAPEX Optimise], fact_metre[decision_import] = "IMPORT" )
+COALESCE ( CALCULATE ( [CAPEX Optimise], fact_metre[decision_import] = "IMPORT" ), 0 )
 ```
 
 ```DAX
 CAPEX Local Retenu =
-CALCULATE ( [CAPEX Optimise], fact_metre[decision_import] = "LOCAL" )
+COALESCE ( CALCULATE ( [CAPEX Optimise], fact_metre[decision_import] = "LOCAL" ), 0 )
 ```
 
 ```DAX
 CAPEX Hybride =
-CALCULATE ( [CAPEX Optimise], fact_metre[decision_import] = "HYBRIDE" )
+COALESCE ( CALCULATE ( [CAPEX Optimise], fact_metre[decision_import] = "HYBRIDE" ), 0 )
 ```
 
 ```DAX
 ROI Import =
-DIVIDE ( [Economie], [CAPEX Importable] )
+DIVIDE ( [Economie], [CAPEX Importable], 0 )
 ```
 
 ```DAX
 Part Import =
-DIVIDE ( [CAPEX Importable], [CAPEX Optimise] )
+DIVIDE ( [CAPEX Importable], [CAPEX Optimise], 0 )
 ```
 
 ```DAX
 Part Local =
-DIVIDE ( [CAPEX Local Retenu], [CAPEX Optimise] )
+DIVIDE ( [CAPEX Local Retenu], [CAPEX Optimise], 0 )
 ```
 
 ## _KPI_RISK
 
 ```DAX
 Nb Lignes Risque =
-COUNTROWS ( FILTER ( fact_metre, NOT ISBLANK ( fact_metre[risque] ) ) )
+COALESCE ( COUNTROWS ( FILTER ( fact_metre, NOT ISBLANK ( fact_metre[risque] ) ) ), 0 )
 ```
 
 ```DAX
 Risque Moyen =
-AVERAGE ( fact_metre[risque] )
+COALESCE ( AVERAGE ( fact_metre[risque] ), 0 )
 ```
 
 ```DAX
@@ -238,11 +238,10 @@ CALCULATE (
 
 ```DAX
 CAPEX A Risque =
-CALCULATE ( [CAPEX Optimise], FILTER ( fact_metre, fact_metre[risque] >= 60 ) )
+COALESCE ( CALCULATE ( [CAPEX Optimise], FILTER ( fact_metre, fact_metre[risque] >= 60 ) ), 0 )
 ```
 
 ```DAX
 Part CAPEX A Risque =
-DIVIDE ( [CAPEX A Risque], [CAPEX Optimise] )
+DIVIDE ( [CAPEX A Risque], [CAPEX Optimise], 0 )
 ```
-

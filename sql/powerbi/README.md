@@ -13,6 +13,9 @@ Power BI doit se connecter a Neon et consommer uniquement les vues de ce dossier
 - `vw_spatial_dashboard`
 - `vw_spatial_analytics`
 - `vw_cost_intelligence`
+- `vw_dim_lot_active`
+- `vw_dim_sous_lot_active`
+- `vw_dim_article_bpu_active`
 
 ## Installation sur Neon
 
@@ -37,6 +40,9 @@ SELECT * FROM vw_bim_dashboard LIMIT 20;
 SELECT * FROM vw_spatial_dashboard LIMIT 20;
 SELECT * FROM vw_spatial_analytics LIMIT 20;
 SELECT * FROM vw_cost_intelligence LIMIT 20;
+SELECT * FROM vw_dim_lot_active LIMIT 20;
+SELECT * FROM vw_dim_sous_lot_active LIMIT 20;
+SELECT * FROM vw_dim_article_bpu_active LIMIT 20;
 ```
 
 ## BIM_READY
@@ -64,3 +70,9 @@ Mesures disponibles : `surface_m2`, `capex_local`, `capex_import`, `capex_optimi
 `vw_cost_intelligence` expose les colonnes economiques pretes pour Pareto, benchmark, CAPEX/m2 et detection d'anomalies.
 
 Mesures disponibles : `capex_local`, `capex_import`, `capex_optimise`, `economie`, `capex_m2`, `roi`, `nb_lignes`.
+
+## SEGMENTS_ACTIFS
+
+Les vues `vw_dim_lot_active`, `vw_dim_sous_lot_active` et `vw_dim_article_bpu_active` filtrent les dimensions techniques sur les membres reellement presents dans `fact_metre`.
+
+Objectif : eviter que des segments Power BI issus d'anciennes generations de lots filtrent les KPI CAPEX a vide.

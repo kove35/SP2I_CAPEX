@@ -30,6 +30,11 @@ UNION ALL SELECT 'dim_lot', COUNT(*) FROM dim_lot
 UNION ALL SELECT 'dim_sous_lot_complet', COUNT(*) FROM dim_sous_lot_complet
 UNION ALL SELECT 'dim_article_bpu', COUNT(*) FROM dim_article_bpu;
 
+-- 2 bis. Vues actives recommandees pour les segments Power BI.
+SELECT 'vw_dim_lot_active' AS view_name, COUNT(*) AS rows_count FROM vw_dim_lot_active
+UNION ALL SELECT 'vw_dim_sous_lot_active', COUNT(*) FROM vw_dim_sous_lot_active
+UNION ALL SELECT 'vw_dim_article_bpu_active', COUNT(*) FROM vw_dim_article_bpu_active;
+
 -- 3. Controle financier de reference.
 SELECT
     COUNT(*) AS fact_metre_rows,
@@ -69,20 +74,21 @@ FROM fact_metre f
 LEFT JOIN dim_piece d ON d.piece_id = f.piece_id
 WHERE f.piece_id IS NOT NULL AND d.piece_id IS NULL
 UNION ALL
-SELECT 'lot_id', COUNT(*)
+SELECT 'lot', COUNT(*)
 FROM fact_metre f
-LEFT JOIN dim_lot d ON d.lot_id = f.lot_id
-WHERE f.lot_id IS NOT NULL AND d.lot_id IS NULL
+LEFT JOIN vw_dim_lot_active d
+    ON UPPER(TRIM(COALESCE(d.lot, ''))) = UPPER(TRIM(COALESCE(f.lot, '')))
+WHERE f.lot IS NOT NULL AND d.lot IS NULL
 UNION ALL
 SELECT 'sous_lot_id', COUNT(*)
 FROM fact_metre f
-LEFT JOIN dim_sous_lot_complet d ON d.sous_lot_id = f.sous_lot_id
+LEFT JOIN vw_dim_sous_lot_active d ON d.sous_lot_id = f.sous_lot_id
 WHERE f.sous_lot_id IS NOT NULL AND d.sous_lot_id IS NULL
 UNION ALL
-SELECT 'article_id', COUNT(*)
+SELECT 'code_article', COUNT(*)
 FROM fact_metre f
-LEFT JOIN dim_article_bpu d ON d.article_id = f.article_id
-WHERE f.article_id IS NOT NULL AND d.article_id IS NULL;
+LEFT JOIN vw_dim_article_bpu_active d ON d.code_article = f.code_article
+WHERE f.code_article IS NOT NULL AND d.code_article IS NULL;
 
 -- 5. Tables V1 a ne pas importer dans le modele V2.
 SELECT table_name AS v1_view_to_ignore
@@ -97,4 +103,3 @@ WHERE table_schema = 'public'
     'v_kpi_niveau'
   )
 ORDER BY table_name;
-

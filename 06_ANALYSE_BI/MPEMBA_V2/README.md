@@ -25,9 +25,9 @@ Dimensions :
 - `dim_appartement`
 - `dim_zone`
 - `dim_piece`
-- `dim_lot`
-- `dim_sous_lot_complet`
-- `dim_article_bpu`
+- `vw_dim_lot_active` importee dans Power BI sous le nom `DimLot`
+- `vw_dim_sous_lot_active` importee dans Power BI sous le nom `DimSousLotComplet`
+- `vw_dim_article_bpu_active` importee dans Power BI sous le nom `DimArticleBpu`
 
 Tables a ne pas importer :
 
@@ -60,12 +60,12 @@ dim_niveau[niveau_id]                         1 -> * fact_metre[niveau_id]
 dim_appartement[appartement_id]               1 -> * fact_metre[appartement_id]
 dim_zone[zone_id]                             1 -> * fact_metre[zone_id]
 dim_piece[piece_id]                           1 -> * fact_metre[piece_id]
-dim_lot[lot_id]                               1 -> * fact_metre[lot_id]
-dim_sous_lot_complet[sous_lot_id]             1 -> * fact_metre[sous_lot_id]
-dim_article_bpu[article_id]                   1 -> * fact_metre[article_id]
+DimLot[lot]                                   1 -> * FactMetre[lot]
+DimSousLotComplet[sous_lot_id]                1 -> * FactMetre[sous_lot_id]
+DimArticleBpu[code_article]                   1 -> * FactMetre[code_article]
 ```
 
-Si Power BI detecte une relation texte automatiquement, la supprimer et recreer la relation par cle technique.
+Si Power BI detecte une relation historique `lot_id` numerique vers un code BIM texte, la supprimer et recreer la relation par le code metier stable indique ci-dessus.
 
 ## Hierarchies
 
@@ -170,4 +170,5 @@ Conserver visibles :
 - [measures_dax.md](./measures_dax.md) : mesures DAX prioritaires.
 - [model_validation.sql](./model_validation.sql) : controles SQL Neon avant refresh Power BI.
 - [page_blueprint.md](./page_blueprint.md) : structure detaillee des pages.
-
+- [02_analyse_couts_audit.sql](./02_analyse_couts_audit.sql) : audit SQL de la page 02_ANALYSE_COUTS.
+- [02_analyse_couts_report.md](./02_analyse_couts_report.md) : diagnostic et plan de correction de la page 02_ANALYSE_COUTS.
