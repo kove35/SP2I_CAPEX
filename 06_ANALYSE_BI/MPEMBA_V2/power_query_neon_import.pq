@@ -84,7 +84,7 @@ DimLot =
             "neondb",
             [CreateNavigationProperties = false]
         ),
-        Table = Source{[Schema = "public", Item = "dim_lot"]}[Data]
+        Table = Source{[Schema = "public", Item = "vw_dim_lot_active"]}[Data]
     in
         Table;
 
@@ -95,7 +95,7 @@ DimSousLotComplet =
             "neondb",
             [CreateNavigationProperties = false]
         ),
-        Table = Source{[Schema = "public", Item = "dim_sous_lot_complet"]}[Data]
+        Table = Source{[Schema = "public", Item = "vw_dim_sous_lot_active"]}[Data]
     in
         Table;
 
@@ -106,7 +106,6 @@ DimArticleBpu =
             "neondb",
             [CreateNavigationProperties = false]
         ),
-        Table = Source{[Schema = "public", Item = "dim_article_bpu"]}[Data]
+        Table = Source{[Schema = "public", Item = "vw_dim_article_bpu_active"]}[Data]
     in
         Table;
-

@@ -1,4 +1,7 @@
 DROP VIEW IF EXISTS vw_cost_intelligence CASCADE;
+DROP VIEW IF EXISTS vw_dim_article_bpu_active CASCADE;
+DROP VIEW IF EXISTS vw_dim_sous_lot_active CASCADE;
+DROP VIEW IF EXISTS vw_dim_lot_active CASCADE;
 DROP VIEW IF EXISTS vw_spatial_analytics CASCADE;
 DROP VIEW IF EXISTS vw_spatial_dashboard CASCADE;
 DROP VIEW IF EXISTS vw_bim_dashboard CASCADE;
@@ -277,3 +280,33 @@ SELECT
     END AS roi,
     nb_lignes
 FROM vw_spatial_analytics;
+
+CREATE OR REPLACE VIEW vw_dim_lot_active AS
+SELECT d.*
+FROM dim_lot d
+WHERE EXISTS (
+    SELECT 1
+    FROM fact_metre f
+    WHERE UPPER(TRIM(COALESCE(f.lot, ''))) = UPPER(TRIM(COALESCE(d.lot, '')))
+       OR UPPER(TRIM(COALESCE(CAST(f.lot_id AS text), ''))) = UPPER(TRIM(COALESCE(d.lot, '')))
+);
+
+CREATE OR REPLACE VIEW vw_dim_sous_lot_active AS
+SELECT d.*
+FROM dim_sous_lot_complet d
+WHERE EXISTS (
+    SELECT 1
+    FROM fact_metre f
+    WHERE UPPER(TRIM(COALESCE(f.sous_lot_id, ''))) = UPPER(TRIM(COALESCE(d.sous_lot_id, '')))
+       OR UPPER(TRIM(COALESCE(f.sous_lot, ''))) = UPPER(TRIM(COALESCE(d.sous_lot_id, '')))
+);
+
+CREATE OR REPLACE VIEW vw_dim_article_bpu_active AS
+SELECT d.*
+FROM dim_article_bpu d
+WHERE EXISTS (
+    SELECT 1
+    FROM fact_metre f
+    WHERE UPPER(TRIM(COALESCE(f.code_article, ''))) = UPPER(TRIM(COALESCE(d.code_article, '')))
+       OR UPPER(TRIM(COALESCE(f.article_id, ''))) = UPPER(TRIM(COALESCE(d.code_article, '')))
+);
