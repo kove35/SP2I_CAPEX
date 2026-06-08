@@ -172,3 +172,19 @@ Conserver visibles :
 - [page_blueprint.md](./page_blueprint.md) : structure detaillee des pages.
 - [02_analyse_couts_audit.sql](./02_analyse_couts_audit.sql) : audit SQL de la page 02_ANALYSE_COUTS.
 - [02_analyse_couts_report.md](./02_analyse_couts_report.md) : diagnostic et plan de correction de la page 02_ANALYSE_COUTS.
+- [neon_integrity_audit.sql](./neon_integrity_audit.sql) : audit SQL complet Neon / Power BI Ready.
+- [run_neon_integrity_audit.py](./run_neon_integrity_audit.py) : execution automatisee de l'audit avec rapport JSON/Markdown.
+
+## Audit Neon
+
+Executer l'audit complet avec l'URL Neon en variable de session, sans l'ecrire dans le depot :
+
+```powershell
+$env:DATABASE_URL="postgresql://USER:PASSWORD@ep-snowy-flower-al6kbdya.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+.\.venv\Scripts\python.exe 06_ANALYSE_BI\MPEMBA_V2\run_neon_integrity_audit.py
+```
+
+Sorties generees :
+
+- `neon_integrity_audit_result.json`
+- `neon_integrity_audit_report.md`
