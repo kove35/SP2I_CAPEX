@@ -36,10 +36,13 @@ services:
         sync: false
 
       - key: DB_POOL_SIZE
-        value: "2"
+        value: "5"
 
       - key: DB_MAX_OVERFLOW
-        value: "3"
+        value: "5"
+
+      - key: DB_POOL_TIMEOUT
+        value: "10"
 
       - key: DB_POOL_RECYCLE
         value: "1800"

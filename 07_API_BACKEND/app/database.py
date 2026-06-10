@@ -43,8 +43,9 @@ connect_args: dict[str, Any] = {}
 if DATABASE_URL_OBJ.drivername.startswith("postgresql+psycopg"):
     connect_args["connect_timeout"] = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
 
-DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "2"))
-DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "3"))
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "5"))
+DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "10"))
 DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
 
 engine = create_engine(
@@ -52,6 +53,7 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=DB_POOL_SIZE,
     max_overflow=DB_MAX_OVERFLOW,
+    pool_timeout=DB_POOL_TIMEOUT,
     pool_recycle=DB_POOL_RECYCLE,
     connect_args=connect_args,
     future=True,
