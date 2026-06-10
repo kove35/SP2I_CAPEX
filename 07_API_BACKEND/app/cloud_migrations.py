@@ -608,19 +608,19 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         COALESCE(NULLIF(trim(piece), ''), 'NON_RENSEIGNE') AS piece,
         COALESCE(NULLIF(trim(piece), ''), 'NON_RENSEIGNE') AS piece_nom,
         CASE
-            WHEN upper(coalesce(piece, '')) LIKE '%SEJOUR%' OR upper(coalesce(piece, '')) LIKE '%SALON%' OR upper(coalesce(piece, '')) LIKE '%CUISINE%' THEN 'JOUR'
-            WHEN upper(coalesce(piece, '')) LIKE '%CHAMBRE%' OR upper(coalesce(piece, '')) LIKE '%DRESSING%' THEN 'NUIT'
-            WHEN upper(coalesce(piece, '')) LIKE '%SDE%' OR upper(coalesce(piece, '')) LIKE '%SDB%' OR upper(coalesce(piece, '')) LIKE '%WC%' THEN 'SANITAIRE'
-            WHEN upper(coalesce(piece, '')) LIKE '%COULOIR%' OR upper(coalesce(piece, '')) LIKE '%ESCALIER%' THEN 'CIRCULATION'
-            WHEN upper(coalesce(piece, '')) LIKE '%BALCON%' OR upper(coalesce(piece, '')) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            WHEN upper(coalesce(piece, '')) LIKE '%%SEJOUR%%' OR upper(coalesce(piece, '')) LIKE '%%SALON%%' OR upper(coalesce(piece, '')) LIKE '%%CUISINE%%' THEN 'JOUR'
+            WHEN upper(coalesce(piece, '')) LIKE '%%CHAMBRE%%' OR upper(coalesce(piece, '')) LIKE '%%DRESSING%%' THEN 'NUIT'
+            WHEN upper(coalesce(piece, '')) LIKE '%%SDE%%' OR upper(coalesce(piece, '')) LIKE '%%SDB%%' OR upper(coalesce(piece, '')) LIKE '%%WC%%' THEN 'SANITAIRE'
+            WHEN upper(coalesce(piece, '')) LIKE '%%COULOIR%%' OR upper(coalesce(piece, '')) LIKE '%%ESCALIER%%' THEN 'CIRCULATION'
+            WHEN upper(coalesce(piece, '')) LIKE '%%BALCON%%' OR upper(coalesce(piece, '')) LIKE '%%TERRASSE%%' THEN 'EXTERIEUR'
             ELSE 'AUTRE'
         END AS type_piece,
         CASE
-            WHEN upper(coalesce(piece, '')) LIKE '%SEJOUR%' OR upper(coalesce(piece, '')) LIKE '%SALON%' OR upper(coalesce(piece, '')) LIKE '%CUISINE%' THEN 'JOUR'
-            WHEN upper(coalesce(piece, '')) LIKE '%CHAMBRE%' OR upper(coalesce(piece, '')) LIKE '%DRESSING%' THEN 'NUIT'
-            WHEN upper(coalesce(piece, '')) LIKE '%SDE%' OR upper(coalesce(piece, '')) LIKE '%SDB%' OR upper(coalesce(piece, '')) LIKE '%WC%' THEN 'SANITAIRE'
-            WHEN upper(coalesce(piece, '')) LIKE '%COULOIR%' OR upper(coalesce(piece, '')) LIKE '%ESCALIER%' THEN 'CIRCULATION'
-            WHEN upper(coalesce(piece, '')) LIKE '%BALCON%' OR upper(coalesce(piece, '')) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            WHEN upper(coalesce(piece, '')) LIKE '%%SEJOUR%%' OR upper(coalesce(piece, '')) LIKE '%%SALON%%' OR upper(coalesce(piece, '')) LIKE '%%CUISINE%%' THEN 'JOUR'
+            WHEN upper(coalesce(piece, '')) LIKE '%%CHAMBRE%%' OR upper(coalesce(piece, '')) LIKE '%%DRESSING%%' THEN 'NUIT'
+            WHEN upper(coalesce(piece, '')) LIKE '%%SDE%%' OR upper(coalesce(piece, '')) LIKE '%%SDB%%' OR upper(coalesce(piece, '')) LIKE '%%WC%%' THEN 'SANITAIRE'
+            WHEN upper(coalesce(piece, '')) LIKE '%%COULOIR%%' OR upper(coalesce(piece, '')) LIKE '%%ESCALIER%%' THEN 'CIRCULATION'
+            WHEN upper(coalesce(piece, '')) LIKE '%%BALCON%%' OR upper(coalesce(piece, '')) LIKE '%%TERRASSE%%' THEN 'EXTERIEUR'
             ELSE 'AUTRE'
         END AS piece_type,
         COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE') || '/' || COALESCE(NULLIF(trim(niveau), ''), 'GLOBAL') AS zone,
