@@ -275,6 +275,34 @@ class AnalyticsService:
     def cost_intelligence(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("cost-intelligence", query, lambda: self._build_cost_intelligence(query))
 
+    def build_generation_diagnostic(self) -> dict[str, Any]:
+        return self._generation_endpoint(
+            "/analytics/generation-diagnostic",
+            self.repository.get_generation_diagnostic,
+            self._generation_diagnostic_fallback(),
+        )
+
+    def build_generation_engine(self) -> dict[str, Any]:
+        return self._generation_endpoint(
+            "/analytics/generation-engine",
+            self.repository.get_generation_engine,
+            self._generation_engine_fallback(),
+        )
+
+    def build_energy_resilience(self) -> dict[str, Any]:
+        return self._generation_endpoint(
+            "/analytics/energy-resilience",
+            self.repository.get_energy_resilience,
+            self._energy_resilience_fallback(),
+        )
+
+    def build_building_completion(self) -> dict[str, Any]:
+        return self._generation_endpoint(
+            "/analytics/building-completion",
+            self.repository.get_building_completion,
+            self._building_completion_fallback(),
+        )
+
     def detect_cost_anomalies(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self._spatial_view_where(query)
         return self._detect_cost_anomalies(where_sql, params)
@@ -1034,6 +1062,11 @@ class AnalyticsService:
         line_delta_pct = abs(line_delta) / source_rows if source_rows else 0
         family_pending = int(metrics.get("lignes_famille_a_classer") or 0)
         fallback_rows = int(metrics.get("lignes_capex_fallback") or 0)
+        spatial_legacy_empty = max(
+            int(metrics.get("lignes_appart_legacy_vides") or 0),
+            int(metrics.get("lignes_piece_legacy_vides") or 0),
+        )
+        spatial_legacy_empty_rate = spatial_legacy_empty / max(fact_rows, 1)
         invalid_rows = (
             int(metrics.get("lignes_quantite_invalide") or 0)
             + int(metrics.get("lignes_capex_invalide") or 0)
@@ -1058,6 +1091,8 @@ class AnalyticsService:
             warnings.append(f"{family_pending} lignes restent sans classification metier robuste.")
         if fallback_rows:
             warnings.append(f"{fallback_rows} lignes utilisent le montant de secours prix_total_ht dans le cockpit.")
+        if spatial_legacy_empty_rate > 0.10:
+            warnings.append("DATA_QUALITY: BIM spatial dimensions incomplete")
         if invalid_rows:
             warnings.append(f"{invalid_rows} controles ligne sont en anomalie dans FACT_METRE.")
 
@@ -1080,6 +1115,7 @@ class AnalyticsService:
             "fact_metre_non_empty": fact_rows > 0,
             "taxonomy_ok": family_pending == 0,
             "line_quality_ok": invalid_rows == 0,
+            "bim_spatial_dimensions_ok": spatial_legacy_empty_rate <= 0.10,
         }
 
         return normalize_payload_labels({
@@ -1101,6 +1137,9 @@ class AnalyticsService:
                 "trust_score": source.get("trust_score", score),
                 "lignes_famille_a_classer": family_pending,
                 "lignes_capex_fallback": fallback_rows,
+                "lignes_appart_legacy_vides": int(metrics.get("lignes_appart_legacy_vides") or 0),
+                "lignes_piece_legacy_vides": int(metrics.get("lignes_piece_legacy_vides") or 0),
+                "bim_spatial_dimensions_incomplete": spatial_legacy_empty_rate > 0.10,
                 "anomalies": len(anomalies) + invalid_rows,
             },
             "charts": {
@@ -1339,7 +1378,7 @@ class AnalyticsService:
             "ai_anomalies": audit_excel.get("ai_anomalies", []),
             "governance_quality": governance_quality,
             "trust_score": ai_confidence.get("trust_score"),
-            "analytics_state": "LIVE",
+            "analytics_state": "Synchronise",
         }
 
     def _build_dashboard(self, query: AnalyticsQuery, dashboard_type: str) -> dict[str, Any]:
@@ -1357,7 +1396,7 @@ class AnalyticsService:
             total=parts["total"],
             metadata={
                 "dashboard": dashboard_type,
-                "engine": "SP2I Analytics Engine V1",
+                "engine": "Analyse SP2I",
                 "timing": timings,
             },
         )
@@ -1740,8 +1779,8 @@ class AnalyticsService:
         projet = first_non_empty_sql(columns, ["project_code", "projet_id"], "'PROJET_MPEMBA'")
         batiment = first_non_empty_sql(columns, ["batiment", "batiment_code"], "'NON_RENSEIGNE'")
         niveau = first_non_empty_sql(columns, ["niveau", "niveau_code"], "'GLOBAL'")
-        appartement = first_non_empty_sql(columns, ["appartement_id", "appartement_code", "appart", "appart_id"], "'COMMUN'")
-        piece = first_non_empty_sql(columns, ["piece", "piece_code", "piece_id"], "'NON_RENSEIGNE'")
+        appartement = first_non_empty_sql(columns, ["appartement_code", "appartement_id", "appart", "appart_id"], "'COMMUN'")
+        piece = first_non_empty_sql(columns, ["piece_code", "piece", "piece_id"], "'NON_RENSEIGNE'")
         lot = first_non_empty_sql(columns, ["lot", "lot_code", "lot_id"], "'NON_RENSEIGNE'")
         sous_lot = first_non_empty_sql(columns, ["sous_lot", "sous_lot_id"], "'NON_RENSEIGNE'")
         famille = first_non_empty_sql(columns, ["famille", "famille_id"], "'default'")
@@ -2115,6 +2154,7 @@ class AnalyticsService:
         }.get(dashboard_type, "lot")
 
         kpis = measure("kpis", lambda: self.repository.kpis(query))
+        self._decorate_dashboard_kpis(kpis, filtered_metrics)
         table_result = measure("table", lambda: self.repository.table(query))
         drilldown = measure("drilldown", lambda: self.repository.grouped(query, default_group=group_default))
         heatmap = measure("heatmap", lambda: self.repository.heatmap(query))
@@ -2165,6 +2205,54 @@ class AnalyticsService:
                 "total": total,
             }
         return timings, parts
+
+    def _decorate_dashboard_kpis(self, kpis: dict[str, Any], filtered_metrics: dict[str, Any]) -> None:
+        nb_lignes = int(kpis.get("nb_lignes") or filtered_metrics.get("nb_lignes") or 0)
+        nb_lots = int(kpis.get("nb_lots") or filtered_metrics.get("nb_lots") or 0)
+        capex_couvert = float(kpis.get("capex_brut") or filtered_metrics.get("capex_brut") or 0)
+        confidence = self._analytics_confidence(nb_lignes, nb_lots, capex_couvert)
+        kpis["analytics_confidence"] = confidence["level"]
+        kpis["analytics_confidence_label"] = confidence["label"]
+        kpis["analytics_confidence_score"] = confidence["score"]
+        kpis["analytics_confidence_reasons"] = confidence["reasons"]
+        kpis["capex_couvert"] = round(capex_couvert, 2)
+        kpis["nb_lots"] = nb_lots
+        if confidence["level"] == "LOW":
+            current_risk = str(kpis.get("risque_global") or "Moyen")
+            if current_risk.lower() in {"fort", "eleve", "elevé", "critique"}:
+                kpis["risque_global"] = "Moyen"
+            kpis["risk_guard"] = "LOW_CONFIDENCE"
+
+    @staticmethod
+    def _analytics_confidence(nb_lignes: int, nb_lots: int, capex_couvert: float) -> dict[str, Any]:
+        reasons: list[str] = []
+        if nb_lignes < 20:
+            reasons.append("moins de 20 lignes analysees")
+        if nb_lots < 3:
+            reasons.append("moins de 3 lots couverts")
+        if nb_lignes < 20 or nb_lots < 3:
+            return {
+                "level": "LOW",
+                "label": "Faible",
+                "score": 35,
+                "reasons": reasons or ["echantillon limite"],
+                "capex_couvert": round(capex_couvert, 2),
+            }
+        if nb_lignes <= 100:
+            return {
+                "level": "MEDIUM",
+                "label": "Moyenne",
+                "score": 65,
+                "reasons": ["20 a 100 lignes analysees"],
+                "capex_couvert": round(capex_couvert, 2),
+            }
+        return {
+            "level": "HIGH",
+            "label": "Elevee",
+            "score": 90,
+            "reasons": ["plus de 100 lignes analysees"],
+            "capex_couvert": round(capex_couvert, 2),
+        }
 
     def _measure_dashboard_views(self) -> list[dict[str, Any]]:
         view_names = [
@@ -2695,6 +2783,81 @@ class AnalyticsService:
             "metadata": metadata or {"engine": "SP2I Analytics Engine V1"},
         })
 
+    def _generation_endpoint(self, endpoint: str, builder, fallback: dict[str, Any]) -> dict[str, Any]:
+        started = perf_counter()
+        try:
+            payload = builder()
+            elapsed_ms = round((perf_counter() - started) * 1000, 2)
+            logger.info({
+                "endpoint": endpoint,
+                "engine": "SP2I Generation Analytics V5.3",
+                "timings": {"endpoint_total_ms": elapsed_ms},
+            })
+            return payload
+        except Exception as erreur:
+            elapsed_ms = round((perf_counter() - started) * 1000, 2)
+            logger.exception("Generation analytics endpoint degraded: %s", endpoint)
+            return {
+                **fallback,
+                "warning": "GENERATION_ANALYTICS_DEGRADED",
+                "error": str(erreur),
+                "timing_ms": elapsed_ms,
+            }
+
+    @staticmethod
+    def _generation_diagnostic_fallback() -> dict[str, Any]:
+        return {
+            "v52_status": "UNKNOWN",
+            "v521_status": "UNKNOWN",
+            "v522_status": "UNKNOWN",
+            "v53_status": "UNKNOWN",
+            "fact_generation_bim": 0,
+            "fact_generation_network": 0,
+            "fact_generation_dqe": 0,
+            "fact_generation_expansion": 0,
+            "building_rows": 0,
+            "envelope_rows": 0,
+            "special_rows": 0,
+            "coverage_pct": 0,
+        }
+
+    @staticmethod
+    def _generation_engine_fallback() -> dict[str, Any]:
+        return {
+            "generated_capex_local": 0,
+            "generated_capex_import": 0,
+            "generated_savings": 0,
+            "generated_lines": 0,
+            "coverage_pct": 0,
+            "by_lot": [],
+        }
+
+    @staticmethod
+    def _energy_resilience_fallback() -> dict[str, Any]:
+        return {
+            "solar_kwc": 0,
+            "battery_capacity_kwh": 0,
+            "generator": "",
+            "autonomy_hours": 0,
+            "generators": [],
+            "energy_sources": [],
+        }
+
+    @staticmethod
+    def _building_completion_fallback() -> dict[str, Any]:
+        return {
+            "go_rows": 0,
+            "masonry_rows": 0,
+            "roof_rows": 0,
+            "facade_rows": 0,
+            "vrd_rows": 0,
+            "security_rows": 0,
+            "fire_rows": 0,
+            "elevator_rows": 0,
+            "total_rows": 0,
+            "by_lot": {},
+        }
+
     def _cached(self, prefix: str, query: AnalyticsQuery, builder) -> dict[str, Any]:
         signature = self._fact_metre_cache_signature()
         key_payload = {"query": query.model_dump(mode="json"), "source": signature}
@@ -2771,6 +2934,7 @@ class AnalyticsService:
                 """
                 SELECT
                     COUNT(*) AS nb_lignes,
+                    COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
                     COALESCE(SUM(capex_local), 0) AS capex_brut
                 FROM fact_metre
                 """
@@ -2784,6 +2948,7 @@ class AnalyticsService:
                 f"""
                 SELECT
                     COUNT(*) AS nb_lignes,
+                    COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
                     COALESCE(SUM(capex_local), 0) AS capex_brut
                 FROM fact_metre
                 {where_sql}
@@ -3016,8 +3181,8 @@ class AnalyticsService:
 
     def _bim_fact_completion(self) -> dict[str, Any]:
         columns = load_table_columns(self.repository.db, "fact_metre")
-        appartement_sql = first_non_empty_sql(columns, ("appartement_id", "appartement_code", "appart"))
-        piece_sql = first_non_empty_sql(columns, ("piece", "piece_code"))
+        appartement_sql = first_non_empty_sql(columns, ("appartement_code", "appartement_id", "appart"))
+        piece_sql = first_non_empty_sql(columns, ("piece_code", "piece"))
         piece_type_sql = first_non_empty_sql(columns, ("piece_type", "type_zone"))
         ifc_guid_sql = first_non_empty_sql(columns, ("ifc_guid",))
         ifc_type_sql = first_non_empty_sql(columns, ("ifc_type",))
@@ -3085,7 +3250,7 @@ class AnalyticsService:
 
     def _bim_spatial_quality(self) -> dict[str, Any]:
         columns = load_table_columns(self.repository.db, "fact_metre")
-        piece_sql = first_non_empty_sql(columns, ("piece", "piece_code"), default_sql="'NON_DISPONIBLE'")
+        piece_sql = first_non_empty_sql(columns, ("piece_code", "piece"), default_sql="'NON_DISPONIBLE'")
         rows = self.repository.db.execute(
             text(
                 f"""
@@ -3132,8 +3297,8 @@ class AnalyticsService:
             "projet": first_non_empty_sql(columns, ("project_code", "projet_id")),
             "batiment": first_non_empty_sql(columns, ("batiment",)),
             "niveau": first_non_empty_sql(columns, ("niveau",)),
-            "appartement": first_non_empty_sql(columns, ("appartement_id", "appartement_code", "appart")),
-            "piece": first_non_empty_sql(columns, ("piece", "piece_code")),
+            "appartement": first_non_empty_sql(columns, ("appartement_code", "appartement_id", "appart")),
+            "piece": first_non_empty_sql(columns, ("piece_code", "piece")),
             "lot": first_non_empty_sql(columns, ("lot",)),
             "famille": first_non_empty_sql(columns, ("famille",)),
             "article": first_non_empty_sql(columns, ("code_article", "article_id", "designation")),

@@ -1,0 +1,91 @@
+-- SP2I CAPEX - Mesures DAX V5.3
+-- Regle absolue: ne jamais additionner directement FACT_METRE et les vues generatives.
+
+-- Univers Reel
+Reel CAPEX Local :=
+SUM ( fact_metre[capex_local] )
+
+Reel CAPEX Optimise :=
+SUM ( fact_metre[capex_optimise] )
+
+Reel Economie :=
+SUM ( fact_metre[economie] )
+
+Reel Lignes :=
+COUNTROWS ( fact_metre )
+
+Reel Lots :=
+DISTINCTCOUNT ( fact_metre[lot] )
+
+-- Univers Genere
+Genere CAPEX Local :=
+SUM ( vw_sp2i_generated_capex[capex_local] )
+
+Genere CAPEX Import :=
+SUM ( vw_sp2i_generated_capex[capex_import] )
+
+Genere Economie Potentielle :=
+SUM ( vw_sp2i_generated_capex[economie_potentielle] )
+
+Genere Lignes DQE :=
+SUM ( vw_sp2i_generated_capex[nb_lignes_dqe] )
+
+Genere Lignes Detaillees :=
+COUNTROWS ( vw_sp2i_generated_quantities )
+
+Genere Quantite Totale :=
+SUM ( vw_sp2i_generated_quantities[quantity] )
+
+Genere Lots :=
+DISTINCTCOUNT ( vw_sp2i_generated_quantities[lot_code] )
+
+-- Univers Resilience
+Resilience Solaire kWc :=
+SUM ( vw_energy_resilience_dashboard[solar_kwc] )
+
+Resilience Batteries kWh :=
+SUM ( vw_energy_resilience_dashboard[battery_capacity_kwh] )
+
+Resilience Autonomie h :=
+SUM ( vw_energy_resilience_dashboard[autonomie_totale_h] )
+
+Resilience Couverture Solaire % :=
+AVERAGE ( vw_energy_resilience_dashboard[taux_couverture_solaire] )
+
+Resilience Sources Lignes :=
+COUNTROWS ( vw_energy_sources_dashboard )
+
+-- Univers Completude Batiment
+V53 Building Lignes :=
+COUNTROWS ( vw_sp2i_generated_building )
+
+V53 Envelope Lignes :=
+COUNTROWS ( vw_sp2i_generated_envelope )
+
+V53 Special Systems Lignes :=
+COUNTROWS ( vw_sp2i_generated_special_systems )
+
+V53 Total Lignes Dedoublonne :=
+[V53 Building Lignes]
+    + CALCULATE (
+        COUNTROWS ( vw_sp2i_generated_envelope ),
+        vw_sp2i_generated_envelope[lot_code] <> "LOT_TOIT"
+    )
+    + CALCULATE (
+        COUNTROWS ( vw_sp2i_generated_special_systems ),
+        vw_sp2i_generated_special_systems[lot_code] <> "LOT_VRD"
+    )
+
+-- Comparaison controlee
+Ecart Reel vs Genere Local :=
+[Reel CAPEX Local] - [Genere CAPEX Local]
+
+Ratio Genere sur Reel :=
+DIVIDE ( [Genere CAPEX Local], [Reel CAPEX Local] )
+
+Couverture Generation % :=
+DIVIDE ( [Genere Lignes Detaillees] + [V53 Total Lignes Dedoublonne], [Reel Lignes] + [Genere Lignes Detaillees] + [V53 Total Lignes Dedoublonne] )
+
+-- Mesure garde-fou: utiliser seulement pour une carte d'avertissement.
+Anti Double Comptage Warning :=
+"Ne pas additionner Reel CAPEX Local et Genere CAPEX Local hors mesure de comparaison."

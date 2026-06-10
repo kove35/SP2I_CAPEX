@@ -7,6 +7,10 @@ import ImportDecisionSankey from "../../components/charts/ImportDecisionSankey";
 import RiskMatrix from "../../components/charts/RiskMatrix";
 import { markPerformance, markPageReady, recordComponentRender } from "../../services/performanceMonitor";
 import InsightsPanel from "../../components/analytics/InsightsPanel";
+import BuildingCompletionPanel from "../../components/analytics/BuildingCompletionPanel";
+import EnergyResiliencePanel from "../../components/analytics/EnergyResiliencePanel";
+import GenerationDiagnosticCard from "../../components/analytics/GenerationDiagnosticCard";
+import GenerationEnginePanel from "../../components/analytics/GenerationEnginePanel";
 import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilters";
 import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
@@ -31,6 +35,7 @@ const dashboards = [
   ["heatmaps", "Zones couteuses"],
   ["drilldown", "Analyse detaillee"],
   ["timeline", "Evolution"],
+  ["generation", "Innovation & Generation"],
   ["monitoring", "Etat du systeme"],
 ];
 
@@ -43,6 +48,7 @@ const dashboardCopy = {
   heatmaps: "Repere les lots, familles ou zones qui concentrent le plus de budget.",
   drilldown: "Analyse detaillee des lignes budgetaires avec selection interactive et filtres globaux.",
   timeline: "Evolution des strategies, des economies et des decisions dans le temps.",
+  generation: "Lecture separee des couches generatives V5.2.1, V5.2.2 et V5.3 sans melange avec le CAPEX reel.",
   monitoring: "Etat du systeme, qualite des donnees, base projet et coherence des indicateurs.",
 };
 
@@ -316,6 +322,19 @@ function LogisticsView({ table, timelineRows }) {
   );
 }
 
+function InnovationGenerationView() {
+  return (
+    <section className="bi-dashboard-wide">
+      <GenerationDiagnosticCard />
+      <section className="bi-dashboard-grid">
+        <GenerationEnginePanel />
+        <EnergyResiliencePanel />
+      </section>
+      <BuildingCompletionPanel />
+    </section>
+  );
+}
+
 function useDashboardFromUrl() {
   const [dashboard, setDashboard] = React.useState(new URLSearchParams(window.location.search).get("dashboard") || "direction");
 
@@ -459,6 +478,9 @@ export default function AnalyticsPage() {
     }
     if (dashboard === "timeline") {
       return <TimelineView timelineRows={timelineRows} kpis={kpis} />;
+    }
+    if (dashboard === "generation") {
+      return <InnovationGenerationView />;
     }
     return <DirectionIndicatorsView engine={engine} kpis={kpis} barRows={barRows} table={table} riskRows={riskRows} />;
   };
