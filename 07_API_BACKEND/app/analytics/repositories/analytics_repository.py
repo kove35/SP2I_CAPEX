@@ -609,18 +609,40 @@ class AnalyticsRepository:
             capex = dict(row)
 
         by_lot: list[dict[str, Any]] = []
-        if self._relation_exists("vw_sp2i_generated_quantities"):
+        generated_lot_views = [
+            "vw_sp2i_generated_quantities",
+            "vw_sp2i_generated_building",
+            "vw_sp2i_generated_envelope",
+            "vw_sp2i_generated_special_systems",
+        ]
+        existing_generated_lot_views = [
+            view_name for view_name in generated_lot_views if self._relation_exists(view_name)
+        ]
+        if existing_generated_lot_views:
+            union_sql = "\nUNION ALL\n".join(
+                f"""
+                SELECT
+                    COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE') AS lot_code,
+                    generated_article_code,
+                    quantity
+                FROM {view_name}
+                """
+                for view_name in existing_generated_lot_views
+            )
             rows = self.db.execute(
                 text(
-                    """
+                    f"""
+                    WITH all_generated_lots AS (
+                        {union_sql}
+                    )
                     SELECT
                         COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE') AS lot_code,
                         COUNT(*) AS nb_lignes,
                         COUNT(DISTINCT generated_article_code) AS nb_articles,
                         ROUND(COALESCE(SUM(quantity), 0)::NUMERIC, 4) AS quantity_total
-                    FROM vw_sp2i_generated_quantities
+                    FROM all_generated_lots
                     GROUP BY COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE')
-                    ORDER BY nb_lignes DESC, lot_code
+                    ORDER BY lot_code
                     """
                 )
             ).mappings().all()
