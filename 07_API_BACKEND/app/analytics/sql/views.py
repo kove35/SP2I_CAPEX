@@ -157,11 +157,11 @@ SELECT
     f.piece,
     COALESCE(NULLIF(dp.piece_type, ''), NULLIF(dp.type_piece, ''),
         CASE
-            WHEN UPPER(f.piece) LIKE '%SEJOUR%' OR UPPER(f.piece) LIKE '%SALON%' OR UPPER(f.piece) LIKE '%CUISINE%' THEN 'JOUR'
-            WHEN UPPER(f.piece) LIKE '%CHAMBRE%' OR UPPER(f.piece) LIKE '%DRESSING%' THEN 'NUIT'
-            WHEN UPPER(f.piece) LIKE '%SDE%' OR UPPER(f.piece) LIKE '%SDB%' OR UPPER(f.piece) LIKE '%WC%' THEN 'SANITAIRE'
-            WHEN UPPER(f.piece) LIKE '%COULOIR%' OR UPPER(f.piece) LIKE '%ESCALIER%' THEN 'CIRCULATION'
-            WHEN UPPER(f.piece) LIKE '%BALCON%' OR UPPER(f.piece) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            WHEN UPPER(f.piece) LIKE '%%SEJOUR%%' OR UPPER(f.piece) LIKE '%%SALON%%' OR UPPER(f.piece) LIKE '%%CUISINE%%' THEN 'JOUR'
+            WHEN UPPER(f.piece) LIKE '%%CHAMBRE%%' OR UPPER(f.piece) LIKE '%%DRESSING%%' THEN 'NUIT'
+            WHEN UPPER(f.piece) LIKE '%%SDE%%' OR UPPER(f.piece) LIKE '%%SDB%%' OR UPPER(f.piece) LIKE '%%WC%%' THEN 'SANITAIRE'
+            WHEN UPPER(f.piece) LIKE '%%COULOIR%%' OR UPPER(f.piece) LIKE '%%ESCALIER%%' THEN 'CIRCULATION'
+            WHEN UPPER(f.piece) LIKE '%%BALCON%%' OR UPPER(f.piece) LIKE '%%TERRASSE%%' THEN 'EXTERIEUR'
             ELSE 'AUTRE'
         END
     ) AS type_piece,
@@ -191,11 +191,11 @@ GROUP BY
     f.piece,
     COALESCE(NULLIF(dp.piece_type, ''), NULLIF(dp.type_piece, ''),
         CASE
-            WHEN UPPER(f.piece) LIKE '%SEJOUR%' OR UPPER(f.piece) LIKE '%SALON%' OR UPPER(f.piece) LIKE '%CUISINE%' THEN 'JOUR'
-            WHEN UPPER(f.piece) LIKE '%CHAMBRE%' OR UPPER(f.piece) LIKE '%DRESSING%' THEN 'NUIT'
-            WHEN UPPER(f.piece) LIKE '%SDE%' OR UPPER(f.piece) LIKE '%SDB%' OR UPPER(f.piece) LIKE '%WC%' THEN 'SANITAIRE'
-            WHEN UPPER(f.piece) LIKE '%COULOIR%' OR UPPER(f.piece) LIKE '%ESCALIER%' THEN 'CIRCULATION'
-            WHEN UPPER(f.piece) LIKE '%BALCON%' OR UPPER(f.piece) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+            WHEN UPPER(f.piece) LIKE '%%SEJOUR%%' OR UPPER(f.piece) LIKE '%%SALON%%' OR UPPER(f.piece) LIKE '%%CUISINE%%' THEN 'JOUR'
+            WHEN UPPER(f.piece) LIKE '%%CHAMBRE%%' OR UPPER(f.piece) LIKE '%%DRESSING%%' THEN 'NUIT'
+            WHEN UPPER(f.piece) LIKE '%%SDE%%' OR UPPER(f.piece) LIKE '%%SDB%%' OR UPPER(f.piece) LIKE '%%WC%%' THEN 'SANITAIRE'
+            WHEN UPPER(f.piece) LIKE '%%COULOIR%%' OR UPPER(f.piece) LIKE '%%ESCALIER%%' THEN 'CIRCULATION'
+            WHEN UPPER(f.piece) LIKE '%%BALCON%%' OR UPPER(f.piece) LIKE '%%TERRASSE%%' THEN 'EXTERIEUR'
             ELSE 'AUTRE'
         END
     ),
@@ -227,11 +227,11 @@ typed AS (
         f.*,
         COALESCE(NULLIF(dp.piece_type, ''), NULLIF(dp.type_piece, ''),
             CASE
-                WHEN UPPER(f.piece) LIKE '%SEJOUR%' OR UPPER(f.piece) LIKE '%SALON%' OR UPPER(f.piece) LIKE '%CUISINE%' THEN 'JOUR'
-                WHEN UPPER(f.piece) LIKE '%CHAMBRE%' OR UPPER(f.piece) LIKE '%DRESSING%' THEN 'NUIT'
-                WHEN UPPER(f.piece) LIKE '%SDE%' OR UPPER(f.piece) LIKE '%SDB%' OR UPPER(f.piece) LIKE '%WC%' THEN 'SANITAIRE'
-                WHEN UPPER(f.piece) LIKE '%COULOIR%' OR UPPER(f.piece) LIKE '%ESCALIER%' THEN 'CIRCULATION'
-                WHEN UPPER(f.piece) LIKE '%BALCON%' OR UPPER(f.piece) LIKE '%TERRASSE%' THEN 'EXTERIEUR'
+                WHEN UPPER(f.piece) LIKE '%%SEJOUR%%' OR UPPER(f.piece) LIKE '%%SALON%%' OR UPPER(f.piece) LIKE '%%CUISINE%%' THEN 'JOUR'
+                WHEN UPPER(f.piece) LIKE '%%CHAMBRE%%' OR UPPER(f.piece) LIKE '%%DRESSING%%' THEN 'NUIT'
+                WHEN UPPER(f.piece) LIKE '%%SDE%%' OR UPPER(f.piece) LIKE '%%SDB%%' OR UPPER(f.piece) LIKE '%%WC%%' THEN 'SANITAIRE'
+                WHEN UPPER(f.piece) LIKE '%%COULOIR%%' OR UPPER(f.piece) LIKE '%%ESCALIER%%' THEN 'CIRCULATION'
+                WHEN UPPER(f.piece) LIKE '%%BALCON%%' OR UPPER(f.piece) LIKE '%%TERRASSE%%' THEN 'EXTERIEUR'
                 ELSE 'TECHNIQUE'
             END
         ) AS type_piece,
