@@ -46,6 +46,22 @@ export function getAnalyticsCostIntelligence(filters, extras = {}) {
   return request({ url: "/analytics/cost-intelligence", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
 }
 
+export function getAnalyticsGenerationDiagnostic() {
+  return request({ url: "/analytics/generation-diagnostic" });
+}
+
+export function getAnalyticsGenerationEngine() {
+  return request({ url: "/analytics/generation-engine" });
+}
+
+export function getAnalyticsEnergyResilience() {
+  return request({ url: "/analytics/energy-resilience" });
+}
+
+export function getAnalyticsBuildingCompletion() {
+  return request({ url: "/analytics/building-completion" });
+}
+
 export async function exportAnalyticsProcurementFile(filters, extras = {}) {
   const response = await apiClient({
     url: "/analytics/procurement-export",

@@ -55,6 +55,7 @@ class AnalyticsRepository:
                     "appart",
                     "piece",
                     "piece_id",
+                    "piece_code",
                     "piece_type",
                     "type_zone",
                     "ifc_guid",
@@ -86,6 +87,7 @@ class AnalyticsRepository:
                     CASE WHEN COUNT(*) = 0 THEN 0
                          ELSE SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END)::float / COUNT(*)
                     END AS taux_importable,
+                    COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
                     COUNT(*) AS nb_lignes
                 FROM fact_metre
                 {where_sql}
@@ -104,6 +106,7 @@ class AnalyticsRepository:
         appartement_sql = self._appartement_sql()
         piece_sql = self._piece_sql()
         piece_type_sql = self._piece_type_sql()
+        family_sql = self._family_sql()
         ifc_guid_sql = self._optional_text_column("ifc_guid")
         ifc_type_sql = self._optional_text_column("ifc_type")
         bim_object_sql = self._bim_object_sql()
@@ -116,7 +119,7 @@ class AnalyticsRepository:
                     id_ligne,
                     designation,
                     lot,
-                    famille,
+                    {family_sql} AS famille,
                     batiment,
                     niveau,
                     {appartement_sql} AS appartement,
@@ -171,19 +174,20 @@ class AnalyticsRepository:
 
     def heatmap_rows(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self.build_where_clause(query)
+        family_sql = self._family_sql()
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
                     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
-                    COALESCE(famille, 'default') AS famille,
+                    COALESCE({family_sql}, 'Famille non renseignee') AS famille,
                     COALESCE(SUM(capex_local), 0) AS budget,
                     COALESCE(SUM(capex_optimise), 0) AS value,
                     COALESCE(SUM(economie), 0) AS economie,
                     COUNT(*) AS nb_lignes
                 FROM fact_metre
                 {where_sql}
-                GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE(famille, 'default')
+                GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE({family_sql}, 'Famille non renseignee')
                 ORDER BY value DESC
                 LIMIT 200
                 """
@@ -194,6 +198,7 @@ class AnalyticsRepository:
 
     def heatmap(self, query: AnalyticsQuery) -> dict[str, Any]:
         rows = self.heatmap_rows(query)
+        distinct_lots = len({str(row.get("lot") or "").strip() for row in rows if str(row.get("lot") or "").strip()})
         x_labels = list(dict.fromkeys(str(row.get("lot") or "NON_RENSEIGNE") for row in rows))
         y_labels = list(dict.fromkeys(str(row.get("famille") or "default") for row in rows))
         x_index = {label: index for index, label in enumerate(x_labels)}
@@ -213,16 +218,23 @@ class AnalyticsRepository:
             "rows": rows,
             "max": max((item[2] for item in data), default=0),
             "min": min((item[2] for item in data), default=0),
+            "sample_size": {
+                "nb_lots": distinct_lots,
+                "nb_lignes": sum(int(row.get("nb_lignes") or 0) for row in rows),
+                "state": "INSUFFICIENT_DATA" if distinct_lots < 5 else "OK",
+                "message": "Donnees insuffisantes pour calculer un risque fiable" if distinct_lots < 5 else "",
+            },
         }
 
     def sankey(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self.build_where_clause(query)
+        family_sql = self._family_sql()
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
                     COALESCE(decision_import, 'LOCAL') AS decision,
-                    COALESCE(famille, 'SP2I Supply') AS fournisseur,
+                    COALESCE({family_sql}, 'SP2I Supply') AS fournisseur,
                     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
                     COALESCE(SUM(capex_optimise), 0) AS value,
                     COALESCE(SUM(economie), 0) AS economie,
@@ -232,7 +244,7 @@ class AnalyticsRepository:
                     COUNT(*) AS nb_lignes
                 FROM fact_metre
                 {where_sql}
-                GROUP BY COALESCE(decision_import, 'LOCAL'), COALESCE(famille, 'SP2I Supply'), COALESCE(lot, 'NON_RENSEIGNE')
+                GROUP BY COALESCE(decision_import, 'LOCAL'), COALESCE({family_sql}, 'SP2I Supply'), COALESCE(lot, 'NON_RENSEIGNE')
                 ORDER BY value DESC
                 LIMIT 80
                 """
@@ -298,12 +310,13 @@ class AnalyticsRepository:
         le choix import/local, l'economie attendue et la densite de lignes.
         """
         where_sql, params = self.build_where_clause(query)
+        family_sql = self._family_sql()
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
                     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
-                    COALESCE(famille, 'SP2I Supply') AS fournisseur,
+                    COALESCE({family_sql}, 'SP2I Supply') AS fournisseur,
                     COALESCE(decision_import, 'LOCAL') AS decision_import,
                     COALESCE(SUM(capex_local), 0) AS impact,
                     COALESCE(SUM(capex_optimise), 0) AS capex_expose,
@@ -314,15 +327,17 @@ class AnalyticsRepository:
                     COUNT(*) AS nb_lignes
                 FROM fact_metre
                 {where_sql}
-                GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE(famille, 'SP2I Supply'), COALESCE(decision_import, 'LOCAL')
+                GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE({family_sql}, 'SP2I Supply'), COALESCE(decision_import, 'LOCAL')
                 ORDER BY impact DESC
                 LIMIT 96
                 """
             ),
             params,
         ).mappings().all()
+        distinct_lots = {str(row["lot"] or "").strip() for row in rows if str(row["lot"] or "").strip()}
         max_impact = max((float(row["impact"] or 0) for row in rows), default=1) or 1
         risks: list[dict[str, Any]] = []
+        insufficient_sample = len(distinct_lots) < 5
 
         for row in rows:
             lot = normalize_display_text(str(row["lot"] or "NON_RENSEIGNE"))
@@ -342,7 +357,10 @@ class AnalyticsRepository:
             criticite = self._clamp((impact_score * 0.48) + (probabilite * 0.52), 5, 100)
             delai = 75 if decision == "IMPORT" else 14
 
-            if criticite >= 72:
+            if insufficient_sample:
+                criticite = min(criticite, 54)
+                risque_type = "Donnees insuffisantes"
+            elif criticite >= 72:
                 risque_type = "Critique"
             elif probabilite >= 55:
                 risque_type = "Surveillance"
@@ -363,6 +381,9 @@ class AnalyticsRepository:
                 "decision_import": decision,
                 "economie": round(economie, 2),
                 "nb_lignes": nb_lignes,
+                "sample_size_state": "INSUFFICIENT_DATA" if insufficient_sample else "OK",
+                "sample_size_message": "Donnees insuffisantes pour calculer un risque fiable" if insufficient_sample else "",
+                "nb_lots": len(distinct_lots),
             })
 
         return risks
@@ -494,7 +515,7 @@ class AnalyticsRepository:
         dim_piece_columns = load_table_columns(self.db, "dim_piece")
         dim_piece_candidates = [
             f"NULLIF(TRIM(CAST({column} AS text)), '')"
-            for column in ("piece_nom", "piece", "piece_code")
+            for column in ("piece_nom", "piece_code", "piece")
             if column in dim_piece_columns
         ]
         if dim_piece_candidates:
@@ -538,6 +559,181 @@ class AnalyticsRepository:
         ).scalars().all()
         return [normalize_display_text(str(value)) for value in rows if value]
 
+    def get_generation_diagnostic(self) -> dict[str, Any]:
+        """Diagnostic read-only des couches generatives V5.2 a V5.3."""
+        counts = {
+            "fact_generation_bim": self._safe_relation_count("fact_generation_bim"),
+            "fact_generation_network": self._safe_relation_count("fact_generation_network"),
+            "fact_generation_dqe": self._safe_relation_count("fact_generation_dqe"),
+            "fact_generation_expansion": self._safe_relation_count("fact_generation_expansion"),
+        }
+        view_counts = {
+            "building_rows": self._safe_relation_count("vw_sp2i_generated_building"),
+            "envelope_rows": self._safe_relation_count("vw_sp2i_generated_envelope"),
+            "special_rows": self._safe_relation_count("vw_sp2i_generated_special_systems"),
+        }
+        statuses = {
+            "v52_status": "DEPLOYED" if counts["fact_generation_dqe"] > 0 else "MISSING",
+            "v521_status": "DEPLOYED" if counts["fact_generation_expansion"] > 0 else "MISSING",
+            "v522_status": "DEPLOYED" if self._relation_exists("vw_energy_resilience_dashboard") else "MISSING",
+            "v53_status": "DEPLOYED" if all(value > 0 for value in view_counts.values()) else "MISSING",
+        }
+        return self._json_safe({
+            **statuses,
+            **counts,
+            **view_counts,
+            "coverage_pct": self._generation_coverage_pct(counts, view_counts),
+        })
+
+    def get_generation_engine(self) -> dict[str, Any]:
+        """Synthese CAPEX generatif V5.2/V5.2.1 sans addition avec FACT_METRE."""
+        capex = {
+            "generated_capex_local": 0,
+            "generated_capex_import": 0,
+            "generated_savings": 0,
+            "generated_lines": 0,
+        }
+        if self._relation_exists("vw_sp2i_generated_capex"):
+            row = self.db.execute(
+                text(
+                    """
+                    SELECT
+                        COALESCE(SUM(capex_local), 0) AS generated_capex_local,
+                        COALESCE(SUM(capex_import), 0) AS generated_capex_import,
+                        COALESCE(SUM(economie_potentielle), 0) AS generated_savings,
+                        COALESCE(SUM(nb_lignes_dqe), 0) AS generated_lines
+                    FROM vw_sp2i_generated_capex
+                    """
+                )
+            ).mappings().one()
+            capex = dict(row)
+
+        by_lot: list[dict[str, Any]] = []
+        if self._relation_exists("vw_sp2i_generated_quantities"):
+            rows = self.db.execute(
+                text(
+                    """
+                    SELECT
+                        COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE') AS lot_code,
+                        COUNT(*) AS nb_lignes,
+                        COUNT(DISTINCT generated_article_code) AS nb_articles,
+                        ROUND(COALESCE(SUM(quantity), 0)::NUMERIC, 4) AS quantity_total
+                    FROM vw_sp2i_generated_quantities
+                    GROUP BY COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE')
+                    ORDER BY nb_lignes DESC, lot_code
+                    """
+                )
+            ).mappings().all()
+            by_lot = [dict(row) for row in rows]
+
+        diagnostic = self.get_generation_diagnostic()
+        return self._json_safe({
+            **capex,
+            "coverage_pct": diagnostic.get("coverage_pct", 0),
+            "by_lot": by_lot,
+        })
+
+    def get_energy_resilience(self) -> dict[str, Any]:
+        """Synthese resilience energetique issue des vues V5.2.2."""
+        resilience = {
+            "solar_kwc": 0,
+            "battery_capacity_kwh": 0,
+            "generator": "",
+            "autonomy_hours": 0,
+        }
+        if self._relation_exists("vw_energy_resilience_dashboard"):
+            row = self.db.execute(
+                text(
+                    """
+                    SELECT
+                        COALESCE(solar_kwc, 0) AS solar_kwc,
+                        COALESCE(battery_capacity_kwh, 0) AS battery_capacity_kwh,
+                        COALESCE(generator_code, '') AS generator,
+                        COALESCE(autonomie_totale_h, 0) AS autonomy_hours
+                    FROM vw_energy_resilience_dashboard
+                    ORDER BY created_at DESC NULLS LAST
+                    LIMIT 1
+                    """
+                )
+            ).mappings().first()
+            if row:
+                resilience = dict(row)
+
+        generator_rows: list[dict[str, Any]] = []
+        if self._relation_exists("vw_generator_dashboard"):
+            rows = self.db.execute(
+                text(
+                    """
+                    SELECT
+                        generator_code,
+                        generator_name,
+                        puissance_kva,
+                        consommation_l_h,
+                        consommation_jour_l,
+                        fuel_type,
+                        is_recommended,
+                        heures_historique,
+                        litres_historique,
+                        cout_historique
+                    FROM vw_generator_dashboard
+                    ORDER BY is_recommended DESC, puissance_kva DESC
+                    """
+                )
+            ).mappings().all()
+            generator_rows = [dict(row) for row in rows]
+
+        energy_sources: list[dict[str, Any]] = []
+        if self._relation_exists("vw_energy_sources_dashboard"):
+            rows = self.db.execute(
+                text(
+                    """
+                    SELECT
+                        system_code,
+                        system_name,
+                        lot_code,
+                        COUNT(*) AS nb_lignes,
+                        COUNT(DISTINCT equipment_code) AS nb_equipements,
+                        ROUND(COALESCE(SUM(quantity), 0)::NUMERIC, 4) AS quantity_total
+                    FROM vw_energy_sources_dashboard
+                    GROUP BY system_code, system_name, lot_code
+                    ORDER BY nb_lignes DESC, system_code
+                    """
+                )
+            ).mappings().all()
+            energy_sources = [dict(row) for row in rows]
+
+        return self._json_safe({
+            **resilience,
+            "generators": generator_rows,
+            "energy_sources": energy_sources,
+        })
+
+    def get_building_completion(self) -> dict[str, Any]:
+        """Compteurs V5.3 par univers batiment, enveloppe et systemes speciaux."""
+        building = self._lot_counts_from_view("vw_sp2i_generated_building")
+        envelope = self._lot_counts_from_view("vw_sp2i_generated_envelope")
+        special = self._lot_counts_from_view("vw_sp2i_generated_special_systems")
+        building_total = sum(building.values())
+        envelope_increment = sum(count for lot, count in envelope.items() if lot != "LOT_TOIT")
+        special_increment = sum(count for lot, count in special.items() if lot != "LOT_VRD")
+        payload = {
+            "go_rows": building.get("LOT_GO", 0),
+            "masonry_rows": building.get("LOT_MAC", 0),
+            "roof_rows": building.get("LOT_TOIT", 0),
+            "facade_rows": envelope.get("LOT_FACADE", 0),
+            "vrd_rows": building.get("LOT_VRD", 0),
+            "security_rows": special.get("LOT_SECURITE", 0),
+            "fire_rows": special.get("LOT_INCENDIE", 0),
+            "elevator_rows": special.get("LOT_ASC", 0),
+            "total_rows": building_total + envelope_increment + special_increment,
+            "by_lot": {
+                "building": building,
+                "envelope": envelope,
+                "special_systems": special,
+            },
+        }
+        return self._json_safe(payload)
+
     def quality_metrics(self) -> dict[str, Any]:
         row = self.db.execute(
             text(
@@ -551,6 +747,8 @@ class AnalyticsRepository:
                     SUM(CASE WHEN lot IS NULL OR TRIM(lot) = '' THEN 1 ELSE 0 END) AS lignes_sans_lot,
                     SUM(CASE WHEN designation IS NULL OR TRIM(designation) = '' THEN 1 ELSE 0 END) AS lignes_sans_designation,
                     SUM(CASE WHEN famille IS NULL OR TRIM(famille) = '' OR LOWER(famille) IN ('default', 'unknown') THEN 1 ELSE 0 END) AS lignes_famille_a_classer,
+                    SUM(CASE WHEN NULLIF(TRIM(COALESCE(appart, '')), '') IS NULL THEN 1 ELSE 0 END) AS lignes_appart_legacy_vides,
+                    SUM(CASE WHEN NULLIF(TRIM(COALESCE(piece, '')), '') IS NULL THEN 1 ELSE 0 END) AS lignes_piece_legacy_vides,
                     COUNT(DISTINCT lot) AS lots_distincts,
                     COUNT(DISTINCT batiment) AS batiments_distincts,
                     COUNT(DISTINCT niveau) AS niveaux_distincts
@@ -626,7 +824,9 @@ class AnalyticsRepository:
                     SUM(CASE WHEN quantite IS NULL OR quantite <= 0 THEN 1 ELSE 0 END) AS lignes_quantite_invalide,
                     SUM(CASE WHEN COALESCE(capex_local, prix_total_ht, 0) IS NULL OR COALESCE(capex_local, prix_total_ht, 0) <= 0 THEN 1 ELSE 0 END) AS lignes_capex_local_invalide,
                     SUM(CASE WHEN capex_local IS NULL AND COALESCE(prix_total_ht, 0) > 0 THEN 1 ELSE 0 END) AS lignes_capex_fallback,
-                    SUM(CASE WHEN lot IS NULL OR lot = '' THEN 1 ELSE 0 END) AS lignes_sans_lot
+                    SUM(CASE WHEN lot IS NULL OR lot = '' THEN 1 ELSE 0 END) AS lignes_sans_lot,
+                    SUM(CASE WHEN NULLIF(TRIM(COALESCE(appart, '')), '') IS NULL THEN 1 ELSE 0 END) AS lignes_appart_legacy_vides,
+                    SUM(CASE WHEN NULLIF(TRIM(COALESCE(piece, '')), '') IS NULL THEN 1 ELSE 0 END) AS lignes_piece_legacy_vides
                 FROM fact_metre
                 """
             )
@@ -668,6 +868,12 @@ class AnalyticsRepository:
             warnings.append("Certaines lignes ont capex_local vide ou nul.")
         if int(sums["lignes_sans_lot"] or 0) > 0:
             warnings.append("Certaines lignes n'ont pas de lot.")
+        spatial_legacy_empty = max(
+            int(sums["lignes_appart_legacy_vides"] or 0),
+            int(sums["lignes_piece_legacy_vides"] or 0),
+        )
+        if fact_count and spatial_legacy_empty / fact_count > 0.10:
+            warnings.append("DATA_QUALITY: BIM spatial dimensions incomplete")
 
         return {
             "fact_metre_count": fact_count,
@@ -684,6 +890,53 @@ class AnalyticsRepository:
             return {"status": "OK", "row": self._json_safe(dict(row)) if row else None}
         except Exception as exc:
             return {"status": "ERROR", "error": str(exc)}
+
+    def _relation_exists(self, relation_name: str) -> bool:
+        row = self.db.execute(
+            text("SELECT to_regclass(:relation_name) IS NOT NULL AS exists_now"),
+            {"relation_name": relation_name},
+        ).mappings().one()
+        return bool(row["exists_now"])
+
+    def _safe_relation_count(self, relation_name: str) -> int:
+        if not self._relation_exists(relation_name):
+            return 0
+        return int(self.db.execute(text(f"SELECT COUNT(*) FROM {relation_name}")).scalar_one() or 0)
+
+    def _lot_counts_from_view(self, view_name: str) -> dict[str, int]:
+        if not self._relation_exists(view_name):
+            return {}
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE') AS lot_code, COUNT(*) AS nb
+                FROM {view_name}
+                GROUP BY COALESCE(NULLIF(lot_code, ''), 'NON_RENSEIGNE')
+                """
+            )
+        ).mappings().all()
+        return {str(row["lot_code"]): int(row["nb"] or 0) for row in rows}
+
+    @staticmethod
+    def _generation_coverage_pct(counts: dict[str, int], view_counts: dict[str, int]) -> float:
+        required = {
+            "fact_generation_bim": 216,
+            "fact_generation_network": 126,
+            "fact_generation_dqe": 216,
+            "fact_generation_expansion": 1854,
+            "building_rows": 1200,
+            "envelope_rows": 875,
+            "special_rows": 805,
+        }
+        observed = {**counts, **view_counts}
+        if not required:
+            return 0
+        ratios = [
+            min(float(observed.get(key) or 0) / target, 1)
+            for key, target in required.items()
+            if target
+        ]
+        return round(sum(ratios) / len(ratios) * 100, 2) if ratios else 0
 
     def _json_safe(self, value: Any) -> Any:
         if isinstance(value, dict):
@@ -751,20 +1004,20 @@ class AnalyticsRepository:
     def _appartement_sql(self) -> str:
         return first_non_empty_sql(
             self._fact_columns(),
-            ("appartement_id", "appartement_code", "appart"),
+            ("appartement_code", "appartement_id", "appart"),
         )
 
     def _piece_sql(self) -> str:
         columns = self._fact_columns()
         available: list[str] = []
-        for column in ("piece", "piece_code"):
+        for column in ("piece_code", "piece"):
             if column in columns:
                 available.append(f"NULLIF(TRIM(CAST({column} AS text)), '')")
         dim_piece_columns = load_table_columns(self.db, "dim_piece")
         if "piece_id" in columns and "piece_id" in dim_piece_columns:
             dim_labels = [
                 f"NULLIF(TRIM(CAST(dp.{column} AS text)), '')"
-                for column in ("piece_nom", "piece", "piece_code")
+                for column in ("piece_nom", "piece_code", "piece")
                 if column in dim_piece_columns
             ]
             if dim_labels:
@@ -796,6 +1049,45 @@ class AnalyticsRepository:
     def _piece_type_sql(self) -> str:
         return first_non_empty_sql(self._fact_columns(), ("piece_type", "type_zone"))
 
+    @staticmethod
+    def _family_sql() -> str:
+        return """
+        CASE
+            WHEN famille IS NOT NULL
+                 AND TRIM(CAST(famille AS text)) <> ''
+                 AND LOWER(TRIM(CAST(famille AS text))) NOT IN ('default', 'non classe', 'non classé', 'classification en attente')
+                THEN famille
+            WHEN lot = 'LOT_ELEC' AND (
+                UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%ECL%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%LUM%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%SPOT%'
+            ) THEN 'Eclairage'
+            WHEN lot = 'LOT_ELEC' AND (
+                UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%PRISE%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%PC%'
+            ) THEN 'Prises'
+            WHEN lot = 'LOT_ELEC' AND (
+                UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%CF%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%COURANT%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%DATA%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%TV%'
+            ) THEN 'Courants faibles'
+            WHEN lot = 'LOT_ELEC' AND (
+                UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%TABLEAU%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%TD%'
+                OR UPPER(COALESCE(sous_lot_id, sous_lot, designation, '')) LIKE '%DISJ%'
+            ) THEN 'Tableau electrique'
+            WHEN lot = 'LOT_ELEC' THEN 'Electricite'
+            WHEN lot = 'LOT_CVC' THEN 'Climatisation'
+            WHEN lot = 'LOT_CAR' THEN 'Carrelage et revetements'
+            WHEN lot = 'LOT_FP' THEN 'Faux plafonds'
+            WHEN lot = 'LOT_PNT' THEN 'Peinture'
+            WHEN lot = 'LOT_SOL' THEN 'Plomberie'
+            WHEN lot = 'LOT_TOIT' THEN 'Toiture'
+            ELSE 'Famille non renseignee'
+        END
+        """
+
     def _bim_object_sql(self) -> str:
         return first_non_empty_sql(self._fact_columns(), ("bim_object", "bim_object_id"))
 
@@ -804,6 +1096,8 @@ class AnalyticsRepository:
             return self._appartement_sql()
         if group_key == "piece":
             return self._piece_sql()
+        if group_key == "famille":
+            return self._family_sql()
         if group_key in ALLOWED_GROUPS:
             return ALLOWED_GROUPS[group_key]
         if default_group == "appartement":

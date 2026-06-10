@@ -180,6 +180,26 @@ def cost_intelligence(query=Depends(analytics_query), db: Session = Depends(get_
     return sanitize_for_json(AnalyticsService(db).cost_intelligence(query))
 
 
+@router.get("/generation-diagnostic")
+def generation_diagnostic(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).build_generation_diagnostic())
+
+
+@router.get("/generation-engine")
+def generation_engine(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).build_generation_engine())
+
+
+@router.get("/energy-resilience")
+def energy_resilience(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).build_energy_resilience())
+
+
+@router.get("/building-completion")
+def building_completion(db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).build_building_completion())
+
+
 @router.get("/filters")
 def filters(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).filter_options())
