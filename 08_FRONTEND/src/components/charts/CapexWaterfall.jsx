@@ -120,7 +120,7 @@ export default function CapexWaterfall({ summary = {}, filtersLabel = "Tous les 
         <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(summary.capex_brut || summary.capex_local)}</span>
         <span>Gain : {formatMoney(summary.economie_nette || summary.economie)}</span>
-        <span>Source : Analytics Engine</span>
+        <span>Source : Analyse SP2I</span>
       </div>
       <BIChart
         height={382}

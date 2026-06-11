@@ -136,7 +136,7 @@ function getRows(procurementData, dashboardData) {
 function buildSupplierRows(rows = []) {
   const map = new Map();
   rows.forEach((row) => {
-    const supplier = normalizeFamily(row.famille || "Classification en attente");
+    const supplier = normalizeFamily(row.famille || "Famille non renseignee");
     const decision = normalizeDecision(row.decision_import || "LOCAL");
     const current = map.get(supplier) || {
       supplier,
@@ -246,7 +246,7 @@ function buildActiveAnalysis(rows = [], filters = {}, drilldownTarget = null, gl
   const roi = capexLocal ? gain / capexLocal : Number(globalKpis.roi_import || 0);
   const familyCount = new Map();
   scopedRows.forEach((row) => {
-    const family = normalizeFamily(row.famille || "Classification en attente");
+    const family = normalizeFamily(row.famille || "Famille non renseignee");
     familyCount.set(family, (familyCount.get(family) || 0) + rowValue(row));
   });
   const mainSupplier = displayScope([...familyCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || drilldownTarget?.selectedLabel || "A confirmer");

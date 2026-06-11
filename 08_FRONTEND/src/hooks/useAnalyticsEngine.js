@@ -7,6 +7,7 @@ import {
   getAnalyticsGainAnalysis,
   getAnalyticsHeatmap,
   getAnalyticsCurrency,
+  getAnalyticsDataQuality,
   getAnalyticsImportRisks,
   getAnalyticsProcurement,
   getAnalyticsProcurementLines,
@@ -57,6 +58,7 @@ const ANALYTICS_QUERY_PLAN = [
   { endpoint: "/analytics/qa-summary", query: "qa-summary", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
   { endpoint: "/analytics/gain-analysis", query: "gain-analysis", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
   { endpoint: "/analytics/cost-intelligence", query: "cost-intelligence", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
+  { endpoint: "/analytics/data-quality", query: "data-quality", priority: 3, trigger: "niveau 2 termine", enabled: "secondaryReady" },
   { endpoint: "/analytics/procurement-lines", query: "procurement-lines", priority: 4, trigger: "vue procurement", enabled: "deferredProcurementReady" },
   { endpoint: "/analytics/procurement-scenarios", query: "procurement-scenarios", priority: 4, trigger: "vue procurement", enabled: "deferredProcurementReady" },
   { endpoint: "/analytics/currency", query: "currency", priority: 4, trigger: "vue procurement/logistics", enabled: "deferredTradeReady" },
@@ -211,7 +213,16 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     ...analyticsRetry,
   });
 
-  const tertiaryReady = [procurement, gainAnalysis, suppliers, qa, costIntelligence].every(querySettled);
+  const dataQuality = useQuery({
+    queryKey: buildAnalyticsQueryKey("data-quality", debouncedFilters),
+    queryFn: getAnalyticsDataQuality,
+    enabled: secondaryReady,
+    onSuccess: (data) => logAnalyticsResult("data-quality", data, debouncedFilters),
+    staleTime: 60_000,
+    ...analyticsRetry,
+  });
+
+  const tertiaryReady = [procurement, gainAnalysis, suppliers, qa, costIntelligence, dataQuality].every(querySettled);
   const deferredProcurementReady = tertiaryReady && shouldLoadProcurementDetails;
   const deferredTradeReady = tertiaryReady && shouldLoadTradeDetails;
 
@@ -270,6 +281,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     currency.error,
     importRisks.error,
     costIntelligence.error,
+    dataQuality.error,
     heatmap.error,
     risk.error,
     timeline.error,
@@ -332,6 +344,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     currency,
     importRisks,
     costIntelligence,
+    dataQuality,
     heatmap,
     risk,
     timeline,
@@ -339,7 +352,7 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     qa,
     isLoading: dashboard.isLoading && !dashboard.data?.kpis,
     isFetching: dashboard.isFetching,
-    backgroundFetching: capex.isFetching || procurement.isFetching || gainAnalysis.isFetching || costIntelligence.isFetching || suppliers.isFetching || procurementLines.isFetching || procurementScenarios.isFetching || currency.isFetching || importRisks.isFetching || heatmap.isFetching || risk.isFetching || timeline.isFetching || drilldown.isFetching,
+    backgroundFetching: capex.isFetching || procurement.isFetching || gainAnalysis.isFetching || costIntelligence.isFetching || dataQuality.isFetching || suppliers.isFetching || procurementLines.isFetching || procurementScenarios.isFetching || currency.isFetching || importRisks.isFetching || heatmap.isFetching || risk.isFetching || timeline.isFetching || drilldown.isFetching,
     error: criticalError,
     secondaryErrors,
   };

@@ -310,11 +310,17 @@ class RepositorySimulation:
                     "niveau": _texte(ligne.get("niveau")),
                     "niveau_id": ids["niveau_id"],
                     "niveau_code": _id(ligne.get("niveau_code") or ligne.get("NIVEAU_ID"), ligne.get("niveau")),
-                    "appart": _texte(ligne.get("appart")),
+                    "appart": _texte(
+                        ligne.get("appart")
+                        or _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID"), ligne.get("appart"))
+                    ),
                     "appart_id": ids.get("appart_id"),
                     "appartement_id": _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID"), ligne.get("appart")),
                     "appartement_code": _id(ligne.get("appartement_code") or ligne.get("APPARTEMENT_ID"), ligne.get("appart")),
-                    "piece": _texte(ligne.get("piece")),
+                    "piece": _texte(
+                        ligne.get("piece")
+                        or _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece"))
+                    ),
                     "piece_id": ids.get("piece_id"),
                     "piece_code": _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece")),
                     "type_zone": _texte(ligne.get("type_zone")),

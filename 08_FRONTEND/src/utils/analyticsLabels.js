@@ -1,11 +1,11 @@
 const FAMILY_ALIASES = {
-  default: "Classification en attente",
-  unknown: "Classification en attente",
-  "non classe": "Classification en attente",
-  "non classé": "Classification en attente",
-  "": "Classification en attente",
-  null: "Classification en attente",
-  undefined: "Classification en attente",
+  default: "Famille non renseignee",
+  unknown: "Famille non renseignee",
+  "non classe": "Famille non renseignee",
+  "non classé": "Famille non renseignee",
+  "": "Famille non renseignee",
+  null: "Famille non renseignee",
+  undefined: "Famille non renseignee",
   gros_oeuvre: "Gros oeuvre",
   grosoeuvre: "Gros oeuvre",
   structure: "Structure",
@@ -50,7 +50,7 @@ export function compactLabel(value, size = 24) {
 }
 
 export function normalizeFamily(value) {
-  return toBusinessLabel(value, "Classification en attente");
+  return toBusinessLabel(value, "Famille non renseignee");
 }
 
 export function normalizeDecision(value) {

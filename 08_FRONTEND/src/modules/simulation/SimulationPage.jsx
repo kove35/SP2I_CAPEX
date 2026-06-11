@@ -290,7 +290,7 @@ function buildSimulationFromPreview(preview, scenarioName) {
     lignes: rows,
     metadata: {
       source: "analytics-procurement-lines",
-      engine: preview?.metadata?.engine || "SP2I Analytics Engine",
+      engine: preview?.metadata?.engine || "Analyse SP2I",
     },
   };
 }
