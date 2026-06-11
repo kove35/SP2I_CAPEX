@@ -73,7 +73,7 @@ export default function CapexTimeline({ data = [], filtersLabel = "Tous les filt
         <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(currentScope.budgetInitial || currentScope.capex || 0)}</span>
         <span>Gain : {formatMoney(currentScope.economie || 0)}</span>
-        <span>Source : Analytics Engine</span>
+        <span>Source : Analyse SP2I</span>
       </div>
       <BIChart
         height={372}

@@ -101,7 +101,7 @@ export default function ImportDecisionSankey({ rows = [], chartRows = [], sankey
         <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(kpis.budget)}</span>
         <span>Gain : {formatMoney(kpis.gain)}</span>
-        <span>Source : Analytics Engine</span>
+        <span>Source : Analyse SP2I</span>
       </div>
       <BIChart
         height={330}

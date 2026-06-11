@@ -1,0 +1,810 @@
+{
+  "generated_at": "2026-06-08T15:09:11.662303+00:00",
+  "database": {
+    "host": "ep-snowy-flower-al6kbdya.c-3.eu-central-1.aws.neon.tech",
+    "database": "neondb",
+    "is_neon": true,
+    "url": "postgresql+psycopg://neondb_owner:***@ep-snowy-flower-al6kbdya.c-3.eu-central-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
+  },
+  "issues": [],
+  "warnings": [],
+  "phases": {
+    "inventory": {
+      "tables": [
+        {
+          "table_name": "dim_appart"
+        },
+        {
+          "table_name": "dim_appartement"
+        },
+        {
+          "table_name": "dim_article_bpu"
+        },
+        {
+          "table_name": "dim_article_bpu_backup"
+        },
+        {
+          "table_name": "dim_article_bpu_extended"
+        },
+        {
+          "table_name": "dim_batiment"
+        },
+        {
+          "table_name": "dim_container"
+        },
+        {
+          "table_name": "dim_country"
+        },
+        {
+          "table_name": "dim_devise"
+        },
+        {
+          "table_name": "dim_famille"
+        },
+        {
+          "table_name": "dim_lot"
+        },
+        {
+          "table_name": "dim_niveau"
+        },
+        {
+          "table_name": "dim_objet_bim"
+        },
+        {
+          "table_name": "dim_piece"
+        },
+        {
+          "table_name": "dim_projet"
+        },
+        {
+          "table_name": "dim_risk_level"
+        },
+        {
+          "table_name": "dim_scenario"
+        },
+        {
+          "table_name": "dim_sous_lot"
+        },
+        {
+          "table_name": "dim_sous_lot_complet"
+        },
+        {
+          "table_name": "dim_supplier"
+        },
+        {
+          "table_name": "dim_zone"
+        },
+        {
+          "table_name": "dqe_import_audit"
+        },
+        {
+          "table_name": "fact_approvals"
+        },
+        {
+          "table_name": "fact_change_rate"
+        },
+        {
+          "table_name": "fact_logistics_cost"
+        },
+        {
+          "table_name": "fact_metre"
+        },
+        {
+          "table_name": "fact_shipment"
+        },
+        {
+          "table_name": "fact_simulation"
+        },
+        {
+          "table_name": "monitoring_logs"
+        },
+        {
+          "table_name": "procurement_decisions"
+        },
+        {
+          "table_name": "projects"
+        },
+        {
+          "table_name": "simulation_run"
+        },
+        {
+          "table_name": "site_execution_actions"
+        },
+        {
+          "table_name": "users"
+        },
+        {
+          "table_name": "workflow_events"
+        },
+        {
+          "table_name": "workspace_memberships"
+        }
+      ],
+      "views": [
+        {
+          "table_name": "v_compare_scenarios"
+        },
+        {
+          "table_name": "v_container_utilization"
+        },
+        {
+          "table_name": "v_country_risk"
+        },
+        {
+          "table_name": "v_decision_risk"
+        },
+        {
+          "table_name": "v_decision_summary"
+        },
+        {
+          "table_name": "v_delivery_risk"
+        },
+        {
+          "table_name": "v_import_complexity"
+        },
+        {
+          "table_name": "v_import_risk_analysis"
+        },
+        {
+          "table_name": "v_kpi_batiment"
+        },
+        {
+          "table_name": "v_kpi_capex"
+        },
+        {
+          "table_name": "v_kpi_famille"
+        },
+        {
+          "table_name": "v_kpi_import_local"
+        },
+        {
+          "table_name": "v_kpi_lot"
+        },
+        {
+          "table_name": "v_kpi_niveau"
+        },
+        {
+          "table_name": "v_kpi_scenario"
+        },
+        {
+          "table_name": "v_logistics_costs"
+        },
+        {
+          "table_name": "v_procurement_summary"
+        },
+        {
+          "table_name": "v_qualite_dqe"
+        },
+        {
+          "table_name": "v_risk_analysis"
+        },
+        {
+          "table_name": "v_scenario_evolution"
+        },
+        {
+          "table_name": "v_shipment_performance"
+        },
+        {
+          "table_name": "v_supplier_logistics"
+        },
+        {
+          "table_name": "v_supplier_performance"
+        },
+        {
+          "table_name": "v_supplier_ranking"
+        },
+        {
+          "table_name": "vw_capex_by_building"
+        },
+        {
+          "table_name": "vw_capex_by_lot"
+        },
+        {
+          "table_name": "vw_capex_summary"
+        },
+        {
+          "table_name": "vw_dashboard_chantier"
+        },
+        {
+          "table_name": "vw_dashboard_direction"
+        },
+        {
+          "table_name": "vw_dashboard_import"
+        },
+        {
+          "table_name": "vw_dim_article_bpu_active"
+        },
+        {
+          "table_name": "vw_dim_lot_active"
+        },
+        {
+          "table_name": "vw_dim_sous_lot_active"
+        },
+        {
+          "table_name": "vw_import_analysis"
+        },
+        {
+          "table_name": "vw_logistics_summary"
+        },
+        {
+          "table_name": "vw_procurement_risk"
+        },
+        {
+          "table_name": "vw_project_kpis"
+        }
+      ],
+      "primary_keys": [
+        {
+          "table_name": "dim_appart",
+          "column_name": "appart_id",
+          "constraint_name": "dim_appart_pkey"
+        },
+        {
+          "table_name": "dim_appartement",
+          "column_name": "appartement_id",
+          "constraint_name": "dim_appartement_pkey"
+        },
+        {
+          "table_name": "dim_article_bpu",
+          "column_name": "article_bpu_id",
+          "constraint_name": "dim_article_bpu_pkey"
+        },
+        {
+          "table_name": "dim_article_bpu_extended",
+          "column_name": "article_id",
+          "constraint_name": "dim_article_bpu_extended_pkey"
+        },
+        {
+          "table_name": "dim_batiment",
+          "column_name": "batiment_id",
+          "constraint_name": "dim_batiment_pkey"
+        },
+        {
+          "table_name": "dim_container",
+          "column_name": "container_id",
+          "constraint_name": "dim_container_pkey"
+        },
+        {
+          "table_name": "dim_country",
+          "column_name": "country_id",
+          "constraint_name": "dim_country_pkey"
+        },
+        {
+          "table_name": "dim_devise",
+          "column_name": "devise_code",
+          "constraint_name": "dim_devise_pkey"
+        },
+        {
+          "table_name": "dim_famille",
+          "column_name": "famille",
+          "constraint_name": "dim_famille_pkey"
+        },
+        {
+          "table_name": "dim_lot",
+          "column_name": "lot_id",
+          "constraint_name": "dim_lot_pkey"
+        },
+        {
+          "table_name": "dim_niveau",
+          "column_name": "niveau_id",
+          "constraint_name": "dim_niveau_pkey"
+        },
+        {
+          "table_name": "dim_objet_bim",
+          "column_name": "objet_bim_id",
+          "constraint_name": "dim_objet_bim_pkey"
+        },
+        {
+          "table_name": "dim_piece",
+          "column_name": "piece_id",
+          "constraint_name": "dim_piece_pkey"
+        },
+        {
+          "table_name": "dim_projet",
+          "column_name": "projet_id",
+          "constraint_name": "dim_projet_pkey"
+        },
+        {
+          "table_name": "dim_risk_level",
+          "column_name": "risk_level",
+          "constraint_name": "dim_risk_level_pkey"
+        },
+        {
+          "table_name": "dim_scenario",
+          "column_name": "scenario_id",
+          "constraint_name": "dim_scenario_pkey"
+        },
+        {
+          "table_name": "dim_sous_lot",
+          "column_name": "sous_lot_id",
+          "constraint_name": "dim_sous_lot_pkey"
+        },
+        {
+          "table_name": "dim_sous_lot_complet",
+          "column_name": "sous_lot_id",
+          "constraint_name": "dim_sous_lot_complet_pkey"
+        },
+        {
+          "table_name": "dim_supplier",
+          "column_name": "supplier_id",
+          "constraint_name": "dim_supplier_pkey"
+        },
+        {
+          "table_name": "dim_zone",
+          "column_name": "zone_id",
+          "constraint_name": "dim_zone_pkey"
+        },
+        {
+          "table_name": "dqe_import_audit",
+          "column_name": "import_id",
+          "constraint_name": "dqe_import_audit_pkey"
+        },
+        {
+          "table_name": "fact_approvals",
+          "column_name": "approval_id",
+          "constraint_name": "fact_approvals_pkey"
+        },
+        {
+          "table_name": "fact_change_rate",
+          "column_name": "rate_id",
+          "constraint_name": "fact_change_rate_pkey"
+        },
+        {
+          "table_name": "fact_logistics_cost",
+          "column_name": "logistics_cost_id",
+          "constraint_name": "fact_logistics_cost_pkey"
+        },
+        {
+          "table_name": "fact_metre",
+          "column_name": "id_ligne",
+          "constraint_name": "fact_metre_pkey"
+        },
+        {
+          "table_name": "fact_shipment",
+          "column_name": "shipment_id",
+          "constraint_name": "fact_shipment_pkey"
+        },
+        {
+          "table_name": "fact_simulation",
+          "column_name": "simulation_line_id",
+          "constraint_name": "fact_simulation_pkey"
+        },
+        {
+          "table_name": "monitoring_logs",
+          "column_name": "id",
+          "constraint_name": "monitoring_logs_pkey"
+        },
+        {
+          "table_name": "procurement_decisions",
+          "column_name": "id",
+          "constraint_name": "procurement_decisions_pkey"
+        },
+        {
+          "table_name": "projects",
+          "column_name": "id",
+          "constraint_name": "projects_pkey"
+        },
+        {
+          "table_name": "simulation_run",
+          "column_name": "run_id",
+          "constraint_name": "simulation_run_pkey"
+        },
+        {
+          "table_name": "site_execution_actions",
+          "column_name": "id",
+          "constraint_name": "site_execution_actions_pkey"
+        },
+        {
+          "table_name": "users",
+          "column_name": "id",
+          "constraint_name": "users_pkey"
+        },
+        {
+          "table_name": "workflow_events",
+          "column_name": "id",
+          "constraint_name": "workflow_events_pkey"
+        },
+        {
+          "table_name": "workspace_memberships",
+          "column_name": "id",
+          "constraint_name": "workspace_memberships_pkey"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "source_table": "dim_scenario",
+          "source_column": "projet_id",
+          "target_table": "dim_projet",
+          "target_column": "projet_id",
+          "constraint_name": "dim_scenario_projet_id_fkey"
+        },
+        {
+          "source_table": "dim_supplier",
+          "source_column": "country_id",
+          "target_table": "dim_country",
+          "target_column": "country_id",
+          "constraint_name": "dim_supplier_country_id_fkey"
+        },
+        {
+          "source_table": "fact_change_rate",
+          "source_column": "devise_cible",
+          "target_table": "dim_devise",
+          "target_column": "devise_code",
+          "constraint_name": "fact_change_rate_devise_cible_fkey"
+        },
+        {
+          "source_table": "fact_change_rate",
+          "source_column": "devise_source",
+          "target_table": "dim_devise",
+          "target_column": "devise_code",
+          "constraint_name": "fact_change_rate_devise_source_fkey"
+        },
+        {
+          "source_table": "fact_logistics_cost",
+          "source_column": "shipment_id",
+          "target_table": "fact_shipment",
+          "target_column": "shipment_id",
+          "constraint_name": "fact_logistics_cost_shipment_id_fkey"
+        },
+        {
+          "source_table": "fact_metre",
+          "source_column": "batiment_id",
+          "target_table": "dim_batiment",
+          "target_column": "batiment_id",
+          "constraint_name": "fk_fact_metre_batiment"
+        },
+        {
+          "source_table": "fact_metre",
+          "source_column": "famille_id",
+          "target_table": "dim_famille",
+          "target_column": "famille_id",
+          "constraint_name": "fk_fact_metre_famille"
+        },
+        {
+          "source_table": "fact_metre",
+          "source_column": "lot_id",
+          "target_table": "dim_lot",
+          "target_column": "lot_id",
+          "constraint_name": "fk_fact_metre_lot"
+        },
+        {
+          "source_table": "fact_metre",
+          "source_column": "niveau_id",
+          "target_table": "dim_niveau",
+          "target_column": "niveau_id",
+          "constraint_name": "fk_fact_metre_niveau"
+        },
+        {
+          "source_table": "fact_metre",
+          "source_column": "projet_id",
+          "target_table": "dim_projet",
+          "target_column": "projet_id",
+          "constraint_name": "fk_fact_metre_projet"
+        },
+        {
+          "source_table": "fact_shipment",
+          "source_column": "container_id",
+          "target_table": "dim_container",
+          "target_column": "container_id",
+          "constraint_name": "fact_shipment_container_id_fkey"
+        },
+        {
+          "source_table": "fact_shipment",
+          "source_column": "supplier_id",
+          "target_table": "dim_supplier",
+          "target_column": "supplier_id",
+          "constraint_name": "fact_shipment_supplier_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "batiment_id",
+          "target_table": "dim_batiment",
+          "target_column": "batiment_id",
+          "constraint_name": "fact_simulation_batiment_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "country_id",
+          "target_table": "dim_country",
+          "target_column": "country_id",
+          "constraint_name": "fact_simulation_country_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "famille_id",
+          "target_table": "dim_famille",
+          "target_column": "famille_id",
+          "constraint_name": "fact_simulation_famille_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "lot_id",
+          "target_table": "dim_lot",
+          "target_column": "lot_id",
+          "constraint_name": "fact_simulation_lot_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "niveau_id",
+          "target_table": "dim_niveau",
+          "target_column": "niveau_id",
+          "constraint_name": "fact_simulation_niveau_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "projet_id",
+          "target_table": "dim_projet",
+          "target_column": "projet_id",
+          "constraint_name": "fact_simulation_projet_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "run_id",
+          "target_table": "simulation_run",
+          "target_column": "run_id",
+          "constraint_name": "fact_simulation_run_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "scenario_id",
+          "target_table": "dim_scenario",
+          "target_column": "scenario_id",
+          "constraint_name": "fact_simulation_scenario_id_fkey"
+        },
+        {
+          "source_table": "fact_simulation",
+          "source_column": "supplier_id",
+          "target_table": "dim_supplier",
+          "target_column": "supplier_id",
+          "constraint_name": "fact_simulation_supplier_id_fkey"
+        },
+        {
+          "source_table": "projects",
+          "source_column": "owner_id",
+          "target_table": "users",
+          "target_column": "id",
+          "constraint_name": "projects_owner_id_fkey"
+        },
+        {
+          "source_table": "simulation_run",
+          "source_column": "projet_id",
+          "target_table": "dim_projet",
+          "target_column": "projet_id",
+          "constraint_name": "simulation_run_projet_id_fkey"
+        },
+        {
+          "source_table": "simulation_run",
+          "source_column": "scenario_id",
+          "target_table": "dim_scenario",
+          "target_column": "scenario_id",
+          "constraint_name": "simulation_run_scenario_id_fkey"
+        },
+        {
+          "source_table": "workspace_memberships",
+          "source_column": "project_id",
+          "target_table": "projects",
+          "target_column": "id",
+          "constraint_name": "workspace_memberships_project_id_fkey"
+        },
+        {
+          "source_table": "workspace_memberships",
+          "source_column": "user_id",
+          "target_table": "users",
+          "target_column": "id",
+          "constraint_name": "workspace_memberships_user_id_fkey"
+        }
+      ]
+    },
+    "fact_metre": {
+      "rows": 290,
+      "amounts": {
+        "capex_local": 113928000.0,
+        "capex_import": 107974967.99999996,
+        "capex_optimise": 97174967.99999997,
+        "economie": 16753032.0
+      },
+      "missing": {
+        "sans_lot": 0,
+        "sans_sous_lot": 0,
+        "sans_article": 0,
+        "sans_batiment": 0,
+        "sans_niveau": 0,
+        "sans_appartement": 0,
+        "sans_piece": 0
+      },
+      "duplicate_business_keys": 0
+    },
+    "lot": {
+      "fact_distinct": 7,
+      "dim_rows": 12,
+      "active_rows": 7,
+      "fact_missing_dim": [],
+      "dim_unused": [
+        {
+          "lot": "LOT 1"
+        },
+        {
+          "lot": "LOT 4"
+        },
+        {
+          "lot": "LOT 6"
+        },
+        {
+          "lot": "LOT ELECTRICITE"
+        },
+        {
+          "lot": "LOT TECHNIQUE"
+        }
+      ],
+      "historical_candidates": [
+        {
+          "lot": "LOT 1"
+        },
+        {
+          "lot": "LOT 4"
+        },
+        {
+          "lot": "LOT 6"
+        },
+        {
+          "lot": "LOT ELECTRICITE"
+        },
+        {
+          "lot": "LOT TECHNIQUE"
+        }
+      ],
+      "bim_active": [
+        {
+          "lot": "LOT_CAR"
+        },
+        {
+          "lot": "LOT_CVC"
+        },
+        {
+          "lot": "LOT_ELEC"
+        },
+        {
+          "lot": "LOT_FP"
+        },
+        {
+          "lot": "LOT_PNT"
+        },
+        {
+          "lot": "LOT_SOL"
+        },
+        {
+          "lot": "LOT_TOIT"
+        }
+      ]
+    },
+    "sous_lot": {
+      "fact_distinct": 8,
+      "dim_rows": 8,
+      "active_rows": 8,
+      "fact_missing_dim": [],
+      "duplicates": []
+    },
+    "article": {
+      "fact_distinct": 8,
+      "dim_rows": 8,
+      "active_rows": 8,
+      "fact_missing_dim": [],
+      "format_collisions": []
+    },
+    "bim": {
+      "counts": {
+        "batiments": 1,
+        "niveaux": 4,
+        "appartements": 7,
+        "pieces": 9
+      },
+      "appartements_sans_piece": [
+        {
+          "appartement_id": "A201"
+        },
+        {
+          "appartement_id": "A301"
+        },
+        {
+          "appartement_id": "B101"
+        },
+        {
+          "appartement_id": "B201"
+        },
+        {
+          "appartement_id": "B301"
+        },
+        {
+          "appartement_id": "COMMUN"
+        }
+      ],
+      "pieces_sans_appartement": [
+        {
+          "piece_id": 1,
+          "piece_nom": "TOITURE"
+        }
+      ],
+      "join_columns": {
+        "dim_piece": "appart",
+        "dim_appartement": "appartement_id"
+      }
+    },
+    "powerbi_ready": {
+      "active_dimensions": [
+        {
+          "view_name": "vw_dim_lot_active",
+          "rows_count": 7,
+          "distinct_count": 7
+        },
+        {
+          "view_name": "vw_dim_sous_lot_active",
+          "rows_count": 8,
+          "distinct_count": 8
+        },
+        {
+          "view_name": "vw_dim_article_bpu_active",
+          "rows_count": 8,
+          "distinct_count": 8
+        }
+      ]
+    },
+    "kpis": {
+      "capex_local": 113928000.0,
+      "capex_import": 107974967.99999996,
+      "capex_optimise": 97174967.99999997,
+      "economie": 16753032.0,
+      "taux_economie": 0.14704929429113123,
+      "surface_totale": 0.0,
+      "surface_moyenne_appartement": 0.0,
+      "capex_m2": 0.0
+    },
+    "robustness_tests": [
+      {
+        "batiment": "BAT_01",
+        "niveau": "N1",
+        "appartement": "A101",
+        "piece": "CHAMBRE_1",
+        "nb_lignes": 6,
+        "capex_local": 2059500.0,
+        "capex_optimise": 1721742.0,
+        "economie": 337758.0
+      },
+      {
+        "batiment": "BAT_01",
+        "niveau": "N2",
+        "appartement": "A201",
+        "piece": "SEJOUR",
+        "nb_lignes": 6,
+        "capex_local": 4701000.0,
+        "capex_optimise": 3930036.0,
+        "economie": 770964.0
+      },
+      {
+        "batiment": "BAT_01",
+        "niveau": "N3",
+        "appartement": "B301",
+        "piece": "SDB_1",
+        "nb_lignes": 6,
+        "capex_local": 1062000.0,
+        "capex_optimise": 887832.0,
+        "economie": 174168.0
+      },
+      {
+        "batiment": "BAT_01",
+        "niveau": null,
+        "appartement": null,
+        "piece": null,
+        "nb_lignes": 290,
+        "capex_local": 113928000.0,
+        "capex_optimise": 97174967.99999997,
+        "economie": 16753032.0
+      }
+    ]
+  },
+  "quality": {
+    "grade": "A",
+    "issues": [],
+    "warnings": [],
+    "target": "A"
+  }
+}

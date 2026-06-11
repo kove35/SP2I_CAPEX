@@ -95,6 +95,7 @@ function normalizeBackendPayload(payload) {
     data,
     total,
     max: Number(payload.max || Math.max(...data.map((item) => item.value[2]), 1)),
+    sampleSize: payload.sample_size || null,
   };
 }
 
@@ -188,6 +189,24 @@ export default function CapexHeatmap({ data = [], rows = [], filtersLabel = "Tou
     return <div className="heatmap-empty-state">Aucune cartographie des couts disponible sur le perimetre filtre.</div>;
   }
 
+  if (heatmap.sampleSize?.state === "INSUFFICIENT_DATA" && mode === "lot-risque") {
+    return (
+      <div className="heatmap-decision-shell">
+        <div className="heatmap-mode-row">
+          {HEATMAP_MODES.map((item) => (
+            <button key={item.key} type="button" className={mode === item.key ? "active" : ""} onClick={() => setMode(item.key)}>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="analytics-insufficient-data">
+          <strong>Donnees insuffisantes pour calculer un risque fiable</strong>
+          <span>{Number(heatmap.sampleSize.nb_lots || 0).toLocaleString("fr-FR")} lot(s) couvert(s). Il faut au moins 5 lots pour produire une heatmap risque robuste.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="heatmap-decision-shell">
       <div className="heatmap-mode-row">
@@ -205,7 +224,7 @@ export default function CapexHeatmap({ data = [], rows = [], filtersLabel = "Tou
         <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(scope.budget)}</span>
         <span>Gain : {formatMoney(scope.gain)}</span>
-        <span>Source : Analytics Engine</span>
+        <span>Source : Analyse SP2I</span>
       </div>
       <BIChart
         height={380}
@@ -224,7 +243,7 @@ export default function CapexHeatmap({ data = [], rows = [], filtersLabel = "Tou
               const [x, y, value] = cell.value || [];
               return [
                 `<b>Lot / axe: ${heatmap.xLabels[x] || "Non renseigne"}</b>`,
-                `Famille / axe: <b>${heatmap.yLabels[y] || "Classification en attente"}</b>`,
+                `Famille / axe: <b>${heatmap.yLabels[y] || "Famille non renseignee"}</b>`,
                 `Budget: <b>${formatMoney(value)}</b>`,
                 `Part projet: <b>${formatPercent(cell.share || 0)}</b>`,
                 `Decision: <b>${cell.decision || "A arbitrer"}</b>`,

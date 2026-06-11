@@ -22,6 +22,7 @@ function normalizeRiskRow(row, index) {
   const lot = toBusinessLabel(row.lot || row.label, `Risque ${index + 1}`);
   const fournisseur = normalizeFamily(row.fournisseur || row.famille || "SP2I Supply");
   const decision = normalizeDecision(row.decision_import || row.decision || "LOCAL");
+  const sampleState = row.sample_size_state || row.sampleSizeState || "";
   return {
     lot,
     fournisseur,
@@ -31,9 +32,12 @@ function normalizeRiskRow(row, index) {
     probabilite: Math.min(Math.max(probabilite, 5), 100),
     criticite: Math.min(Math.max(criticite, 5), 100),
     delai: Number(row.delai || (decision === "IMPORT" ? 75 : 14)),
-    risqueType: row.risque_type || (criticite >= 72 ? "Critique" : "Surveillance"),
+    risqueType: sampleState === "INSUFFICIENT_DATA" ? "Donnees insuffisantes" : row.risque_type || (criticite >= 72 ? "Critique" : "Surveillance"),
     economie: Number(row.economie || 0),
     nbLignes: Number(row.nb_lignes || 0),
+    sampleState,
+    sampleMessage: row.sample_size_message || "",
+    nbLots: Number(row.nb_lots || 0),
   };
 }
 
@@ -44,6 +48,7 @@ function buildInsight(rows) {
   const budget = rows.reduce((sum, row) => sum + row.impact, 0);
   const gain = rows.reduce((sum, row) => sum + row.economie, 0);
   const lines = rows.reduce((sum, row) => sum + row.nbLignes, 0);
+  const insufficient = rows.some((row) => row.sampleState === "INSUFFICIENT_DATA");
   const top = sorted[0];
   return {
     top,
@@ -52,8 +57,11 @@ function buildInsight(rows) {
     budget,
     gain,
     lines,
+    insufficient,
     recommendation: top
-      ? `${top.lot} concentre la priorite risque: arbitrer ${top.decision} et securiser le delai.`
+      ? insufficient
+        ? "Donnees insuffisantes pour calculer un risque fiable."
+        : `${top.lot} concentre la priorite risque: arbitrer ${top.decision} et securiser le delai.`
       : "Aucun risque prioritaire detecte sur le perimetre filtre.",
   };
 }
@@ -79,6 +87,24 @@ export default function RiskMatrix({ rows = [], filtersLabel = "Tous les filtres
   const insight = useMemo(() => buildInsight(riskRows), [riskRows]);
   const maxImpactM = Math.max(...riskRows.map((row) => row.impact / MILLION), 10);
   const xThreshold = maxImpactM * 0.5;
+
+  if (insight.insufficient) {
+    return (
+      <div className="risk-matrix-shell">
+        <div className="analytics-insufficient-data">
+          <strong>Donnees insuffisantes pour calculer un risque fiable</strong>
+          <span>Le perimetre filtre couvre moins de 5 lots. Aucun signal critique n'est genere.</span>
+        </div>
+        <div className="scope-summary">
+          <span>Perimetre : {Number(insight.lines || riskRows.length).toLocaleString("fr-FR")} lignes</span>
+          <span>Filtres : {filtersLabel}</span>
+          <span>Budget : {formatMoney(insight.budget)}</span>
+          <span>Gain : {formatMoney(insight.gain)}</span>
+          <span>Source : Analyse SP2I</span>
+        </div>
+      </div>
+    );
+  }
 
   const data = riskRows.map((row) => ({
     value: [
@@ -125,7 +151,7 @@ export default function RiskMatrix({ rows = [], filtersLabel = "Tous les filtres
         <span>Filtres : {filtersLabel}</span>
         <span>Budget : {formatMoney(insight.budget)}</span>
         <span>Gain : {formatMoney(insight.gain)}</span>
-        <span>Source : Analytics Engine</span>
+        <span>Source : Analyse SP2I</span>
       </div>
       <BIChart
         height={388}

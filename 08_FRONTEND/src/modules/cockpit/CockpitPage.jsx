@@ -130,14 +130,46 @@ function formatPercentValue(value) {
   return `${(number * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%`;
 }
 
+function firstItem(...collections) {
+  for (const collection of collections) {
+    if (Array.isArray(collection) && collection.length) return collection[0];
+  }
+  return null;
+}
+
+function qualityLabel(score = 0, reviewRequired = 0, status = "") {
+  const value = Number(score || 0);
+  if (reviewRequired > 0 || /WARN|REVIEW|BLOCK/i.test(status)) return value >= 75 ? "Bon" : "Moyen";
+  if (value >= 90) return "Excellent";
+  if (value >= 75) return "Bon";
+  if (value >= 55) return "Moyen";
+  return "Faible";
+}
+
 function buildCostSignals(costPayload = {}) {
   const topCosts = costPayload.top_costs || {};
+  const capexM2 = costPayload.capex_m2 || {};
+  const benchmark = costPayload.benchmark || {};
+  const pareto = costPayload.pareto || {};
   const anomalies = costPayload.anomalies?.items || [];
   const piece = topCosts.pieces?.[0];
   const lot = topCosts.lots?.[0];
+  const appartement = firstItem(topCosts.appartements, benchmark.appartements?.all, benchmark.appartements?.A101_A201_A301);
+  const niveau = firstItem(topCosts.niveaux, capexM2.niveaux);
+  const capexM2Piece = firstItem(capexM2.pieces, capexM2.appartements, capexM2.niveaux);
+  const paretoArticle = firstItem(pareto.articles);
+  const benchmarkPiece = firstItem(benchmark.pieces?.chambres, benchmark.pieces?.sdb);
   const saving = topCosts.economies?.[0];
   const anomaly = anomalies[0];
   const signals = [];
+
+  if (capexM2Piece) {
+    signals.push({
+      label: "CAPEX / m2",
+      value: capexM2Piece.scope || capexM2Piece.piece || capexM2Piece.appartement || "-",
+      detail: formatMoney(capexM2Piece.capex_m2),
+    });
+  }
 
   if (piece) {
     signals.push({
@@ -151,6 +183,34 @@ function buildCostSignals(costPayload = {}) {
       label: "Lot le plus couteux",
       value: lot.label || lot.scope || "-",
       detail: `${formatMoney(lot.capex_optimise || lot.capex)} - ROI ${formatPercentValue(lot.roi)}`,
+    });
+  }
+  if (appartement) {
+    signals.push({
+      label: "Top appartement",
+      value: appartement.label || appartement.appartement || appartement.scope || "-",
+      detail: formatMoney(appartement.capex_optimise || appartement.capex),
+    });
+  }
+  if (niveau) {
+    signals.push({
+      label: "Top niveau",
+      value: niveau.label || niveau.scope || [niveau.batiment, niveau.niveau].filter(Boolean).join(" / ") || "-",
+      detail: formatMoney(niveau.capex_optimise || niveau.capex),
+    });
+  }
+  if (paretoArticle) {
+    signals.push({
+      label: "Pareto CAPEX",
+      value: paretoArticle.article || paretoArticle.label || "-",
+      detail: `${formatPercentValue(paretoArticle.cumulative_pct || paretoArticle.cumulative_share || paretoArticle.share)} du CAPEX`,
+    });
+  }
+  if (benchmarkPiece) {
+    signals.push({
+      label: "Benchmark pieces",
+      value: benchmarkPiece.piece || benchmarkPiece.label || "-",
+      detail: `Moyenne ${formatMoney(benchmarkPiece.capex_moyen || benchmarkPiece.avg_capex || benchmarkPiece.capex_optimise)}`,
     });
   }
   if (saving) {
@@ -177,6 +237,18 @@ function buildCostSignals(costPayload = {}) {
   return signals;
 }
 
+function buildDataQualitySignal(payload = {}) {
+  const kpis = payload.kpis || {};
+  const metadata = payload.metadata || {};
+  const score = Number(kpis.trust_score ?? kpis.score_qualite ?? 0);
+  const reviewRequired = Number(kpis.lignes_review_required || 0);
+  return {
+    label: "Qualite des donnees",
+    value: qualityLabel(score, reviewRequired, metadata.qa_status),
+    detail: `Trust Score ${Math.round(score || 0)}/100 - revue ${reviewRequired}`,
+  };
+}
+
 export default function CockpitPage() {
   const { state } = useAppStore();
   const engine = useAnalyticsEngine("direction");
@@ -197,7 +269,9 @@ export default function CockpitPage() {
   const mainPayload = engine.dashboard.data || {};
   const capexPayload = engine.capex.data || {};
   const costPayload = engine.costIntelligence.data || {};
+  const dataQualityPayload = engine.dataQuality.data || {};
   const costSignals = buildCostSignals(costPayload);
+  const dataQualitySignal = buildDataQualitySignal(dataQualityPayload);
   const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
   const hasPrimaryKpis = Boolean(mainPayload.kpis || capexPayload.kpis);
   const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
@@ -311,7 +385,7 @@ export default function CockpitPage() {
       <section className="page-hero compact">
         <p className="eyebrow">Pilotage consolide</p>
         <h1>Piloter le budget, les risques et les arbitrages du projet</h1>
-        <p>Le moteur de pilotage SP2I consolide les indicateurs, les filtres et les decisions local/import en temps reel.</p>
+        <p>L'analyse SP2I consolide les indicateurs, les filtres et les decisions local/import sur les donnees du projet.</p>
       </section>
 
       {engine.error ? <div className="app-error">{engine.error.message}</div> : null}
@@ -320,8 +394,13 @@ export default function CockpitPage() {
       {engine.isFetching ? <div className="live-refresh">Synchronisation du cockpit en cours...</div> : null}
 
       {engine.error && !hasPrimaryKpis ? null : <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />}
-      {costSignals.length ? (
+      {costSignals.length || dataQualityPayload.kpis ? (
         <section className="cost-intelligence-strip" aria-label="Cost Intelligence">
+          <article className="cost-intelligence-card data-quality">
+            <span>{dataQualitySignal.label}</span>
+            <strong>{dataQualitySignal.value}</strong>
+            <small>{dataQualitySignal.detail}</small>
+          </article>
           {costSignals.map((signal) => (
             <article className="cost-intelligence-card" key={signal.label}>
               <span>{signal.label}</span>
