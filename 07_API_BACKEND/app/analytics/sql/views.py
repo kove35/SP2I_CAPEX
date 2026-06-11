@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-ANALYTICS_VIEWS_SQL = """
+from app.config.fact_source import get_fact_source
+
+
+def build_analytics_views_sql() -> str:
+    fact_source = get_fact_source()
+    return f"""
 DROP VIEW IF EXISTS vw_cost_intelligence CASCADE;
 DROP VIEW IF EXISTS vw_dim_article_bpu_active CASCADE;
 DROP VIEW IF EXISTS vw_dim_sous_lot_active CASCADE;
@@ -32,7 +37,7 @@ SELECT
     ) AS taux_economie,
     COUNT(*) AS nb_lignes,
     SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END) AS nb_import
-FROM fact_metre;
+FROM {fact_source};
 
 CREATE OR REPLACE VIEW vw_capex_by_lot AS
 SELECT
@@ -41,7 +46,7 @@ SELECT
     ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_optimise,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette,
     COUNT(*) AS nb_lignes
-FROM fact_metre
+FROM {fact_source}
 GROUP BY COALESCE(lot, 'NON_RENSEIGNE');
 
 CREATE OR REPLACE VIEW vw_capex_by_building AS
@@ -51,7 +56,7 @@ SELECT
     ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_optimise,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette,
     COUNT(*) AS nb_lignes
-FROM fact_metre
+FROM {fact_source}
 GROUP BY COALESCE(batiment, 'NON_RENSEIGNE');
 
 CREATE OR REPLACE VIEW vw_import_analysis AS
@@ -61,7 +66,7 @@ SELECT
     ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_brut,
     ROUND(COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0)::numeric, 2) AS capex_import,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette
-FROM fact_metre
+FROM {fact_source}
 GROUP BY COALESCE(decision_import, 'LOCAL');
 
 CREATE OR REPLACE VIEW vw_procurement_risk AS
@@ -70,7 +75,7 @@ SELECT
     COALESCE(famille, 'default') AS famille,
     COUNT(*) AS nb_lignes,
     ROUND(AVG(COALESCE(taux_economie, 0))::numeric, 4) AS taux_economie_moyen
-FROM fact_metre
+FROM {fact_source}
 GROUP BY COALESCE(decision_import, 'LOCAL'), COALESCE(famille, 'default');
 
 CREATE OR REPLACE VIEW vw_logistics_summary AS
@@ -78,7 +83,7 @@ SELECT
     COALESCE(decision_import, 'LOCAL') AS decision_import,
     COUNT(*) AS nb_lignes,
     ROUND(COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0)::numeric, 2) AS cout_import_estime
-FROM fact_metre
+FROM {fact_source}
 GROUP BY COALESCE(decision_import, 'LOCAL');
 
 CREATE OR REPLACE VIEW vw_project_kpis AS
@@ -99,7 +104,7 @@ SELECT
     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
     COUNT(*) AS nb_lignes,
     ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_expose
-FROM fact_metre
+FROM {fact_source}
 GROUP BY
     COALESCE(batiment, 'NON_RENSEIGNE'),
     COALESCE(niveau, 'GLOBAL'),
@@ -121,7 +126,7 @@ SELECT
     ROUND(COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0)::numeric, 2) AS capex_import,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie,
     COUNT(*) AS nb_lignes
-FROM fact_metre
+FROM {fact_source}
 GROUP BY
     COALESCE(project_code, projet_id::text, 'PROJET_MPEMBA'),
     COALESCE(batiment, 'NON_RENSEIGNE'),
@@ -147,7 +152,7 @@ WITH spatial_fact AS (
         COALESCE(capex_import, montant_import, 0) AS capex_import,
         COALESCE(capex_optimise, capex_local, prix_total_ht, 0) AS capex_optimise,
         COALESCE(economie, 0) AS economie
-    FROM fact_metre
+    FROM {fact_source}
 )
 SELECT
     f.projet,
@@ -220,7 +225,7 @@ WITH spatial_fact AS (
         COALESCE(capex_import, montant_import, 0) AS capex_import,
         COALESCE(capex_optimise, capex_local, prix_total_ht, 0) AS capex_optimise,
         COALESCE(economie, 0) AS economie
-    FROM fact_metre
+    FROM {fact_source}
 ),
 typed AS (
     SELECT
@@ -329,7 +334,7 @@ SELECT d.*
 FROM dim_lot d
 WHERE EXISTS (
     SELECT 1
-    FROM fact_metre f
+    FROM {fact_source} f
     WHERE UPPER(TRIM(COALESCE(f.lot, ''))) = UPPER(TRIM(COALESCE(d.lot, '')))
        OR UPPER(TRIM(COALESCE(CAST(f.lot_id AS text), ''))) = UPPER(TRIM(COALESCE(d.lot, '')))
 );
@@ -339,7 +344,7 @@ SELECT d.*
 FROM dim_sous_lot_complet d
 WHERE EXISTS (
     SELECT 1
-    FROM fact_metre f
+    FROM {fact_source} f
     WHERE UPPER(TRIM(COALESCE(f.sous_lot_id, ''))) = UPPER(TRIM(COALESCE(d.sous_lot_id, '')))
        OR UPPER(TRIM(COALESCE(f.sous_lot, ''))) = UPPER(TRIM(COALESCE(d.sous_lot_id, '')))
 );
@@ -349,9 +354,12 @@ SELECT d.*
 FROM dim_article_bpu d
 WHERE EXISTS (
     SELECT 1
-    FROM fact_metre f
+    FROM {fact_source} f
     WHERE UPPER(TRIM(COALESCE(f.code_article, ''))) = UPPER(TRIM(COALESCE(d.code_article, '')))
        OR UPPER(TRIM(COALESCE(f.article_id, ''))) = UPPER(TRIM(COALESCE(d.code_article, '')))
        OR UPPER(TRIM(COALESCE(f.article_id, ''))) = UPPER(TRIM(COALESCE(d.article_id, '')))
 );
 """
+
+
+ANALYTICS_VIEWS_SQL = build_analytics_views_sql()

@@ -19,6 +19,7 @@ from app.analytics.repositories import AnalyticsRepository
 from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_payload_labels
 from app.analytics.utils.schema_utils import column_exists, first_non_empty_sql, load_table_columns, schema_capabilities
+from app.config.fact_source import get_fact_source
 from app.database import database_url_host, database_url_is_neon
 from app.spatial.enrichment import infer_piece_type
 
@@ -182,6 +183,10 @@ class AnalyticsService:
 
     def __init__(self, db: Session) -> None:
         self.repository = AnalyticsRepository(db)
+
+    @staticmethod
+    def _fact_source() -> str:
+        return get_fact_source()
 
     def dashboard(self, query: AnalyticsQuery, dashboard_type: str = "direction") -> dict[str, Any]:
         return self._cached(f"dashboard:{dashboard_type}", query, lambda: self._build_dashboard(query, dashboard_type))
@@ -359,14 +364,15 @@ class AnalyticsService:
         }
 
     def database_debug(self) -> dict[str, Any]:
+        fact_source = self._fact_source()
         row = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     current_database() AS database_name,
                     COUNT(*) AS fact_metre_count,
                     COALESCE(SUM(capex_local), 0) AS capex_local_total
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
@@ -418,6 +424,7 @@ class AnalyticsService:
         }
 
     def financial_reconciliation_debug(self, query: AnalyticsQuery) -> dict[str, Any]:
+        fact_source = self._fact_source()
         where_sql, params = self.repository.build_where_clause(query)
         fact_metre = self._financial_scope_metrics(where_sql, params)
         dashboard_kpis = self.repository.kpis(query)
@@ -476,7 +483,7 @@ class AnalyticsService:
             "analytics_repository": {
                 **dashboard,
                 "source": "AnalyticsRepository.kpis",
-                "sql": "SELECT SUM(capex_local), SUM(capex_optimise), SUM(economie), COUNT(*) FROM fact_metre + filtres",
+                "sql": f"SELECT SUM(capex_local), SUM(capex_optimise), SUM(economie), COUNT(*) FROM {fact_source} + filtres",
             },
             "analytics_service": {
                 **dashboard,
@@ -561,13 +568,14 @@ class AnalyticsService:
         dashboard_budget = money(kpis.get("capex_brut"))
         dashboard_lines = int(kpis.get("nb_lignes") or 0)
 
+        fact_source = self._fact_source()
         duplicate_row = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) AS row_count,
                     COUNT(DISTINCT id_ligne) AS distinct_id_count
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
@@ -821,12 +829,13 @@ class AnalyticsService:
         metrics = self.repository.quality_metrics()
         debug = self.repository.pipeline_debug()
         csv_snapshot = self._fact_metre_csv_snapshot()
+        fact_source = self._fact_source()
 
         db_rows = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT id_ligne, COALESCE(capex_local, prix_total_ht, 0) AS amount
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().all()
@@ -1765,13 +1774,14 @@ class AnalyticsService:
         if has_spatial_view:
             return "vw_spatial_analytics", "vw_spatial_analytics"
 
-        columns = load_table_columns(self.repository.db, "fact_metre")
+        fact_source = self._fact_source()
+        columns = load_table_columns(self.repository.db, fact_source)
 
         def number_sql(candidates: list[str], default_sql: str = "0") -> str:
             available = [column for column in candidates if column in columns]
             for column in candidates:
                 if column not in columns:
-                    logger.warning("Optional column missing: fact_metre.%s", column)
+                    logger.warning("Optional column missing: %s.%s", fact_source, column)
             if not available:
                 return default_sql
             return f"COALESCE({', '.join(available)}, {default_sql})"
@@ -1837,9 +1847,9 @@ class AnalyticsService:
                     {economie} AS economie,
                     0::numeric AS capex_m2,
                     1 AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
             ) cost_source
-        """, "fact_metre schema-aware fallback"
+        """, f"{fact_source} schema-aware fallback"
 
     @staticmethod
     def _cost_capex_m2_sql(scope_type: str, group_columns: list[str], scope_expr: str, surface_expr: str, where_sql: str) -> str:
@@ -2929,20 +2939,7 @@ class AnalyticsService:
         )
 
     def _fact_metre_raw_metrics(self) -> dict[str, Any]:
-        row = self.repository.db.execute(
-            text(
-                """
-                SELECT
-                    COUNT(*) AS nb_lignes,
-                    COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
-                    COALESCE(SUM(capex_local), 0) AS capex_brut
-                FROM fact_metre
-                """
-            )
-        ).mappings().one()
-        return dict(row)
-
-    def _fact_metre_filtered_metrics(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
+        fact_source = self._fact_source()
         row = self.repository.db.execute(
             text(
                 f"""
@@ -2950,7 +2947,22 @@ class AnalyticsService:
                     COUNT(*) AS nb_lignes,
                     COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
                     COALESCE(SUM(capex_local), 0) AS capex_brut
-                FROM fact_metre
+                FROM {fact_source}
+                """
+            )
+        ).mappings().one()
+        return dict(row)
+
+    def _fact_metre_filtered_metrics(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
+        fact_source = self._fact_source()
+        row = self.repository.db.execute(
+            text(
+                f"""
+                SELECT
+                    COUNT(*) AS nb_lignes,
+                    COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
+                    COALESCE(SUM(capex_local), 0) AS capex_brut
+                FROM {fact_source}
                 {where_sql}
                 """
             ),
@@ -2959,6 +2971,7 @@ class AnalyticsService:
         return dict(row)
 
     def _financial_scope_metrics(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
+        fact_source = self._fact_source()
         row = self.repository.db.execute(
             text(
                 f"""
@@ -3014,7 +3027,7 @@ class AnalyticsService:
                     END AS roi_theorique_local_import_reference,
                     SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END) AS import_lines,
                     SUM(CASE WHEN decision_import <> 'IMPORT' OR decision_import IS NULL THEN 1 ELSE 0 END) AS local_lines
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 """
             ),
@@ -3046,7 +3059,7 @@ class AnalyticsService:
         result["lines"] = int(result.get("lines") or 0)
         result["import_lines"] = int(result.get("import_lines") or 0)
         result["local_lines"] = int(result.get("local_lines") or 0)
-        result["source"] = "fact_metre"
+        result["source"] = fact_source
         return result
 
     def _dashboard_financial_metrics(self, kpis: dict[str, Any]) -> dict[str, Any]:
@@ -3180,7 +3193,8 @@ class AnalyticsService:
         }
 
     def _bim_fact_completion(self) -> dict[str, Any]:
-        columns = load_table_columns(self.repository.db, "fact_metre")
+        fact_source = self._fact_source()
+        columns = load_table_columns(self.repository.db, fact_source)
         appartement_sql = first_non_empty_sql(columns, ("appartement_code", "appartement_id", "appart"))
         piece_sql = first_non_empty_sql(columns, ("piece_code", "piece"))
         piece_type_sql = first_non_empty_sql(columns, ("piece_type", "type_zone"))
@@ -3215,7 +3229,7 @@ class AnalyticsService:
                     COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local,
                     COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS capex_import,
                     COALESCE(SUM(economie), 0) AS economie
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
@@ -3249,7 +3263,8 @@ class AnalyticsService:
         return result
 
     def _bim_spatial_quality(self) -> dict[str, Any]:
-        columns = load_table_columns(self.repository.db, "fact_metre")
+        fact_source = self._fact_source()
+        columns = load_table_columns(self.repository.db, fact_source)
         piece_sql = first_non_empty_sql(columns, ("piece_code", "piece"), default_sql="'NON_DISPONIBLE'")
         rows = self.repository.db.execute(
             text(
@@ -3258,7 +3273,7 @@ class AnalyticsService:
                     COALESCE({piece_sql}, 'NON_RENSEIGNE') AS piece,
                     COUNT(*) AS nb_lignes,
                     COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local
-                FROM fact_metre
+                FROM {fact_source}
                 GROUP BY COALESCE({piece_sql}, 'NON_RENSEIGNE')
                 ORDER BY nb_lignes DESC, piece
                 """
@@ -3292,7 +3307,8 @@ class AnalyticsService:
         }
 
     def _bim_drilldown_audit(self) -> dict[str, Any]:
-        columns = load_table_columns(self.repository.db, "fact_metre")
+        fact_source = self._fact_source()
+        columns = load_table_columns(self.repository.db, fact_source)
         levels = {
             "projet": first_non_empty_sql(columns, ("project_code", "projet_id")),
             "batiment": first_non_empty_sql(columns, ("batiment",)),
@@ -3316,7 +3332,7 @@ class AnalyticsService:
                         SELECT
                             COUNT(*) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS filled_rows,
                             COUNT(DISTINCT {expression}) FILTER (WHERE {expression} IS NOT NULL AND TRIM(CAST({expression} AS text)) <> '') AS distinct_values
-                        FROM fact_metre
+                        FROM {fact_source}
                         """
                     )
                 ).mappings().one()
@@ -3335,15 +3351,16 @@ class AnalyticsService:
         }
 
     def _bim_powerbi_audit(self) -> dict[str, Any]:
+        fact_source = self._fact_source()
         fact = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) AS nb_lignes,
                     COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local,
                     COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS capex_import,
                     COALESCE(SUM(economie), 0) AS economie
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
@@ -3386,8 +3403,9 @@ class AnalyticsService:
         }
 
     def _bim_ifc_readiness(self) -> dict[str, Any]:
+        fact_source = self._fact_source()
         expected = ("ifc_guid", "ifc_type", "bim_object")
-        tables = ("fact_metre", "dim_piece", "dim_appartement")
+        tables = (fact_source, "dim_piece", "dim_appartement")
         per_table = {
             table_name: {
                 column: self._column_exists(table_name, column)
@@ -3397,9 +3415,9 @@ class AnalyticsService:
         }
         fact = self._bim_fact_completion()
         return {
-            "ifc_guid": per_table["fact_metre"]["ifc_guid"],
-            "ifc_type": per_table["fact_metre"]["ifc_type"],
-            "bim_object": per_table["fact_metre"]["bim_object"],
+            "ifc_guid": per_table[fact_source]["ifc_guid"],
+            "ifc_type": per_table[fact_source]["ifc_type"],
+            "bim_object": per_table[fact_source]["bim_object"],
             "per_table": per_table,
             "data_completion": {
                 "ifc_guid": fact["taux_ifc_guid"],
@@ -3543,14 +3561,15 @@ class AnalyticsService:
         return "CAPEX stable; enrichissement BIM requis avant integration IFC/Revit."
 
     def _fact_metre_cache_signature(self) -> dict[str, Any]:
+        fact_source = self._fact_source()
         row = self.repository.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) AS nb_lignes,
                     COALESCE(SUM(capex_local), 0) AS capex_local_total,
                     MAX(created_at) AS max_created_at
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
