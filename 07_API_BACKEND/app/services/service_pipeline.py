@@ -614,6 +614,18 @@ class ServicePipeline:
                 ]
             )
             id_ligne_powerbi = self._id_ligne_powerbi(ligne, id_ligne_source, cle_metier)
+            appartement_code = str(
+                ligne.get("appartement_code")
+                or ligne.get("appartement_id")
+                or ligne.get("appart")
+                or ""
+            ).strip()
+            piece_code = str(
+                ligne.get("piece_code")
+                or ligne.get("piece_id")
+                or ligne.get("piece")
+                or ""
+            ).strip()
             fact_metre.append(
                 {
                     # Les DQE multi-feuilles reutilisent souvent 1.1, 1.2...
@@ -645,8 +657,10 @@ class ServicePipeline:
                     "project_code": ligne.get("project_code", ""),
                     "batiment_code": ligne.get("batiment_code", ""),
                     "niveau_code": ligne.get("niveau_code", ""),
-                    "appartement_code": ligne.get("appartement_code", ""),
-                    "piece_code": ligne.get("piece_code", ""),
+                    "appartement_code": appartement_code,
+                    "piece_code": piece_code,
+                    "appart": str(ligne.get("appart") or appartement_code or "").strip(),
+                    "piece": str(ligne.get("piece") or piece_code or "").strip(),
                     "lot_code": ligne.get("lot_code", ""),
                     "sous_lot_code": ligne.get("sous_lot_code", ""),
                     "article_id": ligne.get("article_id", ""),

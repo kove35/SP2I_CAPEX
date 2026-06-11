@@ -4588,6 +4588,31 @@ a {
   line-height: 1.25;
 }
 
+.cost-intelligence-card.data-quality {
+  border-color: rgba(103, 232, 201, .26);
+  background: rgba(13, 148, 136, .12);
+}
+
+.analytics-insufficient-data {
+  border: 1px solid rgba(245, 158, 11, .26);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  color: #fde68a;
+  background: rgba(120, 53, 15, .14);
+}
+
+.analytics-insufficient-data strong {
+  color: #fef3c7;
+  font-size: 15px;
+}
+
+.analytics-insufficient-data span {
+  color: #d9c99f;
+  font-size: 13px;
+}
+
 .advanced-kpi-card {
   position: relative;
   overflow: hidden;
@@ -4958,6 +4983,50 @@ a {
   color: #9fb4d1;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.line-detail-recommendation {
+  margin-top: 10px;
+  border: 1px solid rgba(103, 232, 201, .20);
+  border-radius: 8px;
+  padding: 9px;
+  background: rgba(13, 148, 136, .10);
+}
+
+.line-detail-recommendation span,
+.line-detail-notice {
+  display: block;
+  color: #9fb4d1;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.line-detail-recommendation strong {
+  margin-top: 3px;
+  color: #a7f3d0;
+}
+
+.line-detail-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.line-detail-actions button {
+  border: 1px solid rgba(103, 232, 201, .20);
+  border-radius: 7px;
+  padding: 7px 8px;
+  color: #dffcf5;
+  background: rgba(13, 148, 136, .12);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.line-detail-notice {
+  margin-top: 8px;
+  color: #fde68a;
 }
 
 .premium-sankey-shell {

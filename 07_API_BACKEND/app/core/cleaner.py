@@ -180,14 +180,24 @@ class DataCleaner:
         batiment = str(ligne.get("batiment") or self.batiment_courant).strip()
         niveau = clean_niveau(ligne.get("niveau") or self.niveau_courant)
         designation_normalisee = self._normaliser_designation(designation)
+        appartement_code = normalize_optional_id(
+            ligne.get("appartement_code") or ligne.get("appartement_id"),
+            ligne.get("appart"),
+        )
+        piece_code = normalize_optional_id(
+            ligne.get("piece_code") or ligne.get("piece_id"),
+            ligne.get("piece"),
+        )
+        appart = str(ligne.get("appart") or appartement_code or "").strip()
+        piece = str(ligne.get("piece") or piece_code or "").strip()
 
         return {
             "id_ligne": str(ligne.get("id_ligne") or f"DQE-{index:06d}"),
             "project_code": normalize_optional_id(ligne.get("project_code") or ligne.get("projet_id")),
             "batiment_code": normalize_optional_id(ligne.get("batiment_code") or ligne.get("batiment_id"), ligne.get("batiment")),
             "niveau_code": normalize_optional_id(ligne.get("niveau_code") or ligne.get("niveau_id"), ligne.get("niveau")),
-            "appartement_code": normalize_optional_id(ligne.get("appartement_code") or ligne.get("appartement_id"), ligne.get("appart")),
-            "piece_code": normalize_optional_id(ligne.get("piece_code") or ligne.get("piece_id"), ligne.get("piece")),
+            "appartement_code": appartement_code,
+            "piece_code": piece_code,
             "lot_code": normalize_optional_id(ligne.get("lot_code") or ligne.get("lot_id"), ligne.get("lot")),
             "sous_lot_code": normalize_optional_id(ligne.get("sous_lot_code") or ligne.get("sous_lot_id"), ligne.get("sous_lot")),
             "article_id": normalize_optional_id(ligne.get("article_id"), ligne.get("id_ligne")),
@@ -203,8 +213,8 @@ class DataCleaner:
             "famille": self.classifier_famille(ligne.get("famille"), designation, lot),
             "batiment": batiment,
             "niveau": niveau,
-            "appart": str(ligne.get("appart") or "").strip(),
-            "piece": str(ligne.get("piece") or "").strip(),
+            "appart": appart,
+            "piece": piece,
             "type_zone": self._classifier_zone(designation, lot),
             "formule": str(ligne.get("formule") or "").strip(),
             "bim_object_id": str(ligne.get("bim_object_id") or "").strip(),

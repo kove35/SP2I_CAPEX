@@ -5,6 +5,7 @@ import { formatMoney, formatPercent } from "../../shared/formatters";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { useAnalyticsFilterStore } from "../../stores/analyticsFilterStore";
 import { normalizeDecision, normalizeFamily, toBusinessLabel } from "../../utils/analyticsLabels";
+import { createApproval } from "../../services/approvalService";
 
 const exportKeys = ["lot", "famille", "batiment", "niveau", "designation", "decision_import", "capex_local", "capex_optimise", "economie", "taux_economie"];
 
@@ -28,6 +29,8 @@ function normalizeRow(row = {}) {
     taux_economie: Number(row.taux_economie || (capexLocal ? economie / capexLocal : 0)),
     roi,
     fournisseur: row.fournisseur || normalizeFamily(row.famille) || "Fournisseur a confirmer",
+    prix_local: Number(row.pu_local || row.prix_local || row.capex_local || 0),
+    prix_import: Number(row.pu_import || row.prix_import || row.capex_import || row.capex_optimise || 0),
     delai: Number(row.delai || (decision === "IMPORT" ? 75 : 14)),
     risque: Number(row.risque || row.criticite || (decision === "IMPORT" ? 58 : 32)),
     statut_achat: row.statut_achat || (decision === "IMPORT" ? "A arbitrer" : "Local securise"),
@@ -87,6 +90,7 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
   const [quickSearch, setQuickSearch] = React.useState("");
   const [fullscreen, setFullscreen] = React.useState(false);
   const [selectedRow, setSelectedRow] = React.useState(null);
+  const [approvalNotice, setApprovalNotice] = React.useState("");
   const normalizedRows = React.useMemo(() => rows.map(normalizeRow), [rows]);
   const metrics = React.useMemo(() => {
     const source = selectedRow ? [selectedRow] : normalizedRows;
@@ -134,6 +138,7 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
 
   const handleRowSelected = (row) => {
     setSelectedRow(row);
+    setApprovalNotice("");
     const filters = {
       lot: row.lot,
       famille: row.famille,
@@ -152,12 +157,42 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
     });
   };
 
+  const submitApproval = async (decision, status, justification) => {
+    if (!selectedRow) return;
+    setApprovalNotice("Transmission au workflow d'approbation...");
+    try {
+      const approval = await createApproval({
+        project_id: Number(selectedRow.project_id || selectedRow.projet_id || 1),
+        article_id: String(selectedRow.article_id || selectedRow.code_article || selectedRow.id_ligne || ""),
+        lot_id: String(selectedRow.lot || ""),
+        sous_lot_id: String(selectedRow.sous_lot_id || selectedRow.sous_lot || ""),
+        niveau_id: String(selectedRow.niveau || ""),
+        appartement_id: String(selectedRow.appartement || ""),
+        piece_id: String(selectedRow.piece || ""),
+        approval_type: "PROCUREMENT_ARBITRATION",
+        decision,
+        status,
+        priority: Number(selectedRow.economie || 0) > 10_000_000 ? "HIGH" : "MEDIUM",
+        risk_level: Number(selectedRow.risque || 0) >= 70 ? "HIGH" : Number(selectedRow.risque || 0) >= 50 ? "MEDIUM" : "LOW",
+        roi: Number(selectedRow.roi || 0),
+        estimated_saving: Number(selectedRow.economie || 0),
+        justification_ai: `Copilote SP2I: ${selectedRow.designation} - ${justification}`,
+        justification_human: justification,
+        requested_by: "cockpit_direction",
+        role_required: status === "VALIDATION_DIRECTION" ? "DIRECTION" : "PROCUREMENT_MANAGER",
+      });
+      setApprovalNotice(`Workflow cree: #${approval.approval_id || "-"} (${status}).`);
+    } catch (error) {
+      setApprovalNotice(`Workflow non cree: ${error.message}`);
+    }
+  };
+
   return (
     <section className={fullscreen ? "fact-grid-shell fullscreen" : "fact-grid-shell"} data-fact-metre-grid>
       <header className="fact-grid-toolbar sticky">
         <div>
           <strong>{Number(total || normalizedRows.length).toLocaleString("fr-FR")} lignes budgetaires</strong>
-          <span>Centre operationnel connecte au moteur de pilotage SP2I</span>
+          <span>Donnees consolidees du projet</span>
         </div>
         <div className="fact-grid-metrics">
           <span>Selection {metrics.lignes}</span>
@@ -172,7 +207,7 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
           <span>Filtres : {filtersLabel}</span>
           <span>Budget : {formatMoney(metrics.capex)}</span>
           <span>Gain : {formatMoney(metrics.savings)}</span>
-          <span>Source : {selectedRow ? "Ligne sélectionnée" : "Analytics Engine"}</span>
+          <span>Source : {selectedRow ? "Ligne selectionnee" : "Analyse SP2I"}</span>
         </div>
         <label className="fact-grid-search">
           <Search size={15} />
@@ -216,18 +251,28 @@ export default function FactMetreGrid({ rows = [], total = 0, scopeLabel = "Sél
             <>
               <strong>{selectedRow.designation}</strong>
               <dl>
-                <div><dt>Budget</dt><dd>{formatMoney(selectedRow.capex_local)}</dd></div>
-                <div><dt>Gain</dt><dd>{formatMoney(selectedRow.economie)}</dd></div>
+                <div><dt>Prix local</dt><dd>{formatMoney(selectedRow.prix_local)}</dd></div>
+                <div><dt>Prix import</dt><dd>{formatMoney(selectedRow.prix_import)}</dd></div>
+                <div><dt>Gain potentiel</dt><dd>{formatMoney(selectedRow.economie)}</dd></div>
                 <div><dt>ROI</dt><dd>{formatPercent(selectedRow.roi)}</dd></div>
-                <div><dt>Fournisseur</dt><dd>{selectedRow.fournisseur}</dd></div>
-                <div><dt>Delai</dt><dd>{selectedRow.delai} j</dd></div>
-                <div><dt>Risque</dt><dd>{Math.round(selectedRow.risque)}/100</dd></div>
+                <div><dt>Risque logistique</dt><dd>{Math.round(selectedRow.risque)}/100</dd></div>
+                <div><dt>Lead time</dt><dd>{selectedRow.delai} j</dd></div>
               </dl>
               <p>
                 {selectedRow.decision_import === "IMPORT"
                   ? "Opportunite import a challenger: verifier incoterm, delai maritime et risque fournisseur avant validation."
                   : "Option locale stable: utile pour securiser le planning ou reduire le risque logistique."}
               </p>
+              <div className="line-detail-recommendation">
+                <span>Recommandation SP2I</span>
+                <strong>{selectedRow.decision_import === "IMPORT" && selectedRow.economie > 0 ? "IMPORT" : selectedRow.economie > 0 ? "A ETUDIER" : "LOCAL"}</strong>
+              </div>
+              <div className="line-detail-actions">
+                <button type="button" onClick={() => submitApproval("APPROVED", "VALIDATION_PROCUREMENT", "Validation cockpit: gain et ROI juges recevables.")}>Valider</button>
+                <button type="button" onClick={() => submitApproval("REJECTED", "VALIDATION_PROCUREMENT", "Refus cockpit: arbitrage a revoir avant engagement.")}>Refuser</button>
+                <button type="button" onClick={() => submitApproval("A_ARBITRER", "UNDER_REVIEW", "Justification demandee depuis le cockpit Direction.")}>Justifier</button>
+              </div>
+              {approvalNotice ? <small className="line-detail-notice">{approvalNotice}</small> : null}
             </>
           ) : (
             <p>Selectionner une ligne pour afficher ROI, risque, alternatives import/local et recommandation SP2I.</p>
