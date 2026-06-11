@@ -6,6 +6,8 @@ from typing import Any
 
 from sqlalchemy import text
 
+from app.config.fact_source import get_fact_source
+
 
 logger = logging.getLogger("sp2i-capex-api.analytics.schema")
 
@@ -74,7 +76,8 @@ def load_table_columns(db: Any, table_name: str, schema_name: str | None = None,
     return columns
 
 
-def preload_schema_capabilities(db: Any, tables: Iterable[str] = ("fact_metre",)) -> dict[str, dict[str, bool]]:
+def preload_schema_capabilities(db: Any, tables: Iterable[str] | None = None) -> dict[str, dict[str, bool]]:
+    tables = tables or (get_fact_source(),)
     return {
         table_name: schema_capabilities(db, table_name, force=True)
         for table_name in tables
@@ -87,10 +90,11 @@ def column_exists(db: Any, table_name: str, column_name: str) -> bool:
 
 def schema_capabilities(
     db: Any,
-    table_name: str = "fact_metre",
+    table_name: str | None = None,
     columns: Iterable[str] = OPTIONAL_FACT_METRE_COLUMNS,
     force: bool = False,
 ) -> dict[str, bool]:
+    table_name = table_name or get_fact_source()
     available = load_table_columns(db, table_name, force=force)
     return {column: column in available for column in columns}
 
@@ -107,7 +111,7 @@ def optional_column_sql(columns: set[str], column_name: str, alias: str | None =
     if column_name in columns:
         expression = column_name
     else:
-        warn_missing_column("fact_metre", column_name)
+        warn_missing_column(get_fact_source(), column_name)
         expression = default_sql
     return f"{expression} AS {alias}" if alias else expression
 
@@ -118,7 +122,7 @@ def first_non_empty_sql(columns: set[str], candidates: Iterable[str], default_sq
         if column in columns:
             available.append(f"NULLIF(TRIM(CAST({column} AS text)), '')")
         else:
-            warn_missing_column("fact_metre", column)
+            warn_missing_column(get_fact_source(), column)
     if not available:
         return default_sql
     return f"COALESCE({', '.join(available)})"

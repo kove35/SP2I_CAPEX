@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_display_text
 from app.analytics.utils.schema_utils import first_non_empty_sql, load_table_columns, optional_column_sql
+from app.config.fact_source import get_fact_source
 
 
 ALLOWED_GROUPS = {
@@ -44,6 +45,10 @@ class AnalyticsRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    @staticmethod
+    def _fact_source() -> str:
+        return get_fact_source()
+
     def schema_capabilities(self) -> dict[str, dict[str, bool]]:
         columns = self._fact_columns()
         return {
@@ -71,6 +76,7 @@ class AnalyticsRepository:
 
     def kpis(self, query: AnalyticsQuery) -> dict[str, Any]:
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         row = self.db.execute(
             text(
                 f"""
@@ -89,7 +95,7 @@ class AnalyticsRepository:
                     END AS taux_importable,
                     COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
                     COUNT(*) AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 """
             ),
@@ -99,6 +105,7 @@ class AnalyticsRepository:
 
     def table(self, query: AnalyticsQuery) -> tuple[list[dict[str, Any]], int]:
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         limit = query.page_size
         offset = (query.page - 1) * query.page_size
         order_column = query.order_by if query.order_by in ALLOWED_ORDER and self._fact_column_exists(query.order_by) else "capex_local"
@@ -111,7 +118,7 @@ class AnalyticsRepository:
         ifc_type_sql = self._optional_text_column("ifc_type")
         bim_object_sql = self._bim_object_sql()
 
-        total = self.db.execute(text(f"SELECT COUNT(*) FROM fact_metre {where_sql}"), params).scalar_one()
+        total = self.db.execute(text(f"SELECT COUNT(*) FROM {fact_source} {where_sql}"), params).scalar_one()
         rows = self.db.execute(
             text(
                 f"""
@@ -138,7 +145,7 @@ class AnalyticsRepository:
                     taux_economie,
                     decision_import,
                     date_import
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 ORDER BY {order_column} {order_dir}
                 LIMIT :limit OFFSET :offset
@@ -152,6 +159,7 @@ class AnalyticsRepository:
         group_key = query.group_by or default_group
         group_column = self._group_column(group_key, default_group)
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         rows = self.db.execute(
             text(
                 f"""
@@ -161,7 +169,7 @@ class AnalyticsRepository:
                     COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                     COALESCE(SUM(economie), 0) AS economie_nette,
                     COUNT(*) AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 GROUP BY COALESCE(CAST({group_column} AS text), 'NON_RENSEIGNE')
                 ORDER BY capex_brut DESC
@@ -174,6 +182,7 @@ class AnalyticsRepository:
 
     def heatmap_rows(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         family_sql = self._family_sql()
         rows = self.db.execute(
             text(
@@ -185,7 +194,7 @@ class AnalyticsRepository:
                     COALESCE(SUM(capex_optimise), 0) AS value,
                     COALESCE(SUM(economie), 0) AS economie,
                     COUNT(*) AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE({family_sql}, 'Famille non renseignee')
                 ORDER BY value DESC
@@ -228,6 +237,7 @@ class AnalyticsRepository:
 
     def sankey(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         family_sql = self._family_sql()
         rows = self.db.execute(
             text(
@@ -242,7 +252,7 @@ class AnalyticsRepository:
                          ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_import), 0)
                     END AS roi,
                     COUNT(*) AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 GROUP BY COALESCE(decision_import, 'LOCAL'), COALESCE({family_sql}, 'SP2I Supply'), COALESCE(lot, 'NON_RENSEIGNE')
                 ORDER BY value DESC
@@ -310,6 +320,7 @@ class AnalyticsRepository:
         le choix import/local, l'economie attendue et la densite de lignes.
         """
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         family_sql = self._family_sql()
         rows = self.db.execute(
             text(
@@ -325,7 +336,7 @@ class AnalyticsRepository:
                          ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_local), 0)
                     END AS economie_rate,
                     COUNT(*) AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 GROUP BY COALESCE(lot, 'NON_RENSEIGNE'), COALESCE({family_sql}, 'SP2I Supply'), COALESCE(decision_import, 'LOCAL')
                 ORDER BY impact DESC
@@ -403,6 +414,7 @@ class AnalyticsRepository:
 
     def timeline(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self.build_where_clause(query)
+        fact_source = self._fact_source()
         rows = self.db.execute(
             text(
                 f"""
@@ -412,7 +424,7 @@ class AnalyticsRepository:
                     COALESCE(SUM(capex_optimise), 0) AS capex_optimise,
                     COALESCE(SUM(economie), 0) AS economie_nette,
                     COUNT(*) AS nb_lignes
-                FROM fact_metre
+                FROM {fact_source}
                 {where_sql}
                 GROUP BY date_trunc('day', COALESCE(date_import, created_at))::date
                 ORDER BY periode
@@ -468,6 +480,7 @@ class AnalyticsRepository:
 
     def filter_options(self) -> dict[str, list[str]]:
         """Valeurs distinctes exposees au cockpit React pour les dropdowns BI."""
+        fact_source = self._fact_source()
         fields = {
             "batiments": "batiment",
             "niveaux": "niveau",
@@ -489,7 +502,7 @@ class AnalyticsRepository:
                 text(
                     f"""
                     SELECT DISTINCT {column} AS value
-                    FROM fact_metre
+                    FROM {fact_source}
                     WHERE {column} IS NOT NULL AND TRIM(CAST({column} AS text)) <> ''
                     ORDER BY value
                     LIMIT 500
@@ -501,13 +514,14 @@ class AnalyticsRepository:
 
     def _piece_filter_options(self) -> list[str]:
         """Options Piece robustes PLAN_READY: FACT_METRE puis DIM_PIECE si disponible."""
+        fact_source = self._fact_source()
         piece_sql = self._piece_sql()
         unions = [
             f"""
             SELECT DISTINCT value
             FROM (
                 SELECT {piece_sql} AS value
-                FROM fact_metre
+                FROM {fact_source}
             ) fact_pieces
             WHERE value IS NOT NULL AND TRIM(CAST(value AS text)) <> ''
             """
@@ -757,9 +771,10 @@ class AnalyticsRepository:
         return self._json_safe(payload)
 
     def quality_metrics(self) -> dict[str, Any]:
+        fact_source = self._fact_source()
         row = self.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     COUNT(*) AS nb_lignes,
                     COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS capex_local_total,
@@ -774,7 +789,7 @@ class AnalyticsRepository:
                     COUNT(DISTINCT lot) AS lots_distincts,
                     COUNT(DISTINCT batiment) AS batiments_distincts,
                     COUNT(DISTINCT niveau) AS niveaux_distincts
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
@@ -822,20 +837,22 @@ class AnalyticsRepository:
         - vues analytics vides ;
         - cache qui masque un refresh recent.
         """
-        fact_count = int(self.db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one() or 0)
+        fact_source = self._fact_source()
+        fact_count = int(self.db.execute(text(f"SELECT COUNT(*) FROM {fact_source}")).scalar_one() or 0)
         columns = self.db.execute(
             text(
                 """
                 SELECT column_name, data_type
                 FROM information_schema.columns
-                WHERE table_name = 'fact_metre'
+                WHERE table_name = :fact_source
                 ORDER BY ordinal_position
                 """
-            )
+            ),
+            {"fact_source": fact_source},
         ).mappings().all()
         sums = self.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     COALESCE(SUM(quantite), 0) AS quantite_total,
                     COALESCE(SUM(prix_total_ht), 0) AS prix_total_ht_total,
@@ -849,13 +866,13 @@ class AnalyticsRepository:
                     SUM(CASE WHEN lot IS NULL OR lot = '' THEN 1 ELSE 0 END) AS lignes_sans_lot,
                     SUM(CASE WHEN NULLIF(TRIM(COALESCE(appart, '')), '') IS NULL THEN 1 ELSE 0 END) AS lignes_appart_legacy_vides,
                     SUM(CASE WHEN NULLIF(TRIM(COALESCE(piece, '')), '') IS NULL THEN 1 ELSE 0 END) AS lignes_piece_legacy_vides
-                FROM fact_metre
+                FROM {fact_source}
                 """
             )
         ).mappings().one()
         preview = self.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     id_ligne,
                     designation,
@@ -868,7 +885,7 @@ class AnalyticsRepository:
                     capex_optimise,
                     economie,
                     decision_import
-                FROM fact_metre
+                FROM {fact_source}
                 ORDER BY created_at DESC NULLS LAST, id_ligne
                 LIMIT 20
                 """
@@ -1015,7 +1032,7 @@ class AnalyticsRepository:
         return self.build_where_clause(query)
 
     def _fact_columns(self) -> set[str]:
-        return load_table_columns(self.db, "fact_metre")
+        return load_table_columns(self.db, self._fact_source())
 
     def _fact_column_exists(self, column_name: str | None) -> bool:
         return bool(column_name) and column_name in self._fact_columns()
@@ -1035,24 +1052,6 @@ class AnalyticsRepository:
         for column in ("piece_code", "piece"):
             if column in columns:
                 available.append(f"NULLIF(TRIM(CAST({column} AS text)), '')")
-        dim_piece_columns = load_table_columns(self.db, "dim_piece")
-        if "piece_id" in columns and "piece_id" in dim_piece_columns:
-            dim_labels = [
-                f"NULLIF(TRIM(CAST(dp.{column} AS text)), '')"
-                for column in ("piece_nom", "piece_code", "piece")
-                if column in dim_piece_columns
-            ]
-            if dim_labels:
-                available.append(
-                    f"""
-                    (
-                        SELECT COALESCE({', '.join(dim_labels)})
-                        FROM dim_piece dp
-                        WHERE CAST(dp.piece_id AS text) = CAST(fact_metre.piece_id AS text)
-                        LIMIT 1
-                    )
-                    """
-                )
         if "piece_id" in columns:
             available.append("NULLIF(TRIM(CAST(piece_id AS text)), '')")
         if not available:
