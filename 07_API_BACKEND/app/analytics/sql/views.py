@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from app.config.fact_source import get_fact_source
+from app.config.financial_source import get_financial_source
 
 
 def build_analytics_views_sql() -> str:
     fact_source = get_fact_source()
+    financial_source = get_financial_source()
     return f"""
 DROP VIEW IF EXISTS vw_cost_intelligence CASCADE;
 DROP VIEW IF EXISTS vw_dim_article_bpu_active CASCADE;
@@ -26,47 +28,47 @@ DROP VIEW IF EXISTS vw_capex_summary CASCADE;
 
 CREATE OR REPLACE VIEW vw_capex_summary AS
 SELECT
-    ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_brut,
-    ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_optimise,
+    ROUND(COALESCE(SUM(capex_local), 0)::numeric, 2) AS capex_brut,
+    ROUND(COALESCE(SUM(capex_optimise), 0)::numeric, 2) AS capex_optimise,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette,
     ROUND(
-        CASE WHEN COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) = 0 THEN 0
-             ELSE (SUM(economie)::numeric / NULLIF(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric) * 100
+        CASE WHEN COALESCE(SUM(capex_local), 0) = 0 THEN 0
+             ELSE (SUM(economie)::numeric / NULLIF(SUM(capex_local), 0)::numeric) * 100
         END,
         2
     ) AS taux_economie,
     COUNT(*) AS nb_lignes,
     SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END) AS nb_import
-FROM {fact_source};
+FROM {financial_source};
 
 CREATE OR REPLACE VIEW vw_capex_by_lot AS
 SELECT
     COALESCE(lot, 'NON_RENSEIGNE') AS lot,
-    ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_brut,
-    ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_optimise,
+    ROUND(COALESCE(SUM(capex_local), 0)::numeric, 2) AS capex_brut,
+    ROUND(COALESCE(SUM(capex_optimise), 0)::numeric, 2) AS capex_optimise,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette,
     COUNT(*) AS nb_lignes
-FROM {fact_source}
+FROM {financial_source}
 GROUP BY COALESCE(lot, 'NON_RENSEIGNE');
 
 CREATE OR REPLACE VIEW vw_capex_by_building AS
 SELECT
     COALESCE(batiment, 'NON_RENSEIGNE') AS batiment,
-    ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_brut,
-    ROUND(COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_optimise,
+    ROUND(COALESCE(SUM(capex_local), 0)::numeric, 2) AS capex_brut,
+    ROUND(COALESCE(SUM(capex_optimise), 0)::numeric, 2) AS capex_optimise,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette,
     COUNT(*) AS nb_lignes
-FROM {fact_source}
+FROM {financial_source}
 GROUP BY COALESCE(batiment, 'NON_RENSEIGNE');
 
 CREATE OR REPLACE VIEW vw_import_analysis AS
 SELECT
     COALESCE(decision_import, 'LOCAL') AS decision_import,
     COUNT(*) AS nb_lignes,
-    ROUND(COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0)::numeric, 2) AS capex_brut,
-    ROUND(COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0)::numeric, 2) AS capex_import,
+    ROUND(COALESCE(SUM(capex_local), 0)::numeric, 2) AS capex_brut,
+    ROUND(COALESCE(SUM(capex_import), 0)::numeric, 2) AS capex_import,
     ROUND(COALESCE(SUM(economie), 0)::numeric, 2) AS economie_nette
-FROM {fact_source}
+FROM {financial_source}
 GROUP BY COALESCE(decision_import, 'LOCAL');
 
 CREATE OR REPLACE VIEW vw_procurement_risk AS
@@ -75,15 +77,15 @@ SELECT
     COALESCE(famille, 'default') AS famille,
     COUNT(*) AS nb_lignes,
     ROUND(AVG(COALESCE(taux_economie, 0))::numeric, 4) AS taux_economie_moyen
-FROM {fact_source}
+FROM {financial_source}
 GROUP BY COALESCE(decision_import, 'LOCAL'), COALESCE(famille, 'default');
 
 CREATE OR REPLACE VIEW vw_logistics_summary AS
 SELECT
     COALESCE(decision_import, 'LOCAL') AS decision_import,
     COUNT(*) AS nb_lignes,
-    ROUND(COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0)::numeric, 2) AS cout_import_estime
-FROM {fact_source}
+    ROUND(COALESCE(SUM(capex_import), 0)::numeric, 2) AS cout_import_estime
+FROM {financial_source}
 GROUP BY COALESCE(decision_import, 'LOCAL');
 
 CREATE OR REPLACE VIEW vw_project_kpis AS
@@ -306,28 +308,40 @@ GROUP BY
 
 CREATE OR REPLACE VIEW vw_cost_intelligence AS
 SELECT
-    projet,
+    'PROJET_MPEMBA' AS projet,
     batiment,
     niveau,
     appartement,
-    zone,
+    CASE
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%SEJOUR%%' OR UPPER(COALESCE(piece, '')) LIKE '%%SALON%%' OR UPPER(COALESCE(piece, '')) LIKE '%%CUISINE%%' THEN 'ZONE_JOUR'
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%CHAMBRE%%' OR UPPER(COALESCE(piece, '')) LIKE '%%DRESSING%%' THEN 'ZONE_NUIT'
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%SDE%%' OR UPPER(COALESCE(piece, '')) LIKE '%%SDB%%' OR UPPER(COALESCE(piece, '')) LIKE '%%WC%%' THEN 'ZONE_SANITAIRE'
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%BALCON%%' OR UPPER(COALESCE(piece, '')) LIKE '%%TERRASSE%%' THEN 'ZONE_EXTERIEURE'
+        ELSE 'ZONE_TECHNIQUE'
+    END AS zone,
     piece,
-    type_piece,
-    lot,
+    CASE
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%SEJOUR%%' OR UPPER(COALESCE(piece, '')) LIKE '%%SALON%%' OR UPPER(COALESCE(piece, '')) LIKE '%%CUISINE%%' THEN 'JOUR'
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%CHAMBRE%%' OR UPPER(COALESCE(piece, '')) LIKE '%%DRESSING%%' THEN 'NUIT'
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%SDE%%' OR UPPER(COALESCE(piece, '')) LIKE '%%SDB%%' OR UPPER(COALESCE(piece, '')) LIKE '%%WC%%' THEN 'SANITAIRE'
+        WHEN UPPER(COALESCE(piece, '')) LIKE '%%BALCON%%' OR UPPER(COALESCE(piece, '')) LIKE '%%TERRASSE%%' THEN 'EXTERIEUR'
+        ELSE 'TECHNIQUE'
+    END AS type_piece,
+    COALESCE(lot, 'NON_RENSEIGNE') AS lot,
     sous_lot,
     famille,
-    article,
-    surface_m2,
+    COALESCE(code_article, article_code, designation, 'NON_RENSEIGNE') AS article,
+    0::numeric AS surface_m2,
     capex_local,
     capex_import,
     capex_optimise,
     economie,
-    capex_m2,
+    0::numeric AS capex_m2,
     CASE WHEN COALESCE(capex_optimise, 0) = 0 THEN 0
          ELSE ROUND((economie / NULLIF(capex_optimise, 0))::numeric, 6)
     END AS roi,
-    nb_lignes
-FROM vw_spatial_analytics;
+    1 AS nb_lignes
+FROM {financial_source};
 
 CREATE OR REPLACE VIEW vw_dim_lot_active AS
 SELECT d.*

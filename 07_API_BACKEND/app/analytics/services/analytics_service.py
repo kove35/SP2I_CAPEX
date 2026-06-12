@@ -20,6 +20,7 @@ from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_payload_labels
 from app.analytics.utils.schema_utils import column_exists, first_non_empty_sql, load_table_columns, schema_capabilities
 from app.config.fact_source import get_fact_source
+from app.config.financial_source import get_financial_source
 from app.database import database_url_host, database_url_is_neon
 from app.spatial.enrichment import infer_piece_type
 
@@ -187,6 +188,10 @@ class AnalyticsService:
     @staticmethod
     def _fact_source() -> str:
         return get_fact_source()
+
+    @staticmethod
+    def _financial_source() -> str:
+        return get_financial_source()
 
     def dashboard(self, query: AnalyticsQuery, dashboard_type: str = "direction") -> dict[str, Any]:
         return self._cached(f"dashboard:{dashboard_type}", query, lambda: self._build_dashboard(query, dashboard_type))
@@ -426,10 +431,11 @@ class AnalyticsService:
     def financial_reconciliation_debug(self, query: AnalyticsQuery) -> dict[str, Any]:
         fact_source = self._fact_source()
         where_sql, params = self.repository.build_where_clause(query)
-        fact_metre = self._financial_scope_metrics(where_sql, params)
+        financial_where_sql, financial_params = self.repository.build_financial_where_clause(query)
+        fact_metre = self._financial_scope_metrics(financial_where_sql, financial_params)
         dashboard_kpis = self.repository.kpis(query)
         dashboard = self._dashboard_financial_metrics(dashboard_kpis)
-        views = self._analytics_view_reconciliation(where_sql, params)
+        views = self._analytics_view_reconciliation(financial_where_sql, financial_params)
         latest_dqe_audit = self._latest_dqe_audit_reconciliation()
 
         dashboard_vs_fact_stored = {
@@ -1770,18 +1776,14 @@ class AnalyticsService:
         })
 
     def _cost_source_sql(self) -> tuple[str, str]:
-        has_spatial_view = bool(self.repository.db.execute(text("SELECT to_regclass('vw_spatial_analytics') IS NOT NULL")).scalar())
-        if has_spatial_view:
-            return "vw_spatial_analytics", "vw_spatial_analytics"
-
-        fact_source = self._fact_source()
-        columns = load_table_columns(self.repository.db, fact_source)
+        financial_source = self._financial_source()
+        columns = load_table_columns(self.repository.db, financial_source)
 
         def number_sql(candidates: list[str], default_sql: str = "0") -> str:
             available = [column for column in candidates if column in columns]
             for column in candidates:
                 if column not in columns:
-                    logger.warning("Optional column missing: %s.%s", fact_source, column)
+                    logger.warning("Optional column missing: %s.%s", financial_source, column)
             if not available:
                 return default_sql
             return f"COALESCE({', '.join(available)}, {default_sql})"
@@ -1794,7 +1796,7 @@ class AnalyticsService:
         lot = first_non_empty_sql(columns, ["lot", "lot_code", "lot_id"], "'NON_RENSEIGNE'")
         sous_lot = first_non_empty_sql(columns, ["sous_lot", "sous_lot_id"], "'NON_RENSEIGNE'")
         famille = first_non_empty_sql(columns, ["famille", "famille_id"], "'default'")
-        article = first_non_empty_sql(columns, ["code_article", "article_id", "designation"], "'NON_RENSEIGNE'")
+        article = first_non_empty_sql(columns, ["code_article", "article_code", "article_id", "designation"], "'NON_RENSEIGNE'")
         type_piece_base = first_non_empty_sql(columns, ["piece_type", "type_zone"], "NULL")
         zone_base = first_non_empty_sql(columns, ["zone_id", "type_zone"], "NULL")
         capex_local = number_sql(["capex_local", "prix_total_ht"])
@@ -1847,9 +1849,9 @@ class AnalyticsService:
                     {economie} AS economie,
                     0::numeric AS capex_m2,
                     1 AS nb_lignes
-                FROM {fact_source}
+                FROM {financial_source}
             ) cost_source
-        """, f"{fact_source} schema-aware fallback"
+        """, financial_source
 
     @staticmethod
     def _cost_capex_m2_sql(scope_type: str, group_columns: list[str], scope_expr: str, surface_expr: str, where_sql: str) -> str:
@@ -2971,63 +2973,32 @@ class AnalyticsService:
         return dict(row)
 
     def _financial_scope_metrics(self, where_sql: str, params: dict[str, Any]) -> dict[str, Any]:
-        fact_source = self._fact_source()
+        financial_source = self._financial_source()
         row = self.repository.db.execute(
             text(
                 f"""
                 SELECT
                     COUNT(*) AS lines,
-                    COALESCE(SUM(COALESCE(capex_local, prix_total_ht, 0)), 0) AS budget_local,
-                    COALESCE(SUM(COALESCE(montant_import, 0)), 0) AS budget_import_reference,
-                    COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) AS budget_import,
-                    COALESCE(SUM(COALESCE(capex_optimise, capex_local, prix_total_ht, 0)), 0) AS budget_optimise,
-                    COALESCE(SUM(COALESCE(economie, economie_nette, 0)), 0) AS economie,
-                    COALESCE(
-                        SUM(
-                            COALESCE(capex_local, prix_total_ht, 0)
-                            - COALESCE(capex_import, montant_import, 0)
-                        ),
-                        0
-                    ) AS economie_theorique_local_import,
-                    COALESCE(
-                        SUM(
-                            COALESCE(capex_local, prix_total_ht, 0)
-                            - COALESCE(montant_import, 0)
-                        ),
-                        0
-                    ) AS economie_theorique_local_import_reference,
-                    COALESCE(
-                        SUM(
-                            COALESCE(capex_local, prix_total_ht, 0)
-                            - COALESCE(capex_optimise, capex_local, prix_total_ht, 0)
-                        ),
-                        0
-                    ) AS economie_recalculee_local_optimise,
-                    CASE WHEN COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) = 0 THEN 0
-                         ELSE COALESCE(SUM(COALESCE(economie, economie_nette, 0)), 0)
-                              / NULLIF(SUM(COALESCE(capex_import, montant_import, 0)), 0)
+                    COALESCE(SUM(capex_local), 0) AS budget_local,
+                    COALESCE(SUM(capex_import), 0) AS budget_import_reference,
+                    COALESCE(SUM(capex_import), 0) AS budget_import,
+                    COALESCE(SUM(capex_optimise), 0) AS budget_optimise,
+                    COALESCE(SUM(economie), 0) AS economie,
+                    COALESCE(SUM(capex_local - capex_import), 0) AS economie_theorique_local_import,
+                    COALESCE(SUM(capex_local - capex_import), 0) AS economie_theorique_local_import_reference,
+                    COALESCE(SUM(capex_local - capex_optimise), 0) AS economie_recalculee_local_optimise,
+                    CASE WHEN COALESCE(SUM(capex_import), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(economie), 0) / NULLIF(SUM(capex_import), 0)
                     END AS roi,
-                    CASE WHEN COALESCE(SUM(COALESCE(capex_import, montant_import, 0)), 0) = 0 THEN 0
-                         ELSE COALESCE(
-                            SUM(
-                                COALESCE(capex_local, prix_total_ht, 0)
-                                - COALESCE(capex_import, montant_import, 0)
-                            ),
-                            0
-                         ) / NULLIF(SUM(COALESCE(capex_import, montant_import, 0)), 0)
+                    CASE WHEN COALESCE(SUM(capex_import), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(capex_local - capex_import), 0) / NULLIF(SUM(capex_import), 0)
                     END AS roi_theorique_local_import,
-                    CASE WHEN COALESCE(SUM(COALESCE(montant_import, 0)), 0) = 0 THEN 0
-                         ELSE COALESCE(
-                            SUM(
-                                COALESCE(capex_local, prix_total_ht, 0)
-                                - COALESCE(montant_import, 0)
-                            ),
-                            0
-                         ) / NULLIF(SUM(COALESCE(montant_import, 0)), 0)
+                    CASE WHEN COALESCE(SUM(capex_import), 0) = 0 THEN 0
+                         ELSE COALESCE(SUM(capex_local - capex_import), 0) / NULLIF(SUM(capex_import), 0)
                     END AS roi_theorique_local_import_reference,
                     SUM(CASE WHEN decision_import = 'IMPORT' THEN 1 ELSE 0 END) AS import_lines,
                     SUM(CASE WHEN decision_import <> 'IMPORT' OR decision_import IS NULL THEN 1 ELSE 0 END) AS local_lines
-                FROM {fact_source}
+                FROM {financial_source}
                 {where_sql}
                 """
             ),
@@ -3059,7 +3030,7 @@ class AnalyticsService:
         result["lines"] = int(result.get("lines") or 0)
         result["import_lines"] = int(result.get("import_lines") or 0)
         result["local_lines"] = int(result.get("local_lines") or 0)
-        result["source"] = fact_source
+        result["source"] = financial_source
         return result
 
     def _dashboard_financial_metrics(self, kpis: dict[str, Any]) -> dict[str, Any]:
