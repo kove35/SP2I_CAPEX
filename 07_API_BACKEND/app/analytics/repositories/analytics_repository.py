@@ -11,6 +11,7 @@ from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_display_text
 from app.analytics.utils.schema_utils import first_non_empty_sql, load_table_columns, optional_column_sql
 from app.config.fact_source import get_fact_source
+from app.config.financial_source import get_financial_source
 
 
 ALLOWED_GROUPS = {
@@ -49,6 +50,10 @@ class AnalyticsRepository:
     def _fact_source() -> str:
         return get_fact_source()
 
+    @staticmethod
+    def _financial_source() -> str:
+        return get_financial_source()
+
     def schema_capabilities(self) -> dict[str, dict[str, bool]]:
         columns = self._fact_columns()
         return {
@@ -75,8 +80,8 @@ class AnalyticsRepository:
         }
 
     def kpis(self, query: AnalyticsQuery) -> dict[str, Any]:
-        where_sql, params = self.build_where_clause(query)
-        fact_source = self._fact_source()
+        financial_source = self._financial_source()
+        where_sql, params = self.build_financial_where_clause(query)
         row = self.db.execute(
             text(
                 f"""
@@ -95,7 +100,7 @@ class AnalyticsRepository:
                     END AS taux_importable,
                     COUNT(DISTINCT lot) FILTER (WHERE lot IS NOT NULL AND TRIM(CAST(lot AS text)) <> '') AS nb_lots,
                     COUNT(*) AS nb_lignes
-                FROM {fact_source}
+                FROM {financial_source}
                 {where_sql}
                 """
             ),
@@ -1022,6 +1027,64 @@ class AnalyticsRepository:
             params["periode_debut"] = filters.periode_debut
         if filters.periode_fin:
             clauses.append("COALESCE(date_import, created_at) <= CAST(:periode_fin AS timestamptz)")
+            params["periode_fin"] = filters.periode_fin
+
+        if not clauses:
+            return "", params
+        return "WHERE " + " AND ".join(clauses), params
+
+    def build_financial_where_clause(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
+        filters = query.filters
+        financial_source = self._financial_source()
+        columns = load_table_columns(self.db, financial_source)
+
+        def first_available(candidates: tuple[str, ...], default_sql: str = "NULL") -> str:
+            available = [
+                f"NULLIF(TRIM(CAST({column} AS text)), '')"
+                for column in candidates
+                if column in columns
+            ]
+            if not available:
+                return default_sql
+            return f"COALESCE({', '.join(available)})"
+
+        filter_columns = {
+            "batiment": first_available(("batiment", "batiment_code")),
+            "niveau": first_available(("niveau", "niveau_code")),
+            "appartement": first_available(("appartement", "appartement_code", "appartement_id", "appart")),
+            "piece": first_available(("piece", "piece_code", "piece_id")),
+            "lot": first_available(("lot", "lot_code")),
+            "famille": first_available(("famille",)),
+        }
+
+        clauses: list[str] = []
+        params: dict[str, Any] = {}
+        for field, column in filter_columns.items():
+            value = getattr(filters, field)
+            if value:
+                if column == "NULL":
+                    clauses.append("1 = 0")
+                    continue
+                clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
+                params[field] = f"%{value}%"
+
+        if filters.decision_import and "decision_import" in columns:
+            clauses.append("LOWER(decision_import) = LOWER(:decision_import)")
+            params["decision_import"] = filters.decision_import
+
+        date_column = None
+        if "date_import" in columns and "created_at" in columns:
+            date_column = "COALESCE(date_import, created_at)"
+        elif "date_import" in columns:
+            date_column = "date_import"
+        elif "created_at" in columns:
+            date_column = "created_at"
+
+        if date_column and filters.periode_debut:
+            clauses.append(f"{date_column} >= CAST(:periode_debut AS timestamptz)")
+            params["periode_debut"] = filters.periode_debut
+        if date_column and filters.periode_fin:
+            clauses.append(f"{date_column} <= CAST(:periode_fin AS timestamptz)")
             params["periode_fin"] = filters.periode_fin
 
         if not clauses:
