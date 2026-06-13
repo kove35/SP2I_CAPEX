@@ -10,6 +10,20 @@ export function getAnalyticsDashboard(filters, dashboardType = "direction", extr
   });
 }
 
+export function getAnalyticsDashboardV6(filters, extras = {}) {
+  return request({
+    url: "/analytics/v6/dashboard",
+    params: toAnalyticsParams(filters, { page_size: 100, ...extras }),
+  });
+}
+
+export function getAnalyticsProjectCostV6(filters, extras = {}) {
+  return request({
+    url: "/analytics/v6/project-cost",
+    params: toAnalyticsParams(filters, extras),
+  });
+}
+
 export function getAnalyticsCapex(filters, extras = {}) {
   return request({ url: "/analytics/capex", params: toAnalyticsParams(filters, { page_size: 100, ...extras }) });
 }
@@ -44,6 +58,10 @@ export function getAnalyticsGainAnalysis(filters, extras = {}) {
 
 export function getAnalyticsCostIntelligence(filters, extras = {}) {
   return request({ url: "/analytics/cost-intelligence", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
+}
+
+export function getAnalyticsCostIntelligenceV6(filters, extras = {}) {
+  return request({ url: "/analytics/v6/cost-intelligence", params: toAnalyticsParams(filters, { page_size: 500, ...extras }) });
 }
 
 export function getAnalyticsGenerationDiagnostic() {

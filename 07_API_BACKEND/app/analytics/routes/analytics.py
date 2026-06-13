@@ -180,6 +180,21 @@ def cost_intelligence(query=Depends(analytics_query), db: Session = Depends(get_
     return sanitize_for_json(AnalyticsService(db).cost_intelligence(query))
 
 
+@router.get("/v6/project-cost", response_model=AnalyticsResponse)
+def project_cost_v6(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).project_cost_v6(query))
+
+
+@router.get("/v6/dashboard", response_model=AnalyticsResponse)
+def dashboard_v6(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).dashboard_v6(query))
+
+
+@router.get("/v6/cost-intelligence", response_model=AnalyticsResponse)
+def cost_intelligence_v6(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
+    return sanitize_for_json(AnalyticsService(db).cost_intelligence_v6(query))
+
+
 @router.get("/generation-diagnostic")
 def generation_diagnostic(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).build_generation_diagnostic())

@@ -108,6 +108,111 @@ class AnalyticsRepository:
         ).mappings().one()
         return dict(row)
 
+    def get_project_cost_summary(self) -> dict[str, Any]:
+        row = self.db.execute(
+            text(
+                """
+                SELECT
+                    capex_direct,
+                    indirect_costs,
+                    site_installation,
+                    import_logistics,
+                    contingency,
+                    total_project_cost,
+                    capex_direct_per_m2,
+                    total_project_cost_per_m2,
+                    total_project_cost_per_appartement,
+                    total_project_cost_per_niveau,
+                    fallback_legacy_lot_capex,
+                    fallback_legacy_lot_pct
+                FROM vw_project_cost_summary
+                LIMIT 1
+                """
+            )
+        ).mappings().one()
+        summary = dict(row)
+        summary["capex_m2"] = summary.get("total_project_cost_per_m2")
+        summary["cost_per_apartment"] = summary.get("total_project_cost_per_appartement")
+        summary["cost_per_level"] = summary.get("total_project_cost_per_niveau")
+        return self._json_safe(summary)
+
+    def get_dashboard_direction_v6(self) -> list[dict[str, Any]]:
+        rows = self.db.execute(
+            text(
+                """
+                SELECT
+                    lot,
+                    capex_direct,
+                    pct_capex_direct,
+                    nb_lignes,
+                    nb_articles,
+                    fallback_legacy_lot_lines,
+                    fallback_legacy_lot_capex,
+                    project_capex_direct,
+                    indirect_costs,
+                    site_installation,
+                    import_logistics,
+                    contingency,
+                    total_project_cost,
+                    total_project_cost_per_m2,
+                    total_project_cost_per_appartement,
+                    total_project_cost_per_niveau
+                FROM vw_dashboard_direction_v6
+                ORDER BY capex_direct DESC
+                """
+            )
+        ).mappings().all()
+        return [self._json_safe(dict(row)) for row in rows]
+
+    def get_cost_intelligence_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        clauses: list[str] = []
+        params: dict[str, Any] = {}
+        filters = query.filters
+        if filters.lot:
+            clauses.append("lot = :lot")
+            params["lot"] = filters.lot
+        if filters.sous_lot:
+            clauses.append("sous_lot = :sous_lot")
+            params["sous_lot"] = filters.sous_lot
+        if filters.decision_import:
+            clauses.append("decision_import = :decision_import")
+            params["decision_import"] = filters.decision_import
+        where_sql = "WHERE " + " AND ".join(clauses) if clauses else ""
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    lot,
+                    sous_lot,
+                    article_code,
+                    designation,
+                    unite,
+                    quantite,
+                    prix_local_fcfa,
+                    prix_import_fcfa,
+                    prix_optimise_fcfa,
+                    capex_local,
+                    capex_import,
+                    capex_optimise,
+                    economie,
+                    decision_import,
+                    pricing_scope,
+                    pricing_confidence,
+                    price_reference_code
+                FROM vw_cost_intelligence_v6
+                {where_sql}
+                ORDER BY capex_local DESC
+                LIMIT :limit OFFSET :offset
+                """
+            ),
+            {
+                **params,
+                "limit": query.page_size,
+                "offset": (query.page - 1) * query.page_size,
+            },
+        ).mappings().all()
+        return [self._json_safe(dict(row)) for row in rows]
+
     def table(self, query: AnalyticsQuery) -> tuple[list[dict[str, Any]], int]:
         where_sql, params = self.build_where_clause(query)
         fact_source = self._fact_source()
