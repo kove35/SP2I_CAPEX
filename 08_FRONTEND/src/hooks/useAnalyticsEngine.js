@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getAnalyticsCapex,
   getAnalyticsCostIntelligence,
+  getAnalyticsCostIntelligenceV6,
   getAnalyticsDashboard,
+  getAnalyticsDashboardV6,
   getAnalyticsDrilldown,
   getAnalyticsGainAnalysis,
   getAnalyticsHeatmap,
@@ -65,6 +67,8 @@ const ANALYTICS_QUERY_PLAN = [
   { endpoint: "/analytics/import-risks", query: "import-risks", priority: 4, trigger: "vue procurement/logistics", enabled: "deferredTradeReady" },
 ];
 
+const USE_V6_FINANCIALS = String(import.meta.env.VITE_SP2I_USE_V6_FINANCIALS || "").toLowerCase() === "true";
+
 function querySettled(query) {
   return query.isSuccess || query.isError;
 }
@@ -75,6 +79,7 @@ function hasDashboardSuccess(query) {
 
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
+  const useV6Financials = USE_V6_FINANCIALS && dashboardType === "direction";
   const shouldLoadProcurementScenarios = dashboardType === "procurement";
   const shouldLoadProcurementDetails = dashboardType === "procurement";
   const shouldLoadTradeDetails = dashboardType === "procurement" || dashboardType === "logistics";
@@ -83,11 +88,11 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   console.table(ANALYTICS_QUERY_PLAN);
 
   const dashboard = useQuery({
-    queryKey: buildAnalyticsQueryKey("dashboard", debouncedFilters, { dashboardType }),
+    queryKey: buildAnalyticsQueryKey("dashboard", debouncedFilters, { dashboardType, financialMode: useV6Financials ? "v6" : "v5" }),
     queryFn: () => {
       markPerformance("dashboard_request");
       console.log("Query refresh", "analytics-dashboard", debouncedFilters);
-      return getAnalyticsDashboard(debouncedFilters, dashboardType);
+      return useV6Financials ? getAnalyticsDashboardV6(debouncedFilters) : getAnalyticsDashboard(debouncedFilters, dashboardType);
     },
     onSuccess: (data) => {
       markPerformance("dashboard_response");
@@ -202,10 +207,10 @@ export function useAnalyticsEngine(dashboardType = "direction") {
   });
 
   const costIntelligence = useQuery({
-    queryKey: buildAnalyticsQueryKey("cost-intelligence", debouncedFilters),
+    queryKey: buildAnalyticsQueryKey("cost-intelligence", debouncedFilters, { financialMode: useV6Financials ? "v6" : "v5" }),
     queryFn: () => {
       console.log("Query refresh", "analytics-cost-intelligence", debouncedFilters);
-      return getAnalyticsCostIntelligence(debouncedFilters);
+      return useV6Financials ? getAnalyticsCostIntelligenceV6(debouncedFilters) : getAnalyticsCostIntelligence(debouncedFilters);
     },
     enabled: secondaryReady,
     onSuccess: (data) => logAnalyticsResult("cost-intelligence", data, debouncedFilters),

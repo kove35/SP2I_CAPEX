@@ -45,3 +45,45 @@ class AnalyticsResponse(BaseModel):
     table: list[dict[str, Any]] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+
+
+class ProjectCostSummary(BaseModel):
+    capex_direct: float = 0
+    indirect_costs: float = 0
+    site_installation: float = 0
+    import_logistics: float = 0
+    contingency: float = 0
+    total_project_cost: float = 0
+    capex_m2: float = 0
+    cost_per_apartment: float = 0
+    cost_per_level: float = 0
+
+
+class DashboardDirectionV6(BaseModel):
+    lot: str
+    capex_direct: float = 0
+    pct_capex_direct: float = 0
+    nb_lignes: int = 0
+    nb_articles: int = 0
+    total_project_cost: float = 0
+    capex_m2: float = 0
+
+
+class CostIntelligenceV6(BaseModel):
+    lot: str
+    sous_lot: str | None = None
+    article_code: str | None = None
+    designation: str | None = None
+    unite: str | None = None
+    quantite: float = 0
+    prix_local_fcfa: float = 0
+    prix_import_fcfa: float = 0
+    prix_optimise_fcfa: float = 0
+    capex_local: float = 0
+    capex_import: float = 0
+    capex_optimise: float = 0
+    economie: float = 0
+    decision_import: str | None = None
+    pricing_scope: str | None = None
+    pricing_confidence: str | None = None
+    price_reference_code: str | None = None

@@ -285,6 +285,15 @@ class AnalyticsService:
     def cost_intelligence(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._cached("cost-intelligence", query, lambda: self._build_cost_intelligence(query))
 
+    def project_cost_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._build_project_cost_v6(query)
+
+    def dashboard_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._build_dashboard_v6(query)
+
+    def cost_intelligence_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
+        return self._build_cost_intelligence_v6(query)
+
     def build_generation_diagnostic(self) -> dict[str, Any]:
         return self._generation_endpoint(
             "/analytics/generation-diagnostic",
@@ -1416,6 +1425,51 @@ class AnalyticsService:
             },
         )
 
+    def _build_project_cost_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
+        summary = self.repository.get_project_cost_summary()
+        return self._response(
+            query,
+            kpis=summary,
+            table=[summary],
+            total=1,
+            metadata={
+                "engine": "SP2I Financial Engine V6",
+                "source": "vw_project_cost_summary",
+                "mode": "parallel_v6",
+            },
+        )
+
+    def _build_dashboard_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
+        summary = self.repository.get_project_cost_summary()
+        by_lot = self.repository.get_dashboard_direction_v6()
+        kpis = {
+            **summary,
+            "capex_brut": summary.get("capex_direct"),
+            "capex_local": summary.get("capex_direct"),
+            "capex_optimise": summary.get("capex_direct"),
+            "economie_nette": 0,
+            "roi_import": 0,
+            "taux_economie": 0,
+            "nb_lignes": sum(int(row.get("nb_lignes") or 0) for row in by_lot),
+            "nb_lots": len({str(row.get("lot") or "") for row in by_lot if row.get("lot")}),
+            "analytics_confidence": "HIGH",
+            "analytics_confidence_label": "Elevee",
+            "analytics_confidence_score": 95,
+        }
+        return self._response(
+            query,
+            kpis=kpis,
+            charts={"bar": by_lot},
+            table=by_lot,
+            total=len(by_lot),
+            metadata={
+                "engine": "SP2I Financial Engine V6",
+                "source": "vw_dashboard_direction_v6",
+                "project_cost_source": "vw_project_cost_summary",
+                "mode": "parallel_v6",
+            },
+        )
+
     def _build_spatial(self, query: AnalyticsQuery) -> dict[str, Any]:
         where_sql, params = self._spatial_view_where(query)
 
@@ -1774,6 +1828,82 @@ class AnalyticsService:
                 "scope": "CAPEX / Procurement / Spatial aggregations",
             },
         })
+
+    def _build_cost_intelligence_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
+        rows = self.repository.get_cost_intelligence_v6(query)
+        summary = self.repository.get_project_cost_summary()
+        capex_local = sum(float(row.get("capex_local") or 0) for row in rows)
+        capex_import = sum(float(row.get("capex_import") or 0) for row in rows)
+        capex_optimise = sum(float(row.get("capex_optimise") or 0) for row in rows)
+        economie = sum(float(row.get("economie") or 0) for row in rows)
+        lots: dict[str, dict[str, Any]] = {}
+        sous_lots: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            lot = str(row.get("lot") or "NON_RENSEIGNE")
+            lot_bucket = lots.setdefault(lot, {"label": lot, "scope": lot, "capex": 0, "capex_optimise": 0, "economie": 0, "nb_lignes": 0})
+            lot_bucket["capex"] += float(row.get("capex_local") or 0)
+            lot_bucket["capex_optimise"] += float(row.get("capex_optimise") or 0)
+            lot_bucket["economie"] += float(row.get("economie") or 0)
+            lot_bucket["nb_lignes"] += 1
+            sous_lot = str(row.get("sous_lot") or "NON_RENSEIGNE")
+            sous_bucket = sous_lots.setdefault(sous_lot, {"label": sous_lot, "scope": sous_lot, "capex": 0, "capex_optimise": 0, "economie": 0, "nb_lignes": 0})
+            sous_bucket["capex"] += float(row.get("capex_local") or 0)
+            sous_bucket["capex_optimise"] += float(row.get("capex_optimise") or 0)
+            sous_bucket["economie"] += float(row.get("economie") or 0)
+            sous_bucket["nb_lignes"] += 1
+        top_lots = sorted(lots.values(), key=lambda item: item["capex"], reverse=True)
+        top_sous_lots = sorted(sous_lots.values(), key=lambda item: item["capex"], reverse=True)
+        top_articles = sorted(
+            [
+                {
+                    "label": row.get("designation"),
+                    "scope": row.get("article_code"),
+                    "lot": row.get("lot"),
+                    "capex": row.get("capex_local"),
+                    "capex_optimise": row.get("capex_optimise"),
+                    "economie": row.get("economie"),
+                    "pricing_scope": row.get("pricing_scope"),
+                }
+                for row in rows
+            ],
+            key=lambda item: float(item.get("capex") or 0),
+            reverse=True,
+        )
+        return self._response(
+            query,
+            kpis={
+                "capex_local": capex_local,
+                "capex_import": capex_import,
+                "capex_optimise": capex_optimise,
+                "economie": economie,
+                "capex_direct": summary.get("capex_direct"),
+                "total_project_cost": summary.get("total_project_cost"),
+                "capex_m2": summary.get("capex_m2"),
+                "nb_lignes": len(rows),
+                "nb_lots": len(lots),
+            },
+            charts={
+                "top_costs": {
+                    "lots": top_lots[:10],
+                    "sous_lots": top_sous_lots[:10],
+                    "articles": top_articles[:20],
+                    "economies": [row for row in top_articles if float(row.get("economie") or 0) > 0][:10],
+                },
+                "pareto": {
+                    "lots": top_lots,
+                    "sous_lots": top_sous_lots,
+                    "articles": top_articles,
+                },
+            },
+            table=rows,
+            total=len(rows),
+            metadata={
+                "engine": "SP2I Cost Intelligence V6",
+                "source": "vw_cost_intelligence_v6",
+                "project_cost_source": "vw_project_cost_summary",
+                "mode": "parallel_v6",
+            },
+        )
 
     def _cost_source_sql(self) -> tuple[str, str]:
         financial_source = self._financial_source()
