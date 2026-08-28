@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.models import User
-from app.auth.routes import get_current_user
+from app.auth.dependencies import get_current_user
 from app.database import get_db
 from app.projects.models import Project
 from app.workflow.engine.workflow_state_engine import WorkflowStateEngine

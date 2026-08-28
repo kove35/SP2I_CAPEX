@@ -48,7 +48,7 @@ class RepositorySimulation:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def insert_fact_metre(self, data: list[dict[str, Any]]) -> int:
+    def insert_fact_metre(self, data: list[dict[str, Any]], *, commit: bool = True) -> int:
         inserted = 0
         seen: set[str] = set()
 
@@ -353,10 +353,13 @@ class RepositorySimulation:
             )
             inserted += 1
 
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return inserted
 
-    def insert_dim_famille(self, data: list[dict[str, Any]]) -> int:
+    def insert_dim_famille(self, data: list[dict[str, Any]], *, commit: bool = True) -> int:
         lignes = [
             {
                 "famille": _texte(ligne.get("famille") or "default"),
@@ -380,7 +383,10 @@ class RepositorySimulation:
             },
         )
         self.db.execute(statement)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return len(lignes)
 
     def get_summary(self) -> dict[str, Any]:

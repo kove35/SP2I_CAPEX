@@ -29,6 +29,17 @@ export const apiClient = axios.create({
   timeout: 60000,
 });
 
+const SESSION_KEY = "sp2i_session";
+
+function readAccessToken() {
+  try {
+    const session = JSON.parse(window.localStorage.getItem(SESSION_KEY) || "null");
+    return session?.token_type === "bearer" ? session.access_token : null;
+  } catch {
+    return null;
+  }
+}
+
 let activeAnalyticsRequests = 0;
 let maxConcurrentAnalyticsRequests = 0;
 
@@ -41,6 +52,7 @@ function isAnalyticsEndpoint(url = "") {
 }
 
 apiClient.interceptors.request.use((config) => {
+  const token = readAccessToken();
   const timeoutMs = config.timeout ?? apiClient.defaults.timeout;
   const endpoint = `${(config.method || "GET").toUpperCase()} ${config.url}`;
   const analyticsEndpoint = isAnalyticsEndpoint(config.url);
@@ -64,6 +76,10 @@ apiClient.interceptors.request.use((config) => {
   markPerformance(`REQUEST_START:${endpoint}`);
   return {
     ...config,
+    headers: {
+      ...(config.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     metadata: {
       ...(config.metadata || {}),
       startedAt: now(),

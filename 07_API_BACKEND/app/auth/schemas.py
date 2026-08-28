@@ -1,20 +1,33 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-
-
-ROLES = {"ADMIN", "MANAGER", "ANALYST", "VIEWER"}
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str = Field(min_length=8)
-    full_name: str = Field(default="")
-    role: str = Field(default="ADMIN")
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=12, max_length=256)
+    full_name: str = Field(default="", max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if "@" not in normalized or normalized.startswith("@") or normalized.endswith("@"):
+            raise ValueError("Adresse email invalide.")
+        return normalized
 
 
 class LoginRequest(BaseModel):
-    email: str
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=255)
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
     password: str
 
 
@@ -24,6 +37,20 @@ class UserResponse(BaseModel):
     full_name: str
     role: str
     is_active: bool
+
+
+class UserRoleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        if normalized not in {"ADMIN", "MANAGER", "ANALYST", "VIEWER"}:
+            raise ValueError("Role invalide.")
+        return normalized
 
 
 class AuthResponse(BaseModel):

@@ -21,6 +21,8 @@ Power BI = couche de visualisation strategique
 - [Organisation du projet Work](docs/WORK_PROJECT.md)
 - [Workflow de développement Codex](docs/CODEX_WORKFLOW.md)
 - [Roadmap sécurité d'abord](docs/ROADMAP_SECURITY_FIRST.md)
+- [Politique de protection des données](docs/DATA_SECURITY.md)
+- [Déploiement sécurisé](docs/SECURITY_DEPLOYMENT.md)
 - [Instructions permanentes Codex](AGENTS.md)
 
 L'import Chine, la supply chain, les containers et la logistique restent des

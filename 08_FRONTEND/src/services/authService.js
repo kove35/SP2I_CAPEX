@@ -28,17 +28,3 @@ export async function registerUser(payload) {
   const session = await request({ url: "/auth/register", method: "POST", data: payload });
   return storeSession(session);
 }
-
-export function createDemoSession() {
-  return storeSession({
-    access_token: "demo-session",
-    token_type: "demo",
-    user: {
-      id: 0,
-      email: "demo@sp2i.local",
-      full_name: "Utilisateur demonstration",
-      role: "MANAGER",
-      is_active: true,
-    },
-  });
-}

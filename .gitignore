@@ -34,3 +34,10 @@ temp/
 .vercel
 08_FRONTEND/test-results/
 08_FRONTEND/playwright-report/
+
+# Donnees metier privees : utiliser uniquement des exemples anonymises dans Git.
+03_DONNEES_ENTREE/private/
+03_DONNEES_REFERENCE/private/
+05_RESULTATS/private/
+private_data/
+*.credentials.json

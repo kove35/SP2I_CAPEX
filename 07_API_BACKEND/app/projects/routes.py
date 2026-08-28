@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.auth.models import User, WorkspaceMembership
-from app.auth.routes import get_current_user
+from app.auth.dependencies import get_current_user
 from app.services.project_report_export import build_project_report_pdf, generate_project_report_filename
 from app.database import get_db
 from app.projects.models import Project
