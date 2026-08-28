@@ -16,6 +16,13 @@ PostgreSQL = source de verite analytique
 Power BI = couche de visualisation strategique
 ```
 
+## Pilotage Work et Codex
+
+- [Organisation du projet Work](docs/WORK_PROJECT.md)
+- [Workflow de développement Codex](docs/CODEX_WORKFLOW.md)
+- [Roadmap sécurité d'abord](docs/ROADMAP_SECURITY_FIRST.md)
+- [Instructions permanentes Codex](AGENTS.md)
+
 L'import Chine, la supply chain, les containers et la logistique restent des
 moteurs d'optimisation integres. Ils ne remplacent pas le coeur du produit :
 le pilotage des investissements immobiliers.
