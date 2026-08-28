@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Dict
@@ -12,12 +13,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth.dependencies import require_analyst, require_manager
 from app.core.ai.ai_file_store import AIFileStore
 from app.services.service_dqe import ServiceDQE
 from app.services.service_pipeline import ServicePipeline
+from app.utils.upload_security import read_limited_upload, safe_upload_name, validate_file_signature
 
 
 router = APIRouter()
+logger = logging.getLogger("sp2i-capex-api")
 
 
 def _max_upload_bytes() -> int:
@@ -89,7 +93,7 @@ def download_active_dqe(db: Session = Depends(get_db)) -> FileResponse:
     )
 
 
-@router.post("/upload")
+@router.post("/upload", dependencies=[Depends(require_analyst)])
 async def upload_dqe(fichier: UploadFile = File(...), db: Session = Depends(get_db)) -> Dict:
     """
     Upload d'un DQE au format JSON.
@@ -97,53 +101,46 @@ async def upload_dqe(fichier: UploadFile = File(...), db: Session = Depends(get_
     Ce endpoint verifie le fichier, lit son contenu, lance le pipeline
     complet SP2I, puis retourne un resultat compatible API.
     """
-    if not fichier.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Aucun fichier fourni.",
-        )
-
-    if not fichier.filename.lower().endswith(".json"):
+    nom_fichier = safe_upload_name(fichier.filename)
+    if not nom_fichier.lower().endswith(".json"):
         raise HTTPException(
             status_code=400,
             detail="Le DQE doit etre au format JSON (.json).",
         )
 
     try:
-        contenu = await fichier.read()
-
-        if not contenu:
-            raise HTTPException(
-                status_code=400,
-                detail="Le fichier est vide.",
-            )
-        _valider_taille_upload(contenu)
+        contenu = await read_limited_upload(fichier, _max_upload_bytes())
+        validate_file_signature(nom_fichier, contenu)
     except HTTPException:
         raise
     except Exception as erreur:
+        logger.exception("DQE JSON read failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la lecture du fichier : {str(erreur)}",
+            detail="Erreur interne lors de la lecture du fichier.",
         )
 
     try:
         return ServiceDQE(db).traiter_upload_json(contenu)
     except Exception as erreur:
+        logger.exception("DQE JSON processing failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors du traitement SP2I : {str(erreur)}",
+            detail="Erreur interne lors du traitement SP2I.",
         )
 
 
-@router.post("/sync-current")
+@router.post("/sync-current", dependencies=[Depends(require_manager)])
 def sync_current_dqe(db: Session = Depends(get_db)) -> Dict:
     """Relance le pipeline sur le DQE source courant et synchronise PostgreSQL."""
     try:
         return ServicePipeline(db).executer_source_courante()
     except Exception as erreur:
+        db.rollback()
+        logger.exception("Current DQE synchronization failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la synchronisation PostgreSQL : {str(erreur)}",
+            detail="Erreur interne lors de la synchronisation PostgreSQL.",
         )
 
 
@@ -189,7 +186,7 @@ def ai_suggestions(file_id: str) -> Dict:
     }
 
 
-@router.post("/validate-mapping/{file_id}")
+@router.post("/validate-mapping/{file_id}", dependencies=[Depends(require_analyst)])
 async def validate_mapping(file_id: str, mapping: list[dict]) -> Dict:
     """
     Valide humainement un mapping propose par l'IA.
@@ -208,7 +205,7 @@ async def validate_mapping(file_id: str, mapping: list[dict]) -> Dict:
     }
 
 
-@router.post("/extract")
+@router.post("/extract", dependencies=[Depends(require_analyst)])
 async def extract_dqe_pdf(
     fichier: UploadFile | None = File(default=None),
     file: UploadFile | None = File(default=None),
@@ -221,41 +218,38 @@ async def extract_dqe_pdf(
     """
     fichier_recu = fichier or file
 
-    if not fichier_recu or not fichier_recu.filename:
+    if not fichier_recu:
         raise HTTPException(
             status_code=400,
             detail="Aucun fichier PDF fourni.",
         )
 
-    if not fichier_recu.filename.lower().endswith(".pdf"):
+    nom_fichier = safe_upload_name(fichier_recu.filename)
+    if not nom_fichier.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=400,
             detail="Le fichier doit etre au format PDF (.pdf).",
         )
 
     try:
-        contenu = await fichier_recu.read()
-
-        if not contenu:
-            raise HTTPException(
-                status_code=400,
-                detail="Le fichier PDF est vide.",
-            )
-        _valider_taille_upload(contenu)
+        contenu = await read_limited_upload(fichier_recu, _max_upload_bytes())
+        validate_file_signature(nom_fichier, contenu)
     except HTTPException:
         raise
     except Exception as erreur:
+        logger.exception("DQE PDF read failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la lecture du PDF : {str(erreur)}",
+            detail="Erreur interne lors de la lecture du PDF.",
         )
 
     try:
-        return ServiceDQE().extraire_pdf(contenu, fichier_recu.filename)
+        return ServiceDQE().extraire_pdf(contenu, nom_fichier)
     except Exception as erreur:
+        logger.exception("DQE PDF extraction failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de l'extraction PDF : {str(erreur)}",
+            detail="Erreur interne lors de l'extraction PDF.",
         )
 
 
@@ -275,9 +269,10 @@ def stats_dqe() -> Dict:
         donnees = json.loads(chemin_normalise.read_text(encoding="utf-8"))
         lignes = donnees.get("lignes", []) if isinstance(donnees, dict) else []
     except Exception as erreur:
+        logger.exception("DQE statistics read failed")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la lecture des statistiques : {str(erreur)}",
+            detail="Erreur interne lors de la lecture des statistiques DQE.",
         )
 
     return {

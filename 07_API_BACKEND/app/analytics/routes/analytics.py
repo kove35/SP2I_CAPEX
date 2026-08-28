@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.analytics.schemas import AnalyticsResponse
 from app.analytics.services import AnalyticsService
 from app.analytics.utils import build_query
+from app.auth.dependencies import require_admin
 from app.core.startup_metrics import get_startup_status
 from app.database import get_db
 from app.utils.json_safe import sanitize_for_json
@@ -229,42 +230,42 @@ def dashboard(
     return sanitize_for_json(AnalyticsService(db).dashboard(query, dashboard_type=dashboard_type))
 
 
-@router.get("/system-health", response_model=AnalyticsResponse)
+@router.get("/system-health", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def system_health(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).system_health())
 
 
-@router.get("/query-performance", response_model=AnalyticsResponse)
+@router.get("/query-performance", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def query_performance(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).query_performance())
 
 
-@router.get("/cache-status", response_model=AnalyticsResponse)
+@router.get("/cache-status", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def cache_status(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).cache_status())
 
 
-@router.get("/debug/cache", response_model=AnalyticsResponse)
+@router.get("/debug/cache", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def debug_cache(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).debug_cache())
 
 
-@router.get("/debug/coldstart")
+@router.get("/debug/coldstart", dependencies=[Depends(require_admin)])
 def debug_coldstart() -> dict:
     return get_startup_status()
 
 
-@router.get("/debug/pipeline", response_model=AnalyticsResponse)
+@router.get("/debug/pipeline", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def debug_pipeline(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).debug_pipeline())
 
 
-@router.get("/debug/database")
+@router.get("/debug/database", dependencies=[Depends(require_admin)])
 def debug_database(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).database_debug())
 
 
-@router.get("/debug/timing")
+@router.get("/debug/timing", dependencies=[Depends(require_admin)])
 def debug_timing(
     dashboard_type: str = "direction",
     query=Depends(analytics_query),
@@ -273,27 +274,27 @@ def debug_timing(
     return sanitize_for_json(AnalyticsService(db).dashboard_timing(query, dashboard_type=dashboard_type))
 
 
-@router.get("/debug/consistency")
+@router.get("/debug/consistency", dependencies=[Depends(require_admin)])
 def debug_consistency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).consistency_debug(query))
 
 
-@router.get("/debug/filter-consistency")
+@router.get("/debug/filter-consistency", dependencies=[Depends(require_admin)])
 def debug_filter_consistency(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).filter_consistency_debug(query))
 
 
-@router.get("/debug/reconciliation")
+@router.get("/debug/reconciliation", dependencies=[Depends(require_admin)])
 def debug_reconciliation(query=Depends(analytics_query), db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).financial_reconciliation_debug(query))
 
 
-@router.get("/debug/bim-maturity")
+@router.get("/debug/bim-maturity", dependencies=[Depends(require_admin)])
 def debug_bim_maturity(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).bim_maturity_debug())
 
 
-@router.get("/debug/schema-capabilities")
+@router.get("/debug/schema-capabilities", dependencies=[Depends(require_admin)])
 def debug_schema_capabilities(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).schema_capabilities_debug())
 
@@ -308,6 +309,6 @@ def data_quality(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).data_quality())
 
 
-@router.get("/debug/capex-reconciliation/{project_id}")
+@router.get("/debug/capex-reconciliation/{project_id}", dependencies=[Depends(require_admin)])
 def capex_reconciliation(project_id: int, db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).capex_reconciliation(project_id))

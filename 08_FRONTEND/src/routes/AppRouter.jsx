@@ -1,39 +1,39 @@
 import React from "react";
 import AppShell from "../layouts/AppShell";
 import LandingPage from "../marketing/LandingPage";
-import AnalyticsPage from "../modules/analytics/AnalyticsPage";
-import ApprovisionnementDashboard from "../modules/approvisionnement/pages/ApprovisionnementDashboard";
-import CockpitPage from "../modules/cockpit/CockpitPage";
-import DqePage from "../modules/dqe/DqePage";
-import LogisticsPage from "../modules/logistics/LogisticsPage";
-import ProcurementPage from "../modules/procurement/ProcurementPage";
-import ProjectHub from "../modules/projects/ProjectHub";
-import SimulationPage from "../modules/simulation/SimulationPage";
-import SiteExecutionPage from "../modules/chantier/SiteExecutionPage";
 
+const AnalyticsPage = React.lazy(() => import("../modules/analytics/AnalyticsPage"));
+const ApprovisionnementDashboard = React.lazy(() => import("../modules/approvisionnement/pages/ApprovisionnementDashboard"));
+const CockpitPage = React.lazy(() => import("../modules/cockpit/CockpitPage"));
+const DqePage = React.lazy(() => import("../modules/dqe/DqePage"));
 const ProcurementIntelligenceCockpit = React.lazy(() => import("../modules/procurementCockpit/ProcurementIntelligenceCockpit"));
 const GovernanceCockpit = React.lazy(() => import("../modules/governanceCockpit/GovernanceCockpit"));
+const LogisticsPage = React.lazy(() => import("../modules/logistics/LogisticsPage"));
+const ProcurementPage = React.lazy(() => import("../modules/procurement/ProcurementPage"));
+const ProjectHub = React.lazy(() => import("../modules/projects/ProjectHub"));
+const SimulationPage = React.lazy(() => import("../modules/simulation/SimulationPage"));
+const SiteExecutionPage = React.lazy(() => import("../modules/chantier/SiteExecutionPage"));
+
+function routeFallback() {
+  return <div className="live-refresh">Chargement du module SP2I...</div>;
+}
+
+function suspense(page) {
+  return <React.Suspense fallback={routeFallback()}>{page}</React.Suspense>;
+}
 
 const cockpitRoutes = {
   "/app/projects": null,
-  "/app": <CockpitPage />,
-  "/app/simulation": <SimulationPage />,
-  "/app/approvisionnement": <ApprovisionnementDashboard />,
-  "/app/procurement": <ProcurementPage />,
-  "/app/procurement-intelligence": (
-    <React.Suspense fallback={<div className="live-refresh">Chargement du cockpit procurement...</div>}>
-      <ProcurementIntelligenceCockpit />
-    </React.Suspense>
-  ),
-  "/app/governance-cockpit": (
-    <React.Suspense fallback={<div className="live-refresh">Chargement du cockpit governance...</div>}>
-      <GovernanceCockpit />
-    </React.Suspense>
-  ),
-  "/app/logistics": <LogisticsPage />,
-  "/app/site": <SiteExecutionPage />,
-  "/app/dqe": <DqePage />,
-  "/app/analytics": <AnalyticsPage />,
+  "/app": suspense(<CockpitPage />),
+  "/app/simulation": suspense(<SimulationPage />),
+  "/app/approvisionnement": suspense(<ApprovisionnementDashboard />),
+  "/app/procurement": suspense(<ProcurementPage />),
+  "/app/procurement-intelligence": suspense(<ProcurementIntelligenceCockpit />),
+  "/app/governance-cockpit": suspense(<GovernanceCockpit />),
+  "/app/logistics": suspense(<LogisticsPage />),
+  "/app/site": suspense(<SiteExecutionPage />),
+  "/app/dqe": suspense(<DqePage />),
+  "/app/analytics": suspense(<AnalyticsPage />),
 };
 
 export function navigateTo(path) {
@@ -58,10 +58,10 @@ export default function AppRouter() {
   }
 
   const page = routePath === "/app/simulation"
-    ? <SimulationPage defaultTab={searchParams.get("tab") || "simulation"} />
+    ? suspense(<SimulationPage defaultTab={searchParams.get("tab") || "simulation"} />)
     : routePath === "/app/projects"
-      ? <ProjectHub onNavigate={navigateTo} />
-    : cockpitRoutes[routePath] || <CockpitPage />;
+      ? suspense(<ProjectHub onNavigate={navigateTo} />)
+    : cockpitRoutes[routePath] || suspense(<CockpitPage />);
 
   return <AppShell activePath={path} onNavigate={navigateTo}>{page}</AppShell>;
 }

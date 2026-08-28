@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from time import perf_counter
 from importlib import import_module
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.middleware.json_safe_middleware import JsonSafeMiddleware
@@ -15,7 +16,9 @@ from app.analytics.cache import analytics_cache
 from app.analytics.routes import router as analytics_router
 from app.analytics.utils.schema_utils import preload_schema_capabilities
 from app.approval.routes.approvals import router as approvals_router
+from app.auth.dependencies import require_admin, require_analyst
 from app.auth.routes import router as auth_router
+from app.auth.security import validate_security_configuration
 from app.cloud_migrations import ensure_powerbi_schema
 from app.core.startup_metrics import mark_startup_begin, mark_startup_complete, record_startup_stage
 from app.database import Base, SessionLocal, engine
@@ -27,6 +30,10 @@ from app.workflow.routes.workflow import router as workflow_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sp2i-capex-api")
+
+
+def _is_production() -> bool:
+    return os.getenv("ENVIRONMENT", "development").strip().lower() in {"prod", "production"}
 
 import_routes = import_module("app.routes.import")
 import_module("app.models")
@@ -40,7 +47,7 @@ def _get_cors_origins() -> list[str]:
     Charge les origines autorisées depuis l'environnement.
     """
 
-    default_origins = (
+    default_origins = "https://sp-2-i-capex.vercel.app" if _is_production() else (
         "http://localhost:5173,"
         "http://localhost:5174,"
         "http://localhost:5175,"
@@ -64,15 +71,21 @@ def _get_cors_origin_regex() -> str | None:
     ainsi que les domaines Vercel.
     """
 
-    return os.getenv(
-        "CORS_ORIGIN_REGEX",
-        r"(http://localhost:\d+|http://127\.0\.0\.1:\d+|https://.*\.vercel\.app)"
-    )
+    configured = os.getenv("CORS_ORIGIN_REGEX", "").strip()
+    if configured:
+        return configured
+    if _is_production():
+        frontend_url = os.getenv("FRONTEND_URL", "https://sp-2-i-capex.vercel.app").rstrip("/")
+        return rf"^{re.escape(frontend_url)}$"
+    return r"^(http://localhost:\d+|http://127\.0\.0\.1:\d+)$"
 
 app = FastAPI(
     title="SP2I CAPEX API",
     description="API SaaS pour analyse DQE, optimisation import/local et exposition BI.",
     version="1.0.0",
+    docs_url=None if _is_production() else "/docs",
+    redoc_url=None if _is_production() else "/redoc",
+    openapi_url=None if _is_production() else "/openapi.json",
 )
 
 app.add_middleware(
@@ -87,20 +100,22 @@ app.add_middleware(
 # Ensure responses are JSON-safe (convert datetimes, decimals, UUIDs etc.)
 app.add_middleware(JsonSafeMiddleware)
 
-app.include_router(dqe.router, prefix="/dqe", tags=["DQE"])
+analyst_access = [Depends(require_analyst)]
+
+app.include_router(dqe.router, prefix="/dqe", tags=["DQE"], dependencies=analyst_access)
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(projects_router, prefix="/projects", tags=["Projects"])
 app.include_router(workflow_router, prefix="/workflow", tags=["Workflow Engine"])
-app.include_router(upload.router, prefix="/api/upload", tags=["Upload intelligent"])
-app.include_router(import_routes.router, prefix="/import", tags=["Import"])
-app.include_router(simulation.router, prefix="/simulation", tags=["Simulation CAPEX"])
-app.include_router(decision.router, prefix="/decision", tags=["Decision Engine"])
-app.include_router(procurement.router, prefix="/procurement", tags=["Procurement Analytics"])
-app.include_router(logistics.router, prefix="/logistics", tags=["Logistics Analytics"])
-app.include_router(approvals_router, prefix="/approvals", tags=["Approval Engine"])
-app.include_router(analytics_router, prefix="/analytics", tags=["SP2I Analytics Engine"])
-app.include_router(capex.router, tags=["BI"])
-app.include_router(monitoring.router, tags=["Monitoring"])
+app.include_router(upload.router, prefix="/api/upload", tags=["Upload intelligent"], dependencies=analyst_access)
+app.include_router(import_routes.router, prefix="/import", tags=["Import"], dependencies=analyst_access)
+app.include_router(simulation.router, prefix="/simulation", tags=["Simulation CAPEX"], dependencies=analyst_access)
+app.include_router(decision.router, prefix="/decision", tags=["Decision Engine"], dependencies=analyst_access)
+app.include_router(procurement.router, prefix="/procurement", tags=["Procurement Analytics"], dependencies=analyst_access)
+app.include_router(logistics.router, prefix="/logistics", tags=["Logistics Analytics"], dependencies=analyst_access)
+app.include_router(approvals_router, prefix="/approvals", tags=["Approval Engine"], dependencies=analyst_access)
+app.include_router(analytics_router, prefix="/analytics", tags=["SP2I Analytics Engine"], dependencies=analyst_access)
+app.include_router(capex.router, tags=["BI"], dependencies=analyst_access)
+app.include_router(monitoring.router, tags=["Monitoring"], dependencies=analyst_access)
 
 
 def _print_startup_routes() -> None:
@@ -128,25 +143,31 @@ async def monitoring_middleware(request: Request, call_next):
     response = await call_next(request)
     duration = round(time.perf_counter() - start, 4)
 
-    db = SessionLocal()
-    try:
-        service = MonitoringService(db)
-        service.log_metric(
-            "api_response_time",
-            duration,
-            message=f"{request.method} {request.url.path} returned {response.status_code}",
-        )
-
-        if response.status_code >= 500:
-            service.log_event(
-                "api_error",
-                f"{request.method} {request.url.path} returned {response.status_code}",
-                niveau="ERROR",
+    enable_db_metrics = os.getenv("ENABLE_DB_REQUEST_METRICS", "false").strip().lower() in {
+        "1", "true", "yes"
+    }
+    if enable_db_metrics:
+        db = SessionLocal()
+        try:
+            service = MonitoringService(db)
+            service.log_metric(
+                "api_response_time",
+                duration,
+                message=f"{request.method} {request.url.path} returned {response.status_code}",
             )
-    except Exception as erreur:
-        logger.error("Monitoring middleware error: %s", erreur)
-    finally:
-        db.close()
+
+            if response.status_code >= 500:
+                service.log_event(
+                    "api_error",
+                    f"{request.method} {request.url.path} returned {response.status_code}",
+                    niveau="ERROR",
+                )
+        except Exception as erreur:
+            logger.error("Monitoring middleware error: %s", erreur)
+        finally:
+            db.close()
+    elif response.status_code >= 500:
+        logger.error("API error %s %s -> %s", request.method, request.url.path, response.status_code)
 
     response.headers["X-Response-Time"] = str(duration)
     return response
@@ -160,6 +181,7 @@ def startup() -> None:
     Pour un SaaS mature, on remplacera cette creation automatique par Alembic,
     mais cette approche est simple et pratique pour demarrer le projet.
     """
+    validate_security_configuration()
     mark_startup_begin()
     startup_begin = perf_counter()
     try:
@@ -171,8 +193,15 @@ def startup() -> None:
         logger.info("Startup database_connect_ms=%s", database_elapsed)
 
         schema_start = perf_counter()
-        Base.metadata.create_all(bind=engine)
-        ensure_powerbi_schema(engine)
+        allow_schema_mutations = os.getenv(
+            "ALLOW_STARTUP_SCHEMA_MUTATIONS",
+            "false" if _is_production() else "true",
+        ).strip().lower() in {"1", "true", "yes"}
+        if allow_schema_mutations:
+            Base.metadata.create_all(bind=engine)
+            ensure_powerbi_schema(engine)
+        else:
+            logger.info("Startup schema mutations disabled; migrations must be applied before deployment.")
         with SessionLocal() as schema_db:
             preload_schema_capabilities(schema_db)
         schema_elapsed = round((perf_counter() - schema_start) * 1000, 2)
@@ -254,15 +283,32 @@ def root() -> dict:
     }
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
+@app.get("/health/live")
+def liveness() -> dict[str, str]:
     return {
         "statut": "OK",
         "service": "SP2I CAPEX API",
     }
 
 
-@app.get("/debug/config")
+@app.get("/health")
+def health() -> dict[str, str]:
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("Readiness check failed: %s", exc)
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=503, detail="Base de donnees indisponible.") from None
+    return {
+        "statut": "OK",
+        "service": "SP2I CAPEX API",
+        "database": "READY",
+    }
+
+
+@app.get("/debug/config", dependencies=[Depends(require_admin)])
 def debug_config() -> dict:
     """
     Expose une configuration non sensible pour verifier le deploiement cloud.
@@ -292,7 +338,7 @@ def debug_config() -> dict:
         },
     }
 
-@app.get("/debug/database")
+@app.get("/debug/database", dependencies=[Depends(require_admin)])
 def debug_database():
     from app.database import database_url_database, database_url_host, database_url_is_neon, masked_database_url
     from app.database import engine
@@ -314,7 +360,7 @@ def debug_database():
         "fact_metre_count": int(row["fact_metre_count"] or 0),
         "capex_local_total": float(row["capex_local_total"] or 0),
     }
-@app.get("/debug/tables")
+@app.get("/debug/tables", dependencies=[Depends(require_admin)])
 def debug_tables():
     from sqlalchemy import text
     from app.database import engine
@@ -332,7 +378,7 @@ def debug_tables():
     }
 from sqlalchemy import text
 
-@app.get("/debug/render-capex")
+@app.get("/debug/render-capex", dependencies=[Depends(require_admin)])
 def debug_render_capex():
     from app.database import engine
 

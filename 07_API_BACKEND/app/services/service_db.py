@@ -16,11 +16,11 @@ class ServiceDB:
     def __init__(self, db: Session) -> None:
         self.repository = RepositorySimulation(db)
 
-    def insert_fact_metre(self, data: list[dict]) -> int:
-        return self.repository.insert_fact_metre(data)
+    def insert_fact_metre(self, data: list[dict], *, commit: bool = True) -> int:
+        return self.repository.insert_fact_metre(data, commit=commit)
 
-    def insert_dim_famille(self, data: list[dict]) -> int:
-        return self.repository.insert_dim_famille(data)
+    def insert_dim_famille(self, data: list[dict], *, commit: bool = True) -> int:
+        return self.repository.insert_dim_famille(data, commit=commit)
 
     def get_summary(self) -> dict:
         return self.repository.get_summary()

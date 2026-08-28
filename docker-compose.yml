@@ -24,6 +24,9 @@ services:
     environment:
       DATABASE_URL: postgresql://user:password@postgres:5432/sp2i_capex
       ENVIRONMENT: docker
+      SP2I_JWT_SECRET: local-docker-secret-change-before-production
+      ALLOW_STARTUP_SCHEMA_MUTATIONS: "true"
+      ENABLE_DB_REQUEST_METRICS: "false"
       FRONTEND_URL: http://localhost:8501
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8501
       MAX_UPLOAD_MB: "25"
