@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.analytics.schemas import AnalyticsResponse
 from app.analytics.services import AnalyticsService
 from app.analytics.utils import build_query
-from app.auth.dependencies import require_admin
+from app.auth.dependencies import require_admin, require_analyst
+from app.auth.models import User, WorkspaceMembership
 from app.core.startup_metrics import get_startup_status
 from app.database import get_db
+from app.projects.models import Project
 from app.utils.json_safe import sanitize_for_json
 
 
@@ -43,8 +47,10 @@ def analytics_query(
     order_by: str | None = None,
     order_dir: str = "desc",
     drilldown_level: str | None = None,
+    current_user: User = Depends(require_analyst),
+    db: Session = Depends(get_db),
 ):
-    return build_query(
+    query = build_query(
         projet=projet,
         scenario=scenario,
         batiment=batiment,
@@ -69,6 +75,48 @@ def analytics_query(
         order_dir=order_dir,
         drilldown_level=drilldown_level,
     )
+    _enforce_project_scope(query.filters.projet, current_user, db)
+    return query
+
+
+def _enforce_project_scope(project_ref: str | None, current_user: User, db: Session) -> None:
+    """Fail closed unless a non-admin analytics request targets an allowed project."""
+    if str(current_user.role or "").upper() == "ADMIN":
+        return
+    normalized = str(project_ref or "").strip()
+    if not normalized:
+        raise HTTPException(status_code=403, detail="Un projet autorise est requis.")
+
+    try:
+        project_id = db.execute(
+            text(
+                """
+                SELECT projet_id
+                FROM dim_projet
+                WHERE CAST(projet_id AS text) = :project_ref
+                   OR LOWER(COALESCE(project_code, '')) = LOWER(:project_ref)
+                LIMIT 1
+                """
+            ),
+            {"project_ref": normalized},
+        ).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise HTTPException(status_code=503, detail="Le perimetre projet est indisponible.") from exc
+
+    if project_id is None:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
+
+    owned = db.scalar(
+        select(Project.id).where(Project.id == int(project_id), Project.owner_id == current_user.id)
+    )
+    member = db.scalar(
+        select(WorkspaceMembership.id).where(
+            WorkspaceMembership.project_id == int(project_id),
+            WorkspaceMembership.user_id == current_user.id,
+        )
+    )
+    if owned is None and member is None:
+        raise HTTPException(status_code=404, detail="Projet introuvable.")
 
 
 @router.get("/capex", response_model=AnalyticsResponse)
@@ -196,27 +244,27 @@ def cost_intelligence_v6(query=Depends(analytics_query), db: Session = Depends(g
     return sanitize_for_json(AnalyticsService(db).cost_intelligence_v6(query))
 
 
-@router.get("/generation-diagnostic")
+@router.get("/generation-diagnostic", dependencies=[Depends(require_admin)])
 def generation_diagnostic(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).build_generation_diagnostic())
 
 
-@router.get("/generation-engine")
+@router.get("/generation-engine", dependencies=[Depends(require_admin)])
 def generation_engine(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).build_generation_engine())
 
 
-@router.get("/energy-resilience")
+@router.get("/energy-resilience", dependencies=[Depends(require_admin)])
 def energy_resilience(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).build_energy_resilience())
 
 
-@router.get("/building-completion")
+@router.get("/building-completion", dependencies=[Depends(require_admin)])
 def building_completion(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).build_building_completion())
 
 
-@router.get("/filters")
+@router.get("/filters", dependencies=[Depends(require_admin)])
 def filters(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).filter_options())
 
@@ -299,12 +347,12 @@ def debug_schema_capabilities(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).schema_capabilities_debug())
 
 
-@router.get("/qa-summary", response_model=AnalyticsResponse)
+@router.get("/qa-summary", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def qa_summary(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).qa_summary())
 
 
-@router.get("/data-quality", response_model=AnalyticsResponse)
+@router.get("/data-quality", response_model=AnalyticsResponse, dependencies=[Depends(require_admin)])
 def data_quality(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).data_quality())
 

@@ -114,7 +114,7 @@ app.include_router(procurement.router, prefix="/procurement", tags=["Procurement
 app.include_router(logistics.router, prefix="/logistics", tags=["Logistics Analytics"], dependencies=analyst_access)
 app.include_router(approvals_router, prefix="/approvals", tags=["Approval Engine"], dependencies=analyst_access)
 app.include_router(analytics_router, prefix="/analytics", tags=["SP2I Analytics Engine"], dependencies=analyst_access)
-app.include_router(capex.router, tags=["BI"], dependencies=analyst_access)
+app.include_router(capex.router, tags=["BI"], dependencies=[Depends(require_admin)])
 app.include_router(monitoring.router, tags=["Monitoring"], dependencies=analyst_access)
 
 
