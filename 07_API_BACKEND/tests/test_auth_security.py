@@ -6,7 +6,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from app.auth.schemas import RegisterRequest
+from app.auth.schemas import PasswordChangeRequest, RegisterRequest
 from app.auth.security import create_access_token, decode_access_token, validate_security_configuration
 from app.auth.security import hash_password, verify_password
 
@@ -22,6 +22,14 @@ def test_registration_rejects_client_selected_role() -> None:
             password="mot-de-passe-solide",
             full_name="Admin auto-proclame",
             role="ADMIN",
+        )
+
+
+def test_password_change_rejects_surrounding_spaces() -> None:
+    with pytest.raises(ValidationError):
+        PasswordChangeRequest(
+            current_password="mot-de-passe-actuel",
+            new_password=" nouveau-mot-de-passe ",
         )
 
 
