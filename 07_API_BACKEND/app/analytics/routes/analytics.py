@@ -94,7 +94,7 @@ def _enforce_project_scope(project_ref: str | None, current_user: User, db: Sess
                 SELECT projet_id
                 FROM dim_projet
                 WHERE CAST(projet_id AS text) = :project_ref
-                   OR LOWER(COALESCE(project_code, '')) = LOWER(:project_ref)
+                   OR LOWER(COALESCE(projet_code, '')) = LOWER(:project_ref)
                 LIMIT 1
                 """
             ),

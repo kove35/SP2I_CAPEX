@@ -18,7 +18,7 @@ def _database() -> tuple[Session, User, User]:
     Base.metadata.create_all(engine)
     session = Session(engine)
     session.execute(
-        text("CREATE TABLE dim_projet (projet_id INTEGER PRIMARY KEY, project_code TEXT UNIQUE)")
+        text("CREATE TABLE dim_projet (projet_id INTEGER PRIMARY KEY, projet_code TEXT UNIQUE)")
     )
     owner = User(email="owner@example.com", password_hash="x", full_name="Owner", role="ANALYST")
     outsider = User(email="outsider@example.com", password_hash="x", full_name="Outsider", role="ANALYST")
@@ -33,7 +33,7 @@ def _database() -> tuple[Session, User, User]:
         )
     )
     session.execute(
-        text("INSERT INTO dim_projet (projet_id, project_code) VALUES (1, 'PROJET_MPEMBA')")
+        text("INSERT INTO dim_projet (projet_id, projet_code) VALUES (1, 'PROJET_MPEMBA')")
     )
     session.commit()
     return session, owner, outsider

@@ -13,7 +13,7 @@ REQUIRED_COLUMNS: dict[str, set[str]] = {
     "users": {"id", "email", "password_hash", "role", "is_active"},
     "projects": {"id", "owner_id", "name", "status"},
     "workspace_memberships": {"user_id", "project_id", "role"},
-    "dim_projet": {"projet_id", "project_code"},
+    "dim_projet": {"projet_id", "projet_code"},
     "fact_metre": {"projet_id"},
 }
 
