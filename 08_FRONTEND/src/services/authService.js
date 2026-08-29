@@ -28,3 +28,7 @@ export async function registerUser(payload) {
   const session = await request({ url: "/auth/register", method: "POST", data: payload });
   return storeSession(session);
 }
+
+export async function changePassword(payload) {
+  return request({ url: "/auth/change-password", method: "POST", data: payload });
+}
