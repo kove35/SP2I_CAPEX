@@ -14,6 +14,8 @@ Date du contrôle : 29 août 2026 (UTC).
   `Save only`, sans déclencher de déploiement : `ENVIRONMENT=production`,
   origine CORS exacte, URL frontend, secret JWT aléatoire, mutations de schéma
   au démarrage désactivées et métriques SQL par requête désactivées.
+- `DATABASE_URL` Render remplacée par la connexion poolée de la base Neon SP2I
+  auditée, avec `Save only` et sans déclencher de déploiement.
 - Chemin de contrôle de santé Render configuré sur `/health`.
 - Table Neon de démonstration accidentelle `public.playing_with_neon` supprimée ;
   la vérification `to_regclass(...) IS NULL` a retourné `true`.
@@ -40,24 +42,20 @@ Date du contrôle : 29 août 2026 (UTC).
 1. La base contient deux projets dimensionnels mais aucun compte utilisateur,
    aucun projet applicatif et aucune adhésion. Il faut créer le premier
    administrateur puis rattacher les deux projets avant le déploiement.
-2. L'endpoint transmis pour `DATABASE_URL` ne correspond à aucun compute des
-   deux projets Neon accessibles. Il ne doit pas être enregistré sur Render
-   avant identification ou remplacement par la connexion du projet audité.
-3. Le secret de base transmis dans la conversation doit être révoqué/rotaté ;
+2. Le secret de base transmis dans la conversation doit être révoqué/rotaté ;
    il n'a pas été enregistré dans le dépôt ni réaffiché.
-4. Le plan Render gratuit ne fournit ni Shell ni One-Off Jobs. Les opérations
+3. Le plan Render gratuit ne fournit ni Shell ni One-Off Jobs. Les opérations
    d'initialisation doivent donc être réalisées depuis Neon ou par un flux
    applicatif sécurisé.
-5. Les journaux Render du 26 août 2026 montrent une erreur SQLAlchemy pendant
+4. Les journaux Render du 26 août 2026 montrent une erreur SQLAlchemy pendant
    les mutations de schéma au démarrage, tout en laissant Uvicorn démarrer.
-6. Les 79 fichiers de données suivis par le dépôt public ne sont pas encore
+5. Les 79 fichiers de données suivis par le dépôt public ne sont pas encore
    qualifiés par le propriétaire des données.
-7. Les tests Python concernés ne peuvent pas être exécutés localement : les
+6. Les tests Python concernés ne peuvent pas être exécutés localement : les
    dépendances ne sont pas présentes et leur installation réseau a été refusée.
 
 ## Verdict
 
 **NO-GO** tant que l'administrateur et les rattachements projet ne sont pas
-initialisés, que Render ne référence pas la connexion Neon auditée et que les
-fichiers DQE publics ne sont pas qualifiés. Aucun déploiement ne doit être
-déclenché avant la levée de ces blocages.
+initialisés et que les fichiers DQE publics ne sont pas qualifiés. Aucun
+déploiement ne doit être déclenché avant la levée de ces blocages.
