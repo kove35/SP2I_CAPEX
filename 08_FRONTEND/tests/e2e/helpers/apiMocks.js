@@ -214,6 +214,73 @@ export async function mockRiskPropagationApi(page, propagations = []) {
   });
 }
 
+export async function mockProcurementLinesApi(page, rows = []) {
+  const defaultRows = [
+    {
+      id_ligne: 'procurement-line-1',
+      designation: 'Luminaire LED import',
+      quantite: 120,
+      unite: 'U',
+      lot: 'Electricite',
+      famille: 'Luminaires',
+      fournisseur_local: 'Fournisseur local A',
+      pays_local: 'Congo-Brazzaville',
+      prix_local: 150000,
+      fournisseur_chine: 'Fournisseur Chine A',
+      port_chine: 'Shanghai',
+      fob_chine: 70000,
+      landed_cost_chine: 95000,
+      gain_net: 6600000,
+      roi_import: 0.36,
+      risque: 42,
+      delai: 48,
+      decision_ia: 'IMPORT',
+      validation_achat: 'En attente',
+    },
+    {
+      id_ligne: 'procurement-line-2',
+      designation: 'Robinetterie import',
+      quantite: 80,
+      unite: 'U',
+      lot: 'Plomberie',
+      famille: 'Robinetterie',
+      fournisseur_local: 'Fournisseur local B',
+      pays_local: 'Congo-Brazzaville',
+      prix_local: 125000,
+      fournisseur_chine: 'Fournisseur Chine B',
+      port_chine: 'Ningbo',
+      fob_chine: 58000,
+      landed_cost_chine: 82000,
+      gain_net: 3440000,
+      roi_import: 0.34,
+      risque: 48,
+      delai: 52,
+      decision_ia: 'IMPORT',
+      validation_achat: 'En attente',
+    },
+  ];
+  const table = rows.length ? rows : defaultRows;
+
+  await page.route('**/analytics/procurement-lines*', route => {
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'SUCCESS',
+        kpis: {
+          nb_lignes: table.length,
+          nb_import: table.filter(row => row.decision_ia === 'IMPORT').length,
+          nb_hybride: table.filter(row => row.decision_ia === 'HYBRIDE').length,
+          gain_net_total: table.reduce((sum, row) => sum + Number(row.gain_net || 0), 0),
+          roi_moyen: 0.35,
+          risque_moyen: 45,
+        },
+        table,
+      }),
+    });
+  });
+}
+
 export async function mockAllApisForSpatialExecution(page, overrides = {}) {
   /**
    * Mocker toutes les APIs nécessaires pour un test d'exécution spatiale complet.
