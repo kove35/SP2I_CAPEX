@@ -348,7 +348,7 @@ test("simulation reste en attente tant que l'utilisateur ne lance pas le scenari
 
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   const projectCard = page.getByTestId("project-card").filter({ hasText: /projet simulation manuelle/i }).first();
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider.*decisions import critiques|analyser.*arbitrages achat/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider.*d[eé]cisions import critiques|analyser.*arbitrages achat/i);
 });
 
 test("procurement page without scenario shows guided empty state", async ({ page }) => {
