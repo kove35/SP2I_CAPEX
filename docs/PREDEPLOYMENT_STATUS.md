@@ -1,6 +1,6 @@
 # État pré-déploiement SP2I
 
-Date du contrôle : 29 août 2026 (UTC).
+Date du contrôle : 1er septembre 2026 (UTC).
 
 ## Réalisé
 
@@ -45,28 +45,33 @@ Date du contrôle : 29 août 2026 (UTC).
 - Rotation du mot de passe ajoutée à l'API authentifiée
   (`POST /auth/change-password`) et à l'interface, depuis le contrôle de
   sécurité du compte dans la barre supérieure.
+- Mot de passe de la branche Neon de test contenant l'identifiant exposé
+  réinitialisé ; l'ancien secret n'est plus valide.
+- Les huit classeurs DQE/source identifiés ont été supprimés de tout
+  l'historique publié de `main`, de `codex/work-project-setup` et des tags
+  `v0.9.0-governance-foundation`, `v5.3-cutover` et
+  `v5.3-filter-cleanup`.
+- Les références réécrites ont été publiées sur GitHub le 1er septembre 2026
+  et vérifiées : aucun des huit chemins sensibles n'est joignable depuis les
+  branches ou tags publics actifs.
+- Une sauvegarde complète antérieure à la purge est conservée hors dépôt dans
+  `SP2I_CAPEX_before_history_purge_20260901.bundle`.
 
 ## Blocages constatés
 
-1. Le secret de la base Neon sans lien avec la cible SP2I, transmis dans la
-   conversation, doit être révoqué/rotaté par son propriétaire ; il n'a pas été
-   enregistré dans le dépôt et n'est pas utilisé par Render.
-2. Le plan Render gratuit ne fournit ni Shell ni One-Off Jobs. Les opérations
+1. Le plan Render gratuit ne fournit ni Shell ni One-Off Jobs. Les opérations
    d'initialisation doivent donc être réalisées depuis Neon ou par un flux
    applicatif sécurisé.
-3. Les journaux Render du 26 août 2026 montrent une erreur SQLAlchemy pendant
+2. Les journaux Render du 26 août 2026 montrent une erreur SQLAlchemy pendant
    les anciennes mutations de schéma au démarrage. Cette fonction est
    maintenant désactivée dans le manifeste et dans l'environnement Render.
-4. Les 79 fichiers de données suivis par le dépôt public, dont 8 fichiers
-   DQE/source identifiés, ne sont pas encore qualifiés par le propriétaire des
-   données.
-5. Les tests Python concernés ne peuvent pas être exécutés localement : les
+3. Les tests Python concernés ne peuvent pas être exécutés localement : les
    dépendances ne sont pas présentes et leur installation réseau a été refusée.
    La compilation Python et le build de production frontend réussissent.
 
 ## Verdict
 
-**NO-GO de gouvernance** tant que les fichiers DQE publics ne sont pas qualifiés
-et que l'ancien secret Neon exposé n'est pas révoqué. L'initialisation
-applicative de la base est terminée ; aucun déploiement ne doit néanmoins être
-déclenché avant la levée de ces deux blocages.
+**Les deux blocages de gouvernance sont levés.** La branche peut passer en CI et
+en validation pré-déploiement. Le GO production reste conditionné à la réussite
+de la CI, au déploiement manuel Render et aux tests de fumée et d'isolation en
+production.
