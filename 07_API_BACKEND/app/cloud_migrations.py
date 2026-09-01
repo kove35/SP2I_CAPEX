@@ -351,14 +351,24 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         is_active = EXCLUDED.is_active,
         updated_at = now();
 
-    INSERT INTO dim_zone (zone_code, zone_nom, type_zone, description, is_active)
+    INSERT INTO dim_zone (
+        zone_code,
+        zone_nom,
+        batiment,
+        niveau,
+        appart,
+        piece,
+        type_zone,
+        description,
+        is_active
+    )
     VALUES
-        ('ZONE_JOUR', 'Jour', 'JOUR', 'Sejour, salon, cuisine et espaces de jour', true),
-        ('ZONE_NUIT', 'Nuit', 'NUIT', 'Chambres et dressing', true),
-        ('ZONE_SANITAIRE', 'Sanitaire', 'SANITAIRE', 'Salles d eau, salles de bain et WC', true),
-        ('ZONE_CIRCULATION', 'Circulation', 'CIRCULATION', 'Couloirs et escaliers', true),
-        ('ZONE_EXTERIEURE', 'Exterieure', 'EXTERIEUR', 'Balcons, terrasses et espaces exterieurs', true),
-        ('ZONE_TECHNIQUE', 'Technique', 'TECHNIQUE', 'Locaux techniques et espaces non classes', true)
+        ('ZONE_JOUR', 'Jour', '', '', '', '', 'JOUR', 'Sejour, salon, cuisine et espaces de jour', true),
+        ('ZONE_NUIT', 'Nuit', '', '', '', '', 'NUIT', 'Chambres et dressing', true),
+        ('ZONE_SANITAIRE', 'Sanitaire', '', '', '', '', 'SANITAIRE', 'Salles d eau, salles de bain et WC', true),
+        ('ZONE_CIRCULATION', 'Circulation', '', '', '', '', 'CIRCULATION', 'Couloirs et escaliers', true),
+        ('ZONE_EXTERIEURE', 'Exterieure', '', '', '', '', 'EXTERIEUR', 'Balcons, terrasses et espaces exterieurs', true),
+        ('ZONE_TECHNIQUE', 'Technique', '', '', '', '', 'TECHNIQUE', 'Locaux techniques et espaces non classes', true)
     ON CONFLICT (zone_code) DO UPDATE SET
         zone_nom = EXCLUDED.zone_nom,
         type_zone = EXCLUDED.type_zone,
