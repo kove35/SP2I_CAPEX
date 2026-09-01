@@ -422,7 +422,7 @@ test("procurement bulk arbitrage validates selected lines", async ({ page }) => 
   await expect(page.getByText(/import fournisseur/i).first()).toBeVisible();
 
   await navigateSpa(page, "/app/projects");
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/g[eé]n[eé]rer.*commandes fournisseurs/i);
 });
 
 test("scenario pret sans approvisionnement affiche CTA arbitrages achat", async ({ page }) => {
