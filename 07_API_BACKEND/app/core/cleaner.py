@@ -134,10 +134,9 @@ class DataCleaner:
         "pm": "forfait",
     }
 
-    STRICT_WARNING_CODES = {
-        "PRIX_UNITAIRE_INVALIDE",
-        "PRIX_TOTAL_INVALIDE",
-    }
+    # En mode strict, une quantite ou un prix invalide bloque la ligne. Les
+    # anomalies restent de simples avertissements uniquement en mode tolerant.
+    STRICT_WARNING_CODES: set[str] = set()
 
     def __init__(self, mode: str = DEFAULT_SIMULATION_MODE) -> None:
         if mode not in VALID_SIMULATION_MODES:
