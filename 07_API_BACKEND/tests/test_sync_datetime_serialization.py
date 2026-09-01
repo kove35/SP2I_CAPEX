@@ -5,8 +5,11 @@ import json
 import pytest
 
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.main import app
+
+pytestmark = pytest.mark.usefixtures("admin_auth")
 
 try:
     import pandas as pd
@@ -81,8 +84,8 @@ def test_excel_sync_datetime_serialization(monkeypatch):
 
     # 3. Verify SQL counts
     with engine.connect() as conn:
-        fact_count = conn.execute("SELECT COUNT(*) FROM fact_metre").scalar()
-        audit_count = conn.execute("SELECT COUNT(*) FROM dqe_import_audit").scalar()
+        fact_count = conn.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar()
+        audit_count = conn.execute(text("SELECT COUNT(*) FROM dqe_import_audit")).scalar()
 
     # Return useful info if assertions fail
     print("status:", data.get("status"))
