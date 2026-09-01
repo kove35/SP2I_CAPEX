@@ -452,8 +452,20 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS montant_source DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS montant_fcfa DOUBLE PRECISION;
 
-    INSERT INTO dim_appartement (appartement_id, niveau_id, description, type)
-    VALUES ('COMMUN', 'GLOBAL', 'Parties communes', 'COMMUN')
+    INSERT INTO dim_appartement (
+        appartement_id,
+        niveau_id,
+        appartement_code,
+        batiment,
+        niveau,
+        type,
+        type_appartement,
+        nb_chambres,
+        nb_sdb,
+        description,
+        is_active
+    )
+    VALUES ('COMMUN', 'GLOBAL', 'COMMUN', '', 'GLOBAL', 'COMMUN', 'COMMUN', 0, 0, 'Parties communes', true)
     ON CONFLICT (appartement_id) DO UPDATE SET
         description = EXCLUDED.description,
         type = EXCLUDED.type,
@@ -463,8 +475,21 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     VALUES ('COMMUN', 'COMMUN', 'COMMUN')
     ON CONFLICT (appart_code) DO UPDATE SET updated_at = now();
 
-    INSERT INTO dim_piece (piece_code, piece, type_piece)
-    VALUES ('TOITURE', 'TOITURE', 'Technique')
+    INSERT INTO dim_piece (
+        appartement_id,
+        piece_code,
+        batiment,
+        niveau,
+        appart,
+        piece,
+        piece_nom,
+        type_piece,
+        piece_type,
+        zone,
+        description,
+        is_active
+    )
+    VALUES ('COMMUN', 'TOITURE', '', 'GLOBAL', 'COMMUN', 'TOITURE', 'TOITURE', 'Technique', 'TECHNIQUE', '', 'Toiture technique', true)
     ON CONFLICT (piece_code) DO UPDATE SET updated_at = now();
 
     UPDATE dim_appartement
