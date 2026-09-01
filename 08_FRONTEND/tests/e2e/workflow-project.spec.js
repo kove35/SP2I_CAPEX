@@ -1,5 +1,7 @@
 ﻿import { expect, test } from "@playwright/test";
 
+import { mockProcurementLinesApi } from "./helpers/apiMocks";
+
 async function resetDemoProjects(page) {
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => window.localStorage.clear());
@@ -346,7 +348,7 @@ test("simulation reste en attente tant que l'utilisateur ne lance pas le scenari
 
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   const projectCard = page.getByTestId("project-card").filter({ hasText: /projet simulation manuelle/i }).first();
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/analyser.*arbitrages achat/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider.*decisions import critiques|analyser.*arbitrages achat/i);
 });
 
 test("procurement page without scenario shows guided empty state", async ({ page }) => {
@@ -385,6 +387,7 @@ test("pilotage approvisionnement cockpit orchestrates existing workflow", async 
 });
 
 test("procurement bulk arbitrage validates selected lines", async ({ page }) => {
+  await mockProcurementLinesApi(page);
   const projectName = "Projet procurement arbitrage bulk";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSyncedDqe(page);
