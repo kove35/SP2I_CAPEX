@@ -261,7 +261,21 @@ export async function mockProcurementLinesApi(page, rows = []) {
   ];
   const table = rows.length ? rows : defaultRows;
 
-  await page.route('**/analytics/procurement-lines*', route => {
+  await page.route('**/analytics/**', route => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (!pathname.endsWith('/procurement-lines')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'SUCCESS',
+          kpis: {},
+          table: [],
+          charts: {},
+          filters: {},
+        }),
+      });
+    }
     route.fulfill({
       status: 200,
       contentType: 'application/json',
