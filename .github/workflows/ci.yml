@@ -37,6 +37,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: 07_API_BACKEND/requirements-dev.txt
+      - name: Install Cairo build dependencies
+        run: sudo apt-get update && sudo apt-get install --yes libcairo2-dev
       - run: python -m pip install -r 07_API_BACKEND/requirements-dev.txt
       - run: python -m compileall -q 07_API_BACKEND/app
       - run: PYTHONPATH=07_API_BACKEND python -m pytest -q
