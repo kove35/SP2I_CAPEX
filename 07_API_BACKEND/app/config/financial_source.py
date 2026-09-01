@@ -6,6 +6,7 @@ import os
 FINANCIAL_SOURCE = os.getenv("SP2I_FINANCIAL_SOURCE", "vw_fact_metre_financial_canonical")
 
 ALLOWED_FINANCIAL_SOURCES = {
+    "fact_metre",
     "vw_fact_metre_current",
     "vw_fact_metre_v53_financial",
     "vw_fact_metre_financial_canonical",
