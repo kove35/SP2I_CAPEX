@@ -35,7 +35,7 @@ def test_excel_sync_datetime_serialization(monkeypatch):
     # Monkeypatch the ServiceAIMapping.extraire_lignes_normalisees used by ServicePipeline
     import app.services.service_pipeline as sp_mod
 
-    def fake_extraire(contenu, nom_fichier):
+    def fake_extraire(self, contenu, nom_fichier):
         # return empty lines and our audit_excel
         return [], audit_excel
 
