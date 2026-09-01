@@ -406,6 +406,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS sous_lot_id VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS article_id VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS code_article VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS article_code VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS marque VARCHAR(255) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS unite VARCHAR(50) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS niveau_id BIGINT,
@@ -416,6 +417,7 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS appart_id BIGINT,
         ADD COLUMN IF NOT EXISTS appartement_id VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS appartement_code VARCHAR(150) NOT NULL DEFAULT '',
+        ADD COLUMN IF NOT EXISTS appartement VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS piece_id BIGINT,
         ADD COLUMN IF NOT EXISTS piece_code VARCHAR(150) NOT NULL DEFAULT '',
         ADD COLUMN IF NOT EXISTS objet_bim_id BIGINT,
@@ -459,6 +461,21 @@ def ensure_powerbi_schema(engine: Engine) -> None:
         ADD COLUMN IF NOT EXISTS devise_source VARCHAR(10) NOT NULL DEFAULT 'FCFA',
         ADD COLUMN IF NOT EXISTS montant_source DOUBLE PRECISION,
         ADD COLUMN IF NOT EXISTS montant_fcfa DOUBLE PRECISION;
+
+    UPDATE fact_metre
+    SET appartement = COALESCE(
+            NULLIF(appartement, ''),
+            NULLIF(appartement_code, ''),
+            NULLIF(appartement_id, ''),
+            NULLIF(appart, ''),
+            ''
+        ),
+        article_code = COALESCE(
+            NULLIF(article_code, ''),
+            NULLIF(code_article, ''),
+            NULLIF(article_id, ''),
+            ''
+        );
 
     INSERT INTO dim_appartement (
         appartement_id,

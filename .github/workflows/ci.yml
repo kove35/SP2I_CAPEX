@@ -30,6 +30,8 @@ jobs:
       ENVIRONMENT: test
       SP2I_JWT_SECRET: ci-only-secret-with-at-least-32-characters
       ALLOW_STARTUP_SCHEMA_MUTATIONS: "true"
+      SP2I_FACT_SOURCE: fact_metre
+      SP2I_FINANCIAL_SOURCE: fact_metre
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

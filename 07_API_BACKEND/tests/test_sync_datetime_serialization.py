@@ -36,8 +36,18 @@ def test_excel_sync_datetime_serialization(monkeypatch):
     import app.services.service_pipeline as sp_mod
 
     def fake_extraire(self, contenu, nom_fichier):
-        # return empty lines and our audit_excel
-        return [], audit_excel
+        return [
+            {
+                "id_ligne": "SYNC-DATETIME-1",
+                "designation": "Item A",
+                "quantite": 1,
+                "unite": "u",
+                "prix_unitaire_ht": 100,
+                "prix_total_ht": 100,
+                "lot": "TEST_SYNC",
+                "famille": "test_sync",
+            }
+        ], audit_excel
 
     monkeypatch.setattr(sp_mod.ServiceAIMapping, "extraire_lignes_normalisees", fake_extraire)
 
