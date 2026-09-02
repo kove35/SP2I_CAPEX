@@ -113,6 +113,7 @@ class RepositorySimulation:
                         appartement_id,
                         appartement_code,
                         piece,
+                        piece_type,
                         piece_id,
                         piece_code,
                         zone_id,
@@ -181,6 +182,7 @@ class RepositorySimulation:
                         :appartement_id,
                         :appartement_code,
                         :piece,
+                        :piece_type,
                         :piece_id,
                         :piece_code,
                         NULL,
@@ -248,6 +250,7 @@ class RepositorySimulation:
                         appartement_id = EXCLUDED.appartement_id,
                         appartement_code = EXCLUDED.appartement_code,
                         piece = EXCLUDED.piece,
+                        piece_type = EXCLUDED.piece_type,
                         piece_id = EXCLUDED.piece_id,
                         piece_code = EXCLUDED.piece_code,
                         type_zone = EXCLUDED.type_zone,
@@ -320,6 +323,9 @@ class RepositorySimulation:
                     "piece": _texte(
                         ligne.get("piece")
                         or _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece"))
+                    ),
+                    "piece_type": _texte(
+                        ligne.get("piece_type") or ligne.get("type_piece") or ligne.get("type_zone")
                     ),
                     "piece_id": ids.get("piece_id"),
                     "piece_code": _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece")),
