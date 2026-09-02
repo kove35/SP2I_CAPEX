@@ -695,9 +695,30 @@ class RepositorySimulation:
         batiment_id = self.db.execute(
             text(
                 """
-                INSERT INTO dim_batiment (batiment, type_batiment)
-                VALUES (CAST(:batiment AS varchar), 'A_CLASSER')
-                ON CONFLICT (batiment) DO UPDATE SET updated_at = now()
+                INSERT INTO dim_batiment (
+                    batiment,
+                    batiment_code,
+                    nom,
+                    nb_niveaux,
+                    nb_appartements,
+                    type_batiment,
+                    description,
+                    is_active
+                )
+                VALUES (
+                    CAST(:batiment AS varchar),
+                    CAST(:batiment AS varchar),
+                    CAST(:batiment AS varchar),
+                    0,
+                    0,
+                    'A_CLASSER',
+                    '',
+                    true
+                )
+                ON CONFLICT (batiment) DO UPDATE SET
+                    batiment_code = COALESCE(NULLIF(dim_batiment.batiment_code, ''), EXCLUDED.batiment_code),
+                    nom = COALESCE(NULLIF(dim_batiment.nom, ''), EXCLUDED.nom),
+                    updated_at = now()
                 RETURNING batiment_id
                 """
             ),
@@ -717,8 +738,34 @@ class RepositorySimulation:
         piece_id = self.db.execute(
             text(
                 """
-                INSERT INTO dim_piece (piece_code, batiment, niveau, appart, piece, type_piece)
-                VALUES (CAST(:piece_code AS varchar), CAST(:batiment AS varchar), CAST(:niveau AS varchar), CAST(:appart AS varchar), CAST(:piece AS varchar), 'A_CLASSER')
+                INSERT INTO dim_piece (
+                    piece_code,
+                    appartement_id,
+                    batiment,
+                    niveau,
+                    appart,
+                    piece,
+                    piece_nom,
+                    type_piece,
+                    piece_type,
+                    zone,
+                    description,
+                    is_active
+                )
+                VALUES (
+                    CAST(:piece_code AS varchar),
+                    CAST(:appart AS varchar),
+                    CAST(:batiment AS varchar),
+                    CAST(:niveau AS varchar),
+                    CAST(:appart AS varchar),
+                    CAST(:piece AS varchar),
+                    CAST(:piece AS varchar),
+                    'A_CLASSER',
+                    'A_CLASSER',
+                    '',
+                    '',
+                    true
+                )
                 ON CONFLICT (piece_code) DO UPDATE SET updated_at = now()
                 RETURNING piece_id
                 """

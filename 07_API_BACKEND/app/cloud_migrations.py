@@ -602,8 +602,25 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     FROM fact_metre
     ON CONFLICT (niveau) DO NOTHING;
 
-    INSERT INTO dim_batiment (batiment, type_batiment)
-    SELECT DISTINCT COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE'), 'A_CLASSER'
+    INSERT INTO dim_batiment (
+        batiment,
+        batiment_code,
+        nom,
+        nb_niveaux,
+        nb_appartements,
+        type_batiment,
+        description,
+        is_active
+    )
+    SELECT DISTINCT
+        COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE'),
+        COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE'),
+        COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE'),
+        0,
+        0,
+        'A_CLASSER',
+        '',
+        true
     FROM fact_metre
     ON CONFLICT (batiment) DO NOTHING;
 
@@ -624,19 +641,29 @@ def ensure_powerbi_schema(engine: Engine) -> None:
 
     INSERT INTO dim_appartement (
         appartement_id,
+        niveau_id,
         appartement_code,
         batiment,
         niveau,
+        type,
         type_appartement,
-        description
+        nb_chambres,
+        nb_sdb,
+        description,
+        is_active
     )
     SELECT DISTINCT ON (COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'))
         COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN') AS appartement_id,
+        COALESCE(NULLIF(trim(niveau_code), ''), NULLIF(trim(niveau), ''), 'GLOBAL') AS niveau_id,
         COALESCE(NULLIF(trim(appartement_code), ''), NULLIF(trim(appartement_id), ''), NULLIF(trim(appart), ''), 'COMMUN') AS appartement_code,
         COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE') AS batiment,
         COALESCE(NULLIF(trim(niveau), ''), 'GLOBAL') AS niveau,
         '',
-        'Appartement detecte depuis FACT_METRE'
+        '',
+        0,
+        0,
+        'Appartement detecte depuis FACT_METRE',
+        true
     FROM fact_metre
     WHERE COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), '')) IS NOT NULL
     ORDER BY COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'), batiment, niveau
@@ -649,12 +676,16 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     INSERT INTO dim_piece (
         piece_code,
         appartement_id,
+        batiment,
+        niveau,
+        appart,
         piece,
         piece_nom,
         type_piece,
         piece_type,
         zone,
-        description
+        description,
+        is_active
     )
     SELECT DISTINCT ON (COALESCE(NULLIF(trim(piece_code), ''), concat_ws('_',
             COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN'),
@@ -665,6 +696,9 @@ def ensure_powerbi_schema(engine: Engine) -> None:
             COALESCE(NULLIF(trim(piece), ''), 'PIECE')
         )) AS piece_code,
         COALESCE(NULLIF(trim(appartement_id), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appart), ''), 'COMMUN') AS appartement_id,
+        COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE') AS batiment,
+        COALESCE(NULLIF(trim(niveau), ''), 'GLOBAL') AS niveau,
+        COALESCE(NULLIF(trim(appart), ''), NULLIF(trim(appartement_code), ''), NULLIF(trim(appartement_id), ''), 'COMMUN') AS appart,
         COALESCE(NULLIF(trim(piece), ''), 'NON_RENSEIGNE') AS piece,
         COALESCE(NULLIF(trim(piece), ''), 'NON_RENSEIGNE') AS piece_nom,
         CASE
@@ -684,7 +718,8 @@ def ensure_powerbi_schema(engine: Engine) -> None:
             ELSE 'AUTRE'
         END AS piece_type,
         COALESCE(NULLIF(trim(batiment), ''), 'NON_RENSEIGNE') || '/' || COALESCE(NULLIF(trim(niveau), ''), 'GLOBAL') AS zone,
-        'Piece detectee depuis FACT_METRE'
+        'Piece detectee depuis FACT_METRE',
+        true
     FROM fact_metre
     WHERE COALESCE(NULLIF(trim(piece), ''), NULLIF(trim(piece_code), '')) IS NOT NULL
     ORDER BY COALESCE(NULLIF(trim(piece_code), ''), concat_ws('_',
