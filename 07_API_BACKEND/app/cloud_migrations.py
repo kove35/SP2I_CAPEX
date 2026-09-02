@@ -910,6 +910,51 @@ def ensure_powerbi_schema(engine: Engine) -> None:
     CREATE INDEX IF NOT EXISTS ix_fact_simulation_scenario_id ON fact_simulation(scenario_id);
     CREATE INDEX IF NOT EXISTS ix_simulation_run_scenario_id ON simulation_run(scenario_id);
 
+    CREATE OR REPLACE VIEW v_kpi_scenario AS
+    SELECT
+        s.scenario_id,
+        s.scenario_nom,
+        s.scenario_type,
+        s.is_baseline,
+        COUNT(f.simulation_line_id) AS nombre_lignes,
+        ROUND(COALESCE(SUM(f.capex_local), 0)::NUMERIC, 2) AS capex_local_total,
+        ROUND(COALESCE(SUM(f.capex_import), 0)::NUMERIC, 2) AS capex_import_total,
+        ROUND(COALESCE(SUM(f.capex_optimise), 0)::NUMERIC, 2) AS capex_optimise_total,
+        ROUND(COALESCE(SUM(f.economie), 0)::NUMERIC, 2) AS economie_totale,
+        ROUND(
+            CASE
+                WHEN COALESCE(SUM(f.capex_local), 0) = 0 THEN 0
+                ELSE (COALESCE(SUM(f.economie), 0)::NUMERIC / NULLIF(SUM(f.capex_local), 0)::NUMERIC) * 100
+            END,
+            2
+        ) AS taux_economie_global,
+        COUNT(*) FILTER (WHERE f.decision_import = 'IMPORT') AS nb_import,
+        COUNT(*) FILTER (WHERE f.decision_import = 'LOCAL') AS nb_local,
+        MAX(f.created_at) AS derniere_simulation
+    FROM dim_scenario s
+    LEFT JOIN fact_simulation f ON f.scenario_id = s.scenario_id
+    GROUP BY s.scenario_id, s.scenario_nom, s.scenario_type, s.is_baseline;
+
+    CREATE OR REPLACE VIEW v_decision_risk AS
+    SELECT
+        s.scenario_id,
+        s.scenario_nom,
+        f.decision_import,
+        f.decision_type,
+        CASE
+            WHEN f.risk_score < 30 THEN 'LOW'
+            WHEN f.risk_score < 60 THEN 'MEDIUM'
+            WHEN f.risk_score < 80 THEN 'HIGH'
+            ELSE 'CRITICAL'
+        END AS risk_level,
+        COUNT(*) AS nombre_lignes,
+        ROUND(AVG(f.risk_score)::NUMERIC, 2) AS risk_score_moyen,
+        ROUND(AVG(f.lead_time_score)::NUMERIC, 2) AS lead_time_score_moyen,
+        ROUND(AVG(f.criticality_score)::NUMERIC, 2) AS criticality_score_moyen
+    FROM fact_simulation f
+    JOIN dim_scenario s ON s.scenario_id = f.scenario_id
+    GROUP BY s.scenario_id, s.scenario_nom, f.decision_import, f.decision_type, risk_level;
+
     CREATE TABLE IF NOT EXISTS dqe_import_audit (
         import_id BIGSERIAL PRIMARY KEY,
         fichier VARCHAR(500) NOT NULL DEFAULT '',
