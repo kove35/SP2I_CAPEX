@@ -1105,6 +1105,17 @@ class AnalyticsRepository:
         clauses: list[str] = []
         params: dict[str, Any] = {}
 
+        if filters.projet:
+            project_column = first_non_empty_sql(
+                self._fact_columns(),
+                ("project_code", "projet_id"),
+            )
+            if project_column == "NULL":
+                clauses.append("1 = 0")
+            else:
+                clauses.append(f"LOWER(CAST({project_column} AS text)) = LOWER(:projet)")
+                params["projet"] = filters.projet
+
         filter_columns = {
             "batiment": "batiment",
             "niveau": "niveau",
@@ -1154,6 +1165,7 @@ class AnalyticsRepository:
             return f"COALESCE({', '.join(available)})"
 
         filter_columns = {
+            "projet": first_available(("project_code", "projet_id")),
             "batiment": first_available(("batiment", "batiment_code")),
             "niveau": first_available(("niveau", "niveau_code")),
             "appartement": first_available(("appartement", "appartement_code", "appartement_id", "appart")),
@@ -1170,8 +1182,12 @@ class AnalyticsRepository:
                 if column == "NULL":
                     clauses.append("1 = 0")
                     continue
-                clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
-                params[field] = f"%{value}%"
+                if field == "projet":
+                    clauses.append(f"LOWER(CAST({column} AS text)) = LOWER(:projet)")
+                    params["projet"] = value
+                else:
+                    clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
+                    params[field] = f"%{value}%"
 
         if filters.decision_import and "decision_import" in columns:
             clauses.append("LOWER(decision_import) = LOWER(:decision_import)")

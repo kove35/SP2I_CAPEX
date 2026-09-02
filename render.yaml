@@ -5,7 +5,8 @@ services:
     rootDir: .
     plan: free
     region: frankfurt
-    autoDeploy: true
+    # Le déploiement reste manuel tant que la checklist de sécurité n'est pas validée.
+    autoDeploy: false
 
     buildCommand: |
       pip install --upgrade pip
@@ -21,7 +22,10 @@ services:
         value: 3.12.8
 
       - key: ENVIRONMENT
-        value: render-test
+        value: production
+
+      - key: SP2I_JWT_SECRET
+        sync: false
 
       - key: LOG_LEVEL
         value: INFO
@@ -54,10 +58,16 @@ services:
         sync: false
 
       - key: CORS_ORIGINS
-        value: http://localhost:5173,http://localhost:3000
+        value: https://sp-2-i-capex.vercel.app
 
       - key: CORS_ORIGIN_REGEX
-        value: https://.*\.vercel\.app
+        value: ""
+
+      - key: ALLOW_STARTUP_SCHEMA_MUTATIONS
+        value: "false"
+
+      - key: ENABLE_DB_REQUEST_METRICS
+        value: "false"
 
       - key: OPENAI_API_KEY
         sync: false

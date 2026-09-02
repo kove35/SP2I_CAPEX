@@ -9,6 +9,7 @@ import ProjectSelector from "../ui/ProjectSelector";
 import ProjectQuickActions from "../components/ProjectQuickActions";
 import ProjectWorkflowBreadcrumb, { moduleFromPath } from "../modules/projects/ProjectWorkflowBreadcrumb";
 import { useWorkflow } from "../hooks/useWorkflow";
+import AccountSecurityControl from "../components/AccountSecurityControl";
 
 export default function AppShell({ activePath, onNavigate, children }) {
   const { state } = useAppStore();
@@ -39,7 +40,10 @@ export default function AppShell({ activePath, onNavigate, children }) {
             <span><AlertTriangle size={16} /> Risque global moyen</span>
           </div>
           <ProjectQuickActions onNavigate={onNavigate} />
-          <AlertCenter />
+          <div className="topbar-security-actions">
+            <AlertCenter />
+            <AccountSecurityControl />
+          </div>
         </header>
         <section className="content-area">
           {showWorkspaceWorkflow ? (

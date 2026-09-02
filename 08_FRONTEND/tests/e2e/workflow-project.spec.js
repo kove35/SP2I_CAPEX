@@ -1,5 +1,7 @@
 ﻿import { expect, test } from "@playwright/test";
 
+import { mockProcurementLinesApi } from "./helpers/apiMocks";
+
 async function resetDemoProjects(page) {
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => window.localStorage.clear());
@@ -346,7 +348,7 @@ test("simulation reste en attente tant que l'utilisateur ne lance pas le scenari
 
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   const projectCard = page.getByTestId("project-card").filter({ hasText: /projet simulation manuelle/i }).first();
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/analyser.*arbitrages achat/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider.*d[eé]cisions import critiques|analyser.*arbitrages achat/i);
 });
 
 test("procurement page without scenario shows guided empty state", async ({ page }) => {
@@ -385,6 +387,7 @@ test("pilotage approvisionnement cockpit orchestrates existing workflow", async 
 });
 
 test("procurement bulk arbitrage validates selected lines", async ({ page }) => {
+  await mockProcurementLinesApi(page);
   const projectName = "Projet procurement arbitrage bulk";
   await openConfiguredProjectWorkspace(page, projectName);
   await setSyncedDqe(page);
@@ -419,7 +422,7 @@ test("procurement bulk arbitrage validates selected lines", async ({ page }) => 
   await expect(page.getByText(/import fournisseur/i).first()).toBeVisible();
 
   await navigateSpa(page, "/app/projects");
-  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/valider/i);
+  await expect(projectCard.getByTestId("project-primary-action")).toHaveText(/g[eé]n[eé]rer.*commandes fournisseurs/i);
 });
 
 test("scenario pret sans approvisionnement affiche CTA arbitrages achat", async ({ page }) => {

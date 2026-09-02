@@ -112,17 +112,53 @@ class ServicePipeline:
         self.chemin_fact = RACINE / "06_ANALYSE_BI/dataset/FACT_METRE.csv"
         self.chemin_dim_famille = RACINE / "06_ANALYSE_BI/dataset/DIM_FAMILLE.csv"
 
+    def _pipeline_paths(self) -> tuple[Path, ...]:
+        return (
+            self.chemin_source,
+            self.chemin_normalise,
+            self.chemin_enrichi,
+            self.chemin_dqe_powerbi,
+            self.chemin_optimisation,
+            self.chemin_audit,
+            self.chemin_fact,
+            self.chemin_dim_famille,
+        )
+
+    def _snapshot_pipeline_files(self) -> dict[Path, bytes | None]:
+        return {
+            path: path.read_bytes() if path.exists() and path.is_file() else None
+            for path in self._pipeline_paths()
+        }
+
+    @staticmethod
+    def _restore_pipeline_files(snapshot: dict[Path, bytes | None]) -> None:
+        for path, content in snapshot.items():
+            if content is None:
+                if path.exists() and path.is_file():
+                    path.unlink()
+                continue
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+
     def executer_depuis_json(self, contenu: bytes) -> dict[str, Any]:
         try:
             donnees = json.loads(contenu.decode("utf-8-sig"))
         except json.JSONDecodeError as exc:
             raise ValueError("JSON DQE invalide") from exc
 
-        self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
-        with self.chemin_source.open("w", encoding="utf-8") as fichier:
-            json.dump(_json_safe_data(donnees), fichier, ensure_ascii=False, indent=2)
+        snapshot = self._snapshot_pipeline_files()
+        try:
+            self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
+            with self.chemin_source.open("w", encoding="utf-8") as fichier:
+                json.dump(_json_safe_data(donnees), fichier, ensure_ascii=False, indent=2)
 
-        return self.executer_source_courante()
+            resultat = self.executer_source_courante()
+            if resultat.get("status") != "SUCCESS" or (resultat.get("db_sync") or {}).get("status") == "ERROR":
+                self._restore_pipeline_files(snapshot)
+            return resultat
+        except Exception:
+            self._restore_pipeline_files(snapshot)
+            raise
 
     def executer_depuis_excel(self, contenu: bytes, nom_fichier: str) -> dict[str, Any]:
         """
@@ -131,6 +167,7 @@ class ServicePipeline:
         Cette methode est additive : elle ne remplace pas `/dqe/upload` JSON.
         Elle sert a fiabiliser le nouveau flux Excel -> PostgreSQL -> Power BI.
         """
+        snapshot = self._snapshot_pipeline_files()
         lignes, audit_excel = ServiceAIMapping().extraire_lignes_normalisees(contenu, nom_fichier)
         pipeline_logger.info(
             "excel.import.parsed raw_rows=%s parser_rows=%s governance_rows=%s normalized_rows=%s preview_rows=%s",
@@ -140,24 +177,30 @@ class ServicePipeline:
             len(lignes),
             audit_excel.get("preview_rows_count", 0) if isinstance(audit_excel, dict) else 0,
         )
-        self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
-        with self.chemin_source.open("w", encoding="utf-8") as fichier:
-            json.dump(
-                _json_safe_donnees(
-                    {
-                        "source": nom_fichier,
-                        "lignes": lignes,
-                        "audit_excel": audit_excel,
-                    }
-                ),
-                fichier,
-                ensure_ascii=False,
-                indent=2,
-            )
+        try:
+            self.chemin_source.parent.mkdir(parents=True, exist_ok=True)
+            with self.chemin_source.open("w", encoding="utf-8") as fichier:
+                json.dump(
+                    _json_safe_donnees(
+                        {
+                            "source": nom_fichier,
+                            "lignes": lignes,
+                            "audit_excel": audit_excel,
+                        }
+                    ),
+                    fichier,
+                    ensure_ascii=False,
+                    indent=2,
+                )
 
-        resultat = self.executer_source_courante()
-        resultat["audit_excel"] = _json_safe_donnees(audit_excel)
-        return _json_safe_donnees(resultat)
+            resultat = self.executer_source_courante()
+            resultat["audit_excel"] = _json_safe_donnees(audit_excel)
+            if resultat.get("status") != "SUCCESS" or (resultat.get("db_sync") or {}).get("status") == "ERROR":
+                self._restore_pipeline_files(snapshot)
+            return _json_safe_donnees(resultat)
+        except Exception:
+            self._restore_pipeline_files(snapshot)
+            raise
 
     def executer_source_courante(self) -> dict[str, Any]:
         resultat = self._executer_moteur_backend()
@@ -215,17 +258,18 @@ class ServicePipeline:
             # remplace donc les anciennes lignes pour eviter de melanger deux
             # sources DQE differentes dans Power BI.
             self.db.execute(text("DELETE FROM fact_metre"))
-            self.db.commit()
-            logs.append("DB sync OK: ancien FACT_METRE remplace.")
+            logs.append("DB sync: remplacement FACT_METRE prepare dans une transaction.")
 
-            familles = service_db.insert_dim_famille(dim_famille)
-            faits = service_db.insert_fact_metre(fact_metre)
-            self._nettoyer_dimensions_orphelines()
+            familles = service_db.insert_dim_famille(dim_famille, commit=False)
+            faits = service_db.insert_fact_metre(fact_metre, commit=False)
+            self._nettoyer_dimensions_orphelines(commit=False)
             total_sql = self.db.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar_one()
             total_capex = self.db.execute(text("SELECT COALESCE(SUM(capex_local), 0) FROM fact_metre")).scalar_one()
             source_quality = self._calculer_qualite_source(total_sql, total_capex)
             self._historiser_import_dqe(source_quality, logs)
+            self.db.commit()
             analytics_cache.clear()
+            logs.append("DB sync OK: transaction validee; ancien FACT_METRE remplace.")
             logs.append(f"DB sync OK: {faits} lignes FACT_METRE.")
             logs.append(f"DB sync OK: {familles} lignes DIM_FAMILLE.")
             logs.append(f"DB sync CHECK: {total_sql} lignes presentes dans PostgreSQL.")
@@ -261,7 +305,7 @@ class ServicePipeline:
                 "logs": [f"DB sync ERROR: {erreur}"],
             }
 
-    def _nettoyer_dimensions_orphelines(self) -> None:
+    def _nettoyer_dimensions_orphelines(self, *, commit: bool = True) -> None:
         """
         Retire les valeurs de dimensions qui ne filtrent plus aucune ligne.
 
@@ -308,7 +352,10 @@ class ServicePipeline:
         ]
         for statement in statements:
             self.db.execute(text(statement))
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
 
     def _calculer_qualite_source(self, lignes_fact: Any, capex_fact: Any) -> dict[str, Any]:
         """Reconcilie le dernier fichier source avec le FACT_METRE synchronise."""
@@ -403,8 +450,9 @@ class ServicePipeline:
         if self.db is None:
             return
         try:
-            self.db.execute(
-                text(
+            with self.db.begin_nested():
+                self.db.execute(
+                    text(
                     """
                     INSERT INTO dqe_import_audit (
                         fichier,
@@ -449,8 +497,8 @@ class ServicePipeline:
                         CAST(:metadata_json AS jsonb)
                     )
                     """
-                ),
-                {
+                    ),
+                    {
                     "fichier": quality.get("fichier", ""),
                     "score_qualite": quality.get("score_qualite", 0),
                     "lignes_excel": quality.get("lignes_excel", 0),
@@ -477,12 +525,10 @@ class ServicePipeline:
                         ensure_ascii=False,
                         default=str,
                     ),
-                },
-            )
-            self.db.commit()
+                    },
+                )
             logs.append("DB sync OK: audit qualite DQE historise.")
         except Exception as exc:
-            self.db.rollback()
             logs.append(f"DB sync WARN: audit qualite non historise ({exc}).")
 
     def _executer_moteur_backend(self) -> dict[str, Any]:
