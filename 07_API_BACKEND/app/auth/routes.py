@@ -1,12 +1,20 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import get_current_user, require_admin
 from app.auth.models import User
-from app.auth.schemas import AuthResponse, LoginRequest, RegisterRequest, UserResponse
-from app.auth.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.auth.schemas import (
+    AuthResponse,
+    LoginRequest,
+    PasswordChangeRequest,
+    RegisterRequest,
+    UserResponse,
+    UserRoleUpdate,
+)
+from app.auth.security import create_access_token, hash_password, verify_password
 from app.database import get_db
 
 
@@ -23,33 +31,16 @@ def serialize_user(user: User) -> UserResponse:
     )
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    authorization = request.headers.get("authorization", "")
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token:
-        raise HTTPException(status_code=401, detail="Authentification requise.")
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Session invalide ou expiree.")
-    user = db.get(User, int(payload.get("sub") or 0))
-    if not user or not user.is_active:
-        raise HTTPException(status_code=401, detail="Utilisateur inactif ou introuvable.")
-    return user
-
-
 @router.post("/register", response_model=AuthResponse)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthResponse:
     existing = db.scalar(select(User).where(User.email == payload.email.lower()))
     if existing:
         raise HTTPException(status_code=409, detail="Un compte existe deja avec cet email.")
-    role = payload.role.upper()
-    if role not in {"ADMIN", "MANAGER", "ANALYST", "VIEWER"}:
-        role = "VIEWER"
     user = User(
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
         full_name=payload.full_name or payload.email.split("@")[0],
-        role=role,
+        role="VIEWER",
     )
     db.add(user)
     db.commit()
@@ -72,3 +63,46 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthResponse:
 @router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)) -> UserResponse:
     return serialize_user(current_user)
+
+
+@router.post("/change-password")
+def change_password(
+    payload: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect.")
+    if payload.current_password == payload.new_password:
+        raise HTTPException(status_code=409, detail="Le nouveau mot de passe doit etre different.")
+    current_user.password_hash = hash_password(payload.new_password)
+    db.commit()
+    return {"status": "PASSWORD_UPDATED"}
+
+
+@router.get("/users", response_model=list[UserResponse])
+def list_users(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> list[UserResponse]:
+    del current_user
+    users = db.scalars(select(User).order_by(User.created_at.desc()).limit(500)).all()
+    return [serialize_user(user) for user in users]
+
+
+@router.patch("/users/{user_id}/role", response_model=UserResponse)
+def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable.")
+    if user.id == current_user.id and payload.role != "ADMIN":
+        raise HTTPException(status_code=409, detail="Un administrateur ne peut pas retirer son propre role.")
+    user.role = payload.role
+    db.commit()
+    db.refresh(user)
+    return serialize_user(user)

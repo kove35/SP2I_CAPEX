@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { mockProcurementLinesApi } from "./helpers/apiMocks";
+
 async function resetDemoProjects(page) {
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => {
@@ -193,7 +195,7 @@ test("changing the active project updates the project context everywhere", async
     workflow_status: "ACTIVE",
     project_manager: "Responsable BRAZZA",
   });
-  await navigateSpa(page, "/app/projects");
+  await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
 
   const secondCard = page.getByTestId("project-card").filter({ hasText: /clinique pilote brazzaville/i }).first();
   await expect(secondCard).toBeVisible();
@@ -248,7 +250,7 @@ test("synced DQE enables simulation and updates project workflow state", async (
 
   await expect(page.getByText(/simulation du scénario lancée/i)).toBeVisible();
   await expect(page.getByText(/budget optimise/i)).toBeVisible();
-  await expect(page.getByText(/lignes simulées/i)).toBeVisible();
+  await expect(page.getByText(/lignes scénario/i)).toBeVisible();
 
   await page.goto("/app/projects", { waitUntil: "domcontentloaded" });
   const projectCard = page.getByTestId("project-card").filter({ hasText: new RegExp(projectName, "i") }).first();
@@ -350,6 +352,7 @@ test("procurement page keeps the same project context and decision source", asyn
 });
 
 test("procurement validation updates persisted project state and summary counters", async ({ page }) => {
+  await mockProcurementLinesApi(page);
   const projectName = "Projet source unique validation";
   await openConfiguredProjectWorkspace(page, projectName);
   await setProjectDqeVersion(page, projectName, { status: "SYNCED", trust_score: 95, synced_at: new Date().toISOString() });

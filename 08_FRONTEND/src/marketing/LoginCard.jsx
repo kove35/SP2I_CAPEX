@@ -1,6 +1,6 @@
 import React from "react";
 import { ArrowRight, LockKeyhole, UserPlus } from "lucide-react";
-import { createDemoSession, loginUser, registerUser } from "../services/authService";
+import { loginUser, registerUser } from "../services/authService";
 
 export default function LoginCard({ onAuthenticated, onDiscover }) {
   const [mode, setMode] = React.useState("login");
@@ -20,7 +20,7 @@ export default function LoginCard({ onAuthenticated, onDiscover }) {
     try {
       const payload = { email: form.email, password: form.password };
       const session = mode === "register"
-        ? await registerUser({ ...payload, full_name: form.full_name, role: "ADMIN" })
+        ? await registerUser({ ...payload, full_name: form.full_name })
         : await loginUser(payload);
       onAuthenticated(session);
     } catch (error) {
@@ -28,11 +28,6 @@ export default function LoginCard({ onAuthenticated, onDiscover }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const demoAccess = () => {
-    const session = createDemoSession();
-    onAuthenticated(session);
   };
 
   return (
@@ -57,7 +52,7 @@ export default function LoginCard({ onAuthenticated, onDiscover }) {
 
       <label>
         Mot de passe
-        <input name="password" value={form.password} onChange={updateField} placeholder="Minimum 8 caracteres" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required />
+        <input name="password" value={form.password} onChange={updateField} placeholder="Minimum 12 caracteres" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} required />
       </label>
 
       {status ? <p className="login-card-status">{status}</p> : null}
@@ -73,7 +68,6 @@ export default function LoginCard({ onAuthenticated, onDiscover }) {
 
       <div className="login-card-links">
         <button type="button">Mot de passe oublie</button>
-        <button type="button" onClick={demoAccess}>Acces demonstration</button>
         <button type="button" onClick={onDiscover}>Decouvrir SP2I</button>
       </div>
 

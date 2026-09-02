@@ -48,7 +48,7 @@ class RepositorySimulation:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def insert_fact_metre(self, data: list[dict[str, Any]]) -> int:
+    def insert_fact_metre(self, data: list[dict[str, Any]], *, commit: bool = True) -> int:
         inserted = 0
         seen: set[str] = set()
 
@@ -113,6 +113,7 @@ class RepositorySimulation:
                         appartement_id,
                         appartement_code,
                         piece,
+                        piece_type,
                         piece_id,
                         piece_code,
                         zone_id,
@@ -181,6 +182,7 @@ class RepositorySimulation:
                         :appartement_id,
                         :appartement_code,
                         :piece,
+                        :piece_type,
                         :piece_id,
                         :piece_code,
                         NULL,
@@ -248,6 +250,7 @@ class RepositorySimulation:
                         appartement_id = EXCLUDED.appartement_id,
                         appartement_code = EXCLUDED.appartement_code,
                         piece = EXCLUDED.piece,
+                        piece_type = EXCLUDED.piece_type,
                         piece_id = EXCLUDED.piece_id,
                         piece_code = EXCLUDED.piece_code,
                         type_zone = EXCLUDED.type_zone,
@@ -321,6 +324,9 @@ class RepositorySimulation:
                         ligne.get("piece")
                         or _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece"))
                     ),
+                    "piece_type": _texte(
+                        ligne.get("piece_type") or ligne.get("type_piece") or ligne.get("type_zone")
+                    ),
                     "piece_id": ids.get("piece_id"),
                     "piece_code": _id(ligne.get("piece_code") or ligne.get("PIECE_ID"), ligne.get("piece")),
                     "type_zone": _texte(ligne.get("type_zone")),
@@ -353,10 +359,13 @@ class RepositorySimulation:
             )
             inserted += 1
 
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return inserted
 
-    def insert_dim_famille(self, data: list[dict[str, Any]]) -> int:
+    def insert_dim_famille(self, data: list[dict[str, Any]], *, commit: bool = True) -> int:
         lignes = [
             {
                 "famille": _texte(ligne.get("famille") or "default"),
@@ -380,7 +389,10 @@ class RepositorySimulation:
             },
         )
         self.db.execute(statement)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         return len(lignes)
 
     def get_summary(self) -> dict[str, Any]:
@@ -689,9 +701,30 @@ class RepositorySimulation:
         batiment_id = self.db.execute(
             text(
                 """
-                INSERT INTO dim_batiment (batiment, type_batiment)
-                VALUES (CAST(:batiment AS varchar), 'A_CLASSER')
-                ON CONFLICT (batiment) DO UPDATE SET updated_at = now()
+                INSERT INTO dim_batiment (
+                    batiment,
+                    batiment_code,
+                    nom,
+                    nb_niveaux,
+                    nb_appartements,
+                    type_batiment,
+                    description,
+                    is_active
+                )
+                VALUES (
+                    CAST(:batiment AS varchar),
+                    CAST(:batiment AS varchar),
+                    CAST(:batiment AS varchar),
+                    0,
+                    0,
+                    'A_CLASSER',
+                    '',
+                    true
+                )
+                ON CONFLICT (batiment) DO UPDATE SET
+                    batiment_code = COALESCE(NULLIF(dim_batiment.batiment_code, ''), EXCLUDED.batiment_code),
+                    nom = COALESCE(NULLIF(dim_batiment.nom, ''), EXCLUDED.nom),
+                    updated_at = now()
                 RETURNING batiment_id
                 """
             ),
@@ -711,8 +744,34 @@ class RepositorySimulation:
         piece_id = self.db.execute(
             text(
                 """
-                INSERT INTO dim_piece (piece_code, batiment, niveau, appart, piece, type_piece)
-                VALUES (CAST(:piece_code AS varchar), CAST(:batiment AS varchar), CAST(:niveau AS varchar), CAST(:appart AS varchar), CAST(:piece AS varchar), 'A_CLASSER')
+                INSERT INTO dim_piece (
+                    piece_code,
+                    appartement_id,
+                    batiment,
+                    niveau,
+                    appart,
+                    piece,
+                    piece_nom,
+                    type_piece,
+                    piece_type,
+                    zone,
+                    description,
+                    is_active
+                )
+                VALUES (
+                    CAST(:piece_code AS varchar),
+                    CAST(:appart AS varchar),
+                    CAST(:batiment AS varchar),
+                    CAST(:niveau AS varchar),
+                    CAST(:appart AS varchar),
+                    CAST(:piece AS varchar),
+                    CAST(:piece AS varchar),
+                    'A_CLASSER',
+                    'A_CLASSER',
+                    '',
+                    '',
+                    true
+                )
                 ON CONFLICT (piece_code) DO UPDATE SET updated_at = now()
                 RETURNING piece_id
                 """

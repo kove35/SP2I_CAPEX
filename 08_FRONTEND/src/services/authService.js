@@ -29,16 +29,6 @@ export async function registerUser(payload) {
   return storeSession(session);
 }
 
-export function createDemoSession() {
-  return storeSession({
-    access_token: "demo-session",
-    token_type: "demo",
-    user: {
-      id: 0,
-      email: "demo@sp2i.local",
-      full_name: "Utilisateur demonstration",
-      role: "MANAGER",
-      is_active: true,
-    },
-  });
+export async function changePassword(payload) {
+  return request({ url: "/auth/change-password", method: "POST", data: payload });
 }

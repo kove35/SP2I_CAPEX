@@ -5,8 +5,11 @@ import json
 import pytest
 
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.main import app
+
+pytestmark = pytest.mark.usefixtures("admin_auth")
 
 try:
     import pandas as pd
@@ -32,9 +35,19 @@ def test_excel_sync_datetime_serialization(monkeypatch):
     # Monkeypatch the ServiceAIMapping.extraire_lignes_normalisees used by ServicePipeline
     import app.services.service_pipeline as sp_mod
 
-    def fake_extraire(contenu, nom_fichier):
-        # return empty lines and our audit_excel
-        return [], audit_excel
+    def fake_extraire(self, contenu, nom_fichier):
+        return [
+            {
+                "id_ligne": "SYNC-DATETIME-1",
+                "designation": "Item A",
+                "quantite": 1,
+                "unite": "u",
+                "prix_unitaire_ht": 100,
+                "prix_total_ht": 100,
+                "lot": "TEST_SYNC",
+                "famille": "test_sync",
+            }
+        ], audit_excel
 
     monkeypatch.setattr(sp_mod.ServiceAIMapping, "extraire_lignes_normalisees", fake_extraire)
 
@@ -81,8 +94,8 @@ def test_excel_sync_datetime_serialization(monkeypatch):
 
     # 3. Verify SQL counts
     with engine.connect() as conn:
-        fact_count = conn.execute("SELECT COUNT(*) FROM fact_metre").scalar()
-        audit_count = conn.execute("SELECT COUNT(*) FROM dqe_import_audit").scalar()
+        fact_count = conn.execute(text("SELECT COUNT(*) FROM fact_metre")).scalar()
+        audit_count = conn.execute(text("SELECT COUNT(*) FROM dqe_import_audit")).scalar()
 
     # Return useful info if assertions fail
     print("status:", data.get("status"))

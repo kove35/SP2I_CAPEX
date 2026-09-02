@@ -17,6 +17,8 @@ from app.approval.schemas.approval import (
 from app.approval.services.approval_engine import ApprovalEngine
 from app.approval.services.approval_history import approval_history
 from app.approval.services.approval_workflow import APPROVAL_STATUSES, normalize_status
+from app.auth.dependencies import require_manager
+from app.auth.models import User
 from app.database import get_db
 
 
@@ -28,7 +30,7 @@ def approval_statuses() -> dict[str, list[str]]:
     return {"statuses": sorted(APPROVAL_STATUSES)}
 
 
-@router.post("", response_model=ApprovalOut)
+@router.post("", response_model=ApprovalOut, dependencies=[Depends(require_manager)])
 def create_approval(payload: ApprovalCreate, db: Session = Depends(get_db)) -> ApprovalOut:
     return ApprovalEngine(db).create_approval(payload.model_dump(exclude_unset=True))
 
@@ -53,7 +55,7 @@ def approval_summary(project_id: int, db: Session = Depends(get_db)) -> Approval
     return ApprovalSummary(**ApprovalRepository(db).summary(project_id))
 
 
-@router.post("/bootstrap/procurement/{project_id}")
+@router.post("/bootstrap/procurement/{project_id}", dependencies=[Depends(require_manager)])
 def bootstrap_from_procurement(
     project_id: int,
     scenario_id: str | None = Query(default=None),
@@ -136,7 +138,7 @@ def get_approval(approval_id: int, db: Session = Depends(get_db)) -> ApprovalOut
     return approval
 
 
-@router.patch("/{approval_id}", response_model=ApprovalOut)
+@router.patch("/{approval_id}", response_model=ApprovalOut, dependencies=[Depends(require_manager)])
 def update_approval(approval_id: int, payload: ApprovalUpdate, db: Session = Depends(get_db)) -> ApprovalOut:
     try:
         approval = ApprovalEngine(db).update_approval(approval_id, payload.model_dump())
@@ -148,11 +150,16 @@ def update_approval(approval_id: int, payload: ApprovalUpdate, db: Session = Dep
 
 
 @router.post("/{approval_id}/review", response_model=ApprovalOut)
-def start_review(approval_id: int, payload: ApprovalReviewRequest, db: Session = Depends(get_db)) -> ApprovalOut:
+def start_review(
+    approval_id: int,
+    payload: ApprovalReviewRequest,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+) -> ApprovalOut:
     try:
         approval = ApprovalEngine(db).start_review(
             approval_id,
-            reviewer=payload.reviewer,
+            reviewer=current_user.email,
             assigned_to=payload.assigned_to,
             justification=payload.justification_human,
         )
@@ -164,9 +171,14 @@ def start_review(approval_id: int, payload: ApprovalReviewRequest, db: Session =
 
 
 @router.post("/{approval_id}/approve", response_model=ApprovalOut)
-def approve_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Session = Depends(get_db)) -> ApprovalOut:
+def approve_approval(
+    approval_id: int,
+    payload: ApprovalDecisionRequest,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+) -> ApprovalOut:
     try:
-        approval = ApprovalEngine(db).approve(approval_id, actor=payload.actor, justification=payload.justification_human, decision=payload.decision)
+        approval = ApprovalEngine(db).approve(approval_id, actor=current_user.email, justification=payload.justification_human, decision=payload.decision)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if not approval:
@@ -175,9 +187,14 @@ def approve_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Ses
 
 
 @router.post("/{approval_id}/reject", response_model=ApprovalOut)
-def reject_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Session = Depends(get_db)) -> ApprovalOut:
+def reject_approval(
+    approval_id: int,
+    payload: ApprovalDecisionRequest,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+) -> ApprovalOut:
     try:
-        approval = ApprovalEngine(db).reject(approval_id, actor=payload.actor, justification=payload.justification_human)
+        approval = ApprovalEngine(db).reject(approval_id, actor=current_user.email, justification=payload.justification_human)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if not approval:
@@ -186,9 +203,14 @@ def reject_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Sess
 
 
 @router.post("/{approval_id}/escalate", response_model=ApprovalOut)
-def escalate_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Session = Depends(get_db)) -> ApprovalOut:
+def escalate_approval(
+    approval_id: int,
+    payload: ApprovalDecisionRequest,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+) -> ApprovalOut:
     try:
-        approval = ApprovalEngine(db).transition(approval_id, "ESCALATED", actor=payload.actor, justification=payload.justification_human)
+        approval = ApprovalEngine(db).transition(approval_id, "ESCALATED", actor=current_user.email, justification=payload.justification_human)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if not approval:
@@ -197,9 +219,14 @@ def escalate_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Se
 
 
 @router.post("/{approval_id}/cancel", response_model=ApprovalOut)
-def cancel_approval(approval_id: int, payload: ApprovalDecisionRequest, db: Session = Depends(get_db)) -> ApprovalOut:
+def cancel_approval(
+    approval_id: int,
+    payload: ApprovalDecisionRequest,
+    current_user: User = Depends(require_manager),
+    db: Session = Depends(get_db),
+) -> ApprovalOut:
     try:
-        approval = ApprovalEngine(db).transition(approval_id, "CANCELLED", actor=payload.actor, justification=payload.justification_human)
+        approval = ApprovalEngine(db).transition(approval_id, "CANCELLED", actor=current_user.email, justification=payload.justification_human)
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if not approval:
