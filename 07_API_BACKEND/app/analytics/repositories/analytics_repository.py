@@ -108,27 +108,37 @@ class AnalyticsRepository:
         ).mappings().one()
         return dict(row)
 
-    def get_project_cost_summary(self) -> dict[str, Any]:
+    def get_project_cost_summary(self, query: AnalyticsQuery) -> dict[str, Any]:
+        where_sql, params = self._v6_project_where(query, table_alias="s")
         row = self.db.execute(
             text(
-                """
+                f"""
                 SELECT
-                    capex_direct,
-                    indirect_costs,
-                    site_installation,
-                    import_logistics,
-                    contingency,
-                    total_project_cost,
-                    capex_direct_per_m2,
-                    total_project_cost_per_m2,
-                    total_project_cost_per_appartement,
-                    total_project_cost_per_niveau,
-                    fallback_legacy_lot_capex,
-                    fallback_legacy_lot_pct
-                FROM vw_project_cost_summary
-                LIMIT 1
+                    COALESCE(SUM(s.capex_direct), 0) AS capex_direct,
+                    COALESCE(SUM(s.capex_import), 0) AS capex_import,
+                    COALESCE(SUM(s.capex_optimise), 0) AS capex_optimise,
+                    COALESCE(SUM(s.economie_nette), 0) AS economie_nette,
+                    COALESCE(SUM(s.indirect_costs), 0) AS indirect_costs,
+                    COALESCE(SUM(s.site_installation), 0) AS site_installation,
+                    COALESCE(SUM(s.import_logistics), 0) AS import_logistics,
+                    COALESCE(SUM(s.contingency), 0) AS contingency,
+                    COALESCE(SUM(s.total_project_cost), 0) AS total_project_cost,
+                    CASE WHEN COALESCE(SUM(s.surface_m2), 0) = 0 THEN 0
+                         ELSE SUM(s.capex_direct) / NULLIF(SUM(s.surface_m2), 0) END AS capex_direct_per_m2,
+                    CASE WHEN COALESCE(SUM(s.surface_m2), 0) = 0 THEN 0
+                         ELSE SUM(s.total_project_cost) / NULLIF(SUM(s.surface_m2), 0) END AS total_project_cost_per_m2,
+                    CASE WHEN COALESCE(SUM(s.nb_appartements), 0) = 0 THEN 0
+                         ELSE SUM(s.total_project_cost) / NULLIF(SUM(s.nb_appartements), 0) END AS total_project_cost_per_appartement,
+                    CASE WHEN COALESCE(SUM(s.nb_niveaux), 0) = 0 THEN 0
+                         ELSE SUM(s.total_project_cost) / NULLIF(SUM(s.nb_niveaux), 0) END AS total_project_cost_per_niveau,
+                    COALESCE(SUM(s.fallback_legacy_lot_capex), 0) AS fallback_legacy_lot_capex,
+                    CASE WHEN COALESCE(SUM(s.capex_direct), 0) = 0 THEN 0
+                         ELSE 100.0 * SUM(s.fallback_legacy_lot_capex) / NULLIF(SUM(s.capex_direct), 0) END AS fallback_legacy_lot_pct
+                FROM vw_project_cost_summary_v6 s
+                {where_sql}
                 """
-            )
+            ),
+            params,
         ).mappings().one()
         summary = dict(row)
         summary["capex_m2"] = summary.get("total_project_cost_per_m2")
@@ -136,10 +146,11 @@ class AnalyticsRepository:
         summary["cost_per_level"] = summary.get("total_project_cost_per_niveau")
         return self._json_safe(summary)
 
-    def get_dashboard_direction_v6(self) -> list[dict[str, Any]]:
+    def get_dashboard_direction_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        where_sql, params = self._v6_project_where(query, table_alias="d")
         rows = self.db.execute(
             text(
-                """
+                f"""
                 SELECT
                     lot,
                     capex_direct,
@@ -157,10 +168,12 @@ class AnalyticsRepository:
                     total_project_cost_per_m2,
                     total_project_cost_per_appartement,
                     total_project_cost_per_niveau
-                FROM vw_dashboard_direction_v6
+                FROM vw_dashboard_direction_v6_scoped d
+                {where_sql}
                 ORDER BY capex_direct DESC
                 """
-            )
+            ),
+            params,
         ).mappings().all()
         return [self._json_safe(dict(row)) for row in rows]
 
@@ -168,6 +181,9 @@ class AnalyticsRepository:
         clauses: list[str] = []
         params: dict[str, Any] = {}
         filters = query.filters
+        if filters.projet:
+            clauses.append(self._project_predicate("project_code", "projet_id"))
+            params["projet"] = filters.projet
         if filters.lot:
             clauses.append("lot = :lot")
             params["lot"] = filters.lot
@@ -199,7 +215,7 @@ class AnalyticsRepository:
                     pricing_scope,
                     pricing_confidence,
                     price_reference_code
-                FROM vw_cost_intelligence_v6
+                FROM vw_cost_intelligence_v6_scoped
                 {where_sql}
                 ORDER BY capex_local DESC
                 LIMIT :limit OFFSET :offset
@@ -1106,14 +1122,13 @@ class AnalyticsRepository:
         params: dict[str, Any] = {}
 
         if filters.projet:
-            project_column = first_non_empty_sql(
-                self._fact_columns(),
-                ("project_code", "projet_id"),
-            )
-            if project_column == "NULL":
+            columns = self._fact_columns()
+            project_code = "project_code" if "project_code" in columns else "NULL"
+            project_id = "projet_id" if "projet_id" in columns else "NULL"
+            if project_code == "NULL" and project_id == "NULL":
                 clauses.append("1 = 0")
             else:
-                clauses.append(f"LOWER(CAST({project_column} AS text)) = LOWER(:projet)")
+                clauses.append(self._project_predicate(project_code, project_id))
                 params["projet"] = filters.projet
 
         filter_columns = {
@@ -1165,7 +1180,6 @@ class AnalyticsRepository:
             return f"COALESCE({', '.join(available)})"
 
         filter_columns = {
-            "projet": first_available(("project_code", "projet_id")),
             "batiment": first_available(("batiment", "batiment_code")),
             "niveau": first_available(("niveau", "niveau_code")),
             "appartement": first_available(("appartement", "appartement_code", "appartement_id", "appart")),
@@ -1176,18 +1190,23 @@ class AnalyticsRepository:
 
         clauses: list[str] = []
         params: dict[str, Any] = {}
+        if filters.projet:
+            project_code = "project_code" if "project_code" in columns else "NULL"
+            project_id = "projet_id" if "projet_id" in columns else "NULL"
+            if project_code == "NULL" and project_id == "NULL":
+                clauses.append("1 = 0")
+            else:
+                clauses.append(self._project_predicate(project_code, project_id))
+                params["projet"] = filters.projet
+
         for field, column in filter_columns.items():
             value = getattr(filters, field)
             if value:
                 if column == "NULL":
                     clauses.append("1 = 0")
                     continue
-                if field == "projet":
-                    clauses.append(f"LOWER(CAST({column} AS text)) = LOWER(:projet)")
-                    params["projet"] = value
-                else:
-                    clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
-                    params[field] = f"%{value}%"
+                clauses.append(f"LOWER(CAST({column} AS text)) LIKE LOWER(:{field})")
+                params[field] = f"%{value}%"
 
         if filters.decision_import and "decision_import" in columns:
             clauses.append("LOWER(decision_import) = LOWER(:decision_import)")
@@ -1211,6 +1230,37 @@ class AnalyticsRepository:
         if not clauses:
             return "", params
         return "WHERE " + " AND ".join(clauses), params
+
+    @staticmethod
+    def _project_predicate(project_code_sql: str, project_id_sql: str) -> str:
+        predicates: list[str] = []
+        if project_code_sql != "NULL":
+            predicates.append(f"LOWER(CAST({project_code_sql} AS text)) = LOWER(:projet)")
+        if project_id_sql != "NULL":
+            predicates.extend(
+                [
+                    f"CAST({project_id_sql} AS text) = CAST(:projet AS text)",
+                    f"{project_id_sql} IN ("
+                    "SELECT projet_id FROM dim_projet "
+                    "WHERE LOWER(projet_code) = LOWER(:projet)"
+                    ")",
+                ]
+            )
+        return "(" + " OR ".join(predicates) + ")" if predicates else "1 = 0"
+
+    def _v6_project_where(
+        self,
+        query: AnalyticsQuery,
+        *,
+        table_alias: str | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        if not query.filters.projet:
+            return "", {}
+        prefix = f"{table_alias}." if table_alias else ""
+        return (
+            "WHERE " + self._project_predicate(f"{prefix}project_code", f"{prefix}projet_id"),
+            {"projet": query.filters.projet},
+        )
 
     def _where(self, query: AnalyticsQuery) -> tuple[str, dict[str, Any]]:
         return self.build_where_clause(query)

@@ -70,6 +70,30 @@ def test_analytics_sql_applies_exact_project_filter(monkeypatch: pytest.MonkeyPa
 
     assert "= LOWER(:projet)" in fact_sql
     assert "= LOWER(:projet)" in financial_sql
+    assert "SELECT projet_id FROM dim_projet" in fact_sql
+    assert "SELECT projet_id FROM dim_projet" in financial_sql
     assert fact_params["projet"] == "PROJET_MPEMBA"
     assert financial_params["projet"] == "PROJET_MPEMBA"
     assert financial_params["lot"] == "%ELEC%"
+
+
+def test_analytics_sql_maps_project_code_when_only_numeric_id_is_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = AnalyticsRepository(db=object())
+    monkeypatch.setattr(repository, "_fact_columns", lambda: {"projet_id", "lot"})
+    monkeypatch.setattr(
+        "app.analytics.repositories.analytics_repository.load_table_columns",
+        lambda _db, _source: {"projet_id", "lot"},
+    )
+    query = AnalyticsQuery(filters=AnalyticsFilters(projet="PROJET_MPEMBA"))
+
+    fact_sql, fact_params = repository.build_where_clause(query)
+    financial_sql, financial_params = repository.build_financial_where_clause(query)
+
+    assert "project_code" not in fact_sql
+    assert "project_code" not in financial_sql
+    assert "projet_id IN (SELECT projet_id FROM dim_projet" in fact_sql
+    assert "projet_id IN (SELECT projet_id FROM dim_projet" in financial_sql
+    assert fact_params == {"projet": "PROJET_MPEMBA"}
+    assert financial_params == {"projet": "PROJET_MPEMBA"}
