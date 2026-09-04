@@ -3,7 +3,8 @@ from __future__ import annotations
 import os
 
 
-FINANCIAL_SOURCE = os.getenv("SP2I_FINANCIAL_SOURCE", "vw_fact_metre_financial_v6")
+DEFAULT_FINANCIAL_SOURCE = "vw_fact_metre_financial_v6"
+FINANCIAL_SOURCE = os.getenv("SP2I_FINANCIAL_SOURCE", DEFAULT_FINANCIAL_SOURCE)
 
 ALLOWED_FINANCIAL_SOURCES = {
     "fact_metre",
@@ -15,7 +16,9 @@ ALLOWED_FINANCIAL_SOURCES = {
 
 
 def get_financial_source() -> str:
-    financial_source = os.getenv("SP2I_FINANCIAL_SOURCE", FINANCIAL_SOURCE).strip()
+    financial_source = os.getenv(
+        "SP2I_FINANCIAL_SOURCE", DEFAULT_FINANCIAL_SOURCE
+    ).strip()
     if financial_source not in ALLOWED_FINANCIAL_SOURCES:
         allowed = ", ".join(sorted(ALLOWED_FINANCIAL_SOURCES))
         raise ValueError(
