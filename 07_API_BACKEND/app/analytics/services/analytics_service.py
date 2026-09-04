@@ -1426,7 +1426,7 @@ class AnalyticsService:
         )
 
     def _build_project_cost_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
-        summary = self.repository.get_project_cost_summary()
+        summary = self.repository.get_project_cost_summary(query)
         return self._response(
             query,
             kpis=summary,
@@ -1440,16 +1440,24 @@ class AnalyticsService:
         )
 
     def _build_dashboard_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
-        summary = self.repository.get_project_cost_summary()
-        by_lot = self.repository.get_dashboard_direction_v6()
+        summary = self.repository.get_project_cost_summary(query)
+        by_lot = self.repository.get_dashboard_direction_v6(query)
         kpis = {
             **summary,
             "capex_brut": summary.get("capex_direct"),
             "capex_local": summary.get("capex_direct"),
-            "capex_optimise": summary.get("capex_direct"),
-            "economie_nette": 0,
-            "roi_import": 0,
-            "taux_economie": 0,
+            "capex_optimise": summary.get("capex_optimise"),
+            "economie_nette": summary.get("economie_nette"),
+            "roi_import": (
+                float(summary.get("economie_nette") or 0) / float(summary.get("capex_import"))
+                if float(summary.get("capex_import") or 0) != 0
+                else 0
+            ),
+            "taux_economie": (
+                float(summary.get("economie_nette") or 0) / float(summary.get("capex_direct"))
+                if float(summary.get("capex_direct") or 0) != 0
+                else 0
+            ),
             "nb_lignes": sum(int(row.get("nb_lignes") or 0) for row in by_lot),
             "nb_lots": len({str(row.get("lot") or "") for row in by_lot if row.get("lot")}),
             "analytics_confidence": "HIGH",
@@ -1464,8 +1472,8 @@ class AnalyticsService:
             total=len(by_lot),
             metadata={
                 "engine": "SP2I Financial Engine V6",
-                "source": "vw_dashboard_direction_v6",
-                "project_cost_source": "vw_project_cost_summary",
+                "source": "vw_dashboard_direction_v6_scoped",
+                "project_cost_source": "vw_project_cost_summary_v6",
                 "mode": "parallel_v6",
             },
         )
@@ -1831,7 +1839,7 @@ class AnalyticsService:
 
     def _build_cost_intelligence_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
         rows = self.repository.get_cost_intelligence_v6(query)
-        summary = self.repository.get_project_cost_summary()
+        summary = self.repository.get_project_cost_summary(query)
         capex_local = sum(float(row.get("capex_local") or 0) for row in rows)
         capex_import = sum(float(row.get("capex_import") or 0) for row in rows)
         capex_optimise = sum(float(row.get("capex_optimise") or 0) for row in rows)
