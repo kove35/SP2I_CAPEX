@@ -4,6 +4,16 @@ import AdvancedKpiCard from "../analytics/kpi/AdvancedKpiCard";
 import { formatMoney, formatPercent } from "../../shared/formatters";
 import Skeleton from "../../ui/Skeleton";
 
+// Ratio /m2, /appartement, /niveau : quand le backend renvoie null (surface ou
+// denominateur non resolvable pour le perimetre filtre), on affiche explicitement
+// "Indisponible pour ce perimetre" au lieu de convertir en 0 FCFA.
+function formatRatioMoney(value) {
+  if (value === null || value === undefined || value === "") {
+    return "Indisponible pour ce perimetre";
+  }
+  return formatMoney(value);
+}
+
 export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
   const isV6Financial = Boolean(kpis.total_project_cost || kpis.capex_direct || kpis.indirect_costs);
   const economyRate = Number(kpis.taux_economie || 0) * 100;
@@ -46,9 +56,9 @@ export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
     { label: "Import Logistics", value: formatMoney(kpis.import_logistics), helper: "Transport et douane", tone: "cyan", icon: Activity, delta: 0, points: [10, 12, 15, 17, 20, 22, 24] },
     { label: "Contingency", value: formatMoney(kpis.contingency), helper: "Reserve risques", tone: "amber", icon: AlertTriangle, delta: 0, positiveIsGood: false, points: [24, 27, 30, 33, 36, 38, 40] },
     { label: "TPC", value: formatMoney(kpis.total_project_cost), helper: "Total Project Cost", tone: "green", icon: TrendingUp, delta: 0, points: [70, 72, 75, 78, 80, 83, 86] },
-    { label: "FCFA/m2", value: formatMoney(kpis.capex_m2 || kpis.total_project_cost_per_m2), helper: "Cout projet au m2", tone: "green", icon: Gauge, delta: 0, points: [45, 48, 52, 55, 59, 63, 66] },
-    { label: "Par appartement", value: formatMoney(kpis.cost_per_apartment || kpis.total_project_cost_per_appartement), helper: "TPC / 6 appartements", tone: "blue", icon: Database, delta: 0, points: [38, 42, 45, 48, 52, 55, 58] },
-    { label: "Par niveau", value: formatMoney(kpis.cost_per_level || kpis.total_project_cost_per_niveau), helper: "TPC / 3 niveaux", tone: "blue", icon: PackageCheck, delta: 0, points: [40, 43, 47, 50, 54, 57, 60] },
+    { label: "FCFA/m2", value: formatRatioMoney(kpis.capex_m2 ?? kpis.total_project_cost_per_m2), helper: "Cout projet au m2", tone: "green", icon: Gauge, delta: 0, points: [45, 48, 52, 55, 59, 63, 66] },
+    { label: "Par appartement", value: formatRatioMoney(kpis.cost_per_apartment ?? kpis.total_project_cost_per_appartement), helper: "TPC / appartements du perimetre", tone: "blue", icon: Database, delta: 0, points: [38, 42, 45, 48, 52, 55, 58] },
+    { label: "Par niveau", value: formatRatioMoney(kpis.cost_per_level ?? kpis.total_project_cost_per_niveau), helper: "TPC / niveaux du perimetre", tone: "blue", icon: PackageCheck, delta: 0, points: [40, 43, 47, 50, 54, 57, 60] },
     { label: "Fallback prix", value: formatPercent(Number(kpis.fallback_legacy_lot_pct || 0) / 100), helper: "Legacy lot restant", tone: Number(kpis.fallback_legacy_lot_pct || 0) < 5 ? "green" : "amber", icon: Gauge, delta: Number(kpis.fallback_legacy_lot_pct || 0), positiveIsGood: false, points: [12, 10, 8, 6, 5, 4, 3] },
   ];
   const items = isV6Financial ? v6Items : legacyItems;
