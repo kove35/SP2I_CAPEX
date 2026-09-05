@@ -47,9 +47,11 @@ prévue par le dépôt — **à ne pas exécuter aveuglément par ordre de nom**
 
 ## État au 05/09/2026
 
-| Élément | Statut |
+| Catégorie | Résultat |
 |---|---|
-| Recette fonctionnelle (base isolée, schéma synthétique) | ✅ 17/17 scénarios |
-| Fixture `admin_auth` (conftest) | ✅ collecte corrigée, 30 passed |
-| `test_excel_sync_datetime_serialization` | ⚠️ passe la collecte, échoue au runtime hors chaîne complète (`dim_lot` manquant) |
-| Chaîne complète de migrations `001..033` sur base neuve | ⏳ **à exécuter** dans un environnement dédié (procédure ci-dessus) |
+| Tests unitaires backend (pytest, base isolée `sp2i_capex_sync_test`) | ✅ **31 passed** (inclut `test_excel_sync_datetime_serialization`, synchronisation réelle, après application du DDL de `cloud_migrations` via `prepare_sync_db.py`) |
+| Intégration PostgreSQL (vue V6, données synthétiques) | ✅ `ALL_V6_SPATIAL_KPI_CHECKS_PASSED` |
+| Recette API réelle (backend uvicorn + PostgreSQL isolé) | ✅ **17/17** scénarios (`tests/recette/run_recette.py`) |
+| Tests navigateur avec API simulée (`page.route`) | ✅ **27/27** (`workflow-project.spec.js`) |
+| Tests navigateur avec API réelle | ⚠️ **partiel / à établir** : connexion OK + sélection projet A + KPI « CAPEX Direct = 3 000 FCFA » confirmés ; **filtre niveau et ratio indisponible bloqués** car `/analytics/filters?projet=1` répond **HTTP 500** sur le schéma minimal de recette (menu « Niveau » sans options) — cause exacte et preuves dans `08_FRONTEND/tests/e2e/real-api-recipe.spec.js` |
+| Chaîne complète de migrations `001..033` sur base neuve | ⏳ **non validée** (procédure ci-dessus, environnement dédié requis) |
