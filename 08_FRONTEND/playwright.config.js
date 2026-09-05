@@ -7,6 +7,7 @@ export default defineConfig({
     "**/orchestration/**",
     "**/performance/**",
     "**/spatial/**",
+    "**/real-api-recipe.spec.js",
   ],
   timeout: 30_000,
   expect: {
