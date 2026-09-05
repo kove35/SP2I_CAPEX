@@ -147,11 +147,14 @@ function qualityLabel(score = 0, reviewRequired = 0, status = "") {
 }
 
 function buildCostSignals(costPayload = {}) {
-  const topCosts = costPayload.top_costs || {};
-  const capexM2 = costPayload.capex_m2 || {};
-  const benchmark = costPayload.benchmark || {};
-  const pareto = costPayload.pareto || {};
-  const anomalies = costPayload.anomalies?.items || [];
+  // Le contrat V6 renvoie les données sous `charts.*`, le contrat V5 à la racine.
+  // On normalise pour supporter les deux (rétro-compatible).
+  const charts = costPayload.charts || {};
+  const topCosts = charts.top_costs || costPayload.top_costs || {};
+  const capexM2 = charts.capex_m2 || costPayload.capex_m2 || {};
+  const benchmark = charts.benchmark || costPayload.benchmark || {};
+  const pareto = charts.pareto || costPayload.pareto || {};
+  const anomalies = (charts.anomalies?.items || costPayload.anomalies?.items || []).slice(0, 10);
   const piece = topCosts.pieces?.[0];
   const lot = topCosts.lots?.[0];
   const appartement = firstItem(topCosts.appartements, benchmark.appartements?.all, benchmark.appartements?.A101_A201_A301);
@@ -162,6 +165,7 @@ function buildCostSignals(costPayload = {}) {
   const saving = topCosts.economies?.[0];
   const anomaly = anomalies[0];
   const signals = [];
+
 
   if (capexM2Piece) {
     signals.push({
@@ -272,11 +276,21 @@ export default function CockpitPage() {
   const dataQualityPayload = engine.dataQuality.data || {};
   const costSignals = buildCostSignals(costPayload);
   const dataQualitySignal = buildDataQualitySignal(dataQualityPayload);
-  const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
+  // Source financière unique : en mode V6 le dashboard embarque déjà les alias legacy
+  // (capex_brut, capex_optimise, economie_nette...). On ne fusionne PAS les KPI V5
+  // (/analytics/capex) pour éviter un mélange de sources incohérent (Anomalie C).
+  const kpis = Object.keys(mainPayload.kpis || {}).length ? mainPayload.kpis : capexPayload.kpis || {};
   const hasPrimaryKpis = Boolean(mainPayload.kpis || capexPayload.kpis);
-  const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
-  const total = mainPayload.pagination?.total || engine.drilldown.data?.pagination?.total || table.length;
+  // Tableau détaillé : on privilégie les lignes fines. En V6, `mainPayload.table` est un
+  // agrégat par lot (~18 lignes) ; on bascule alors sur les lignes fines de la Cost
+  // Intelligence (Anomalie D/F) quand elles sont disponibles et plus granulaires.
+  const dashboardTable = mainPayload.table || [];
+  const fineTable = costPayload.table || engine.drilldown.data?.table || [];
+  const isDashboardAggregate = dashboardTable.length > 0 && dashboardTable.length <= 60 && !dashboardTable.some((row) => row.designation);
+  const table = fineTable.length && (isDashboardAggregate || !dashboardTable.length) ? fineTable : dashboardTable;
+  const total = Number(mainPayload.pagination?.total || 0) || Number(costPayload.pagination?.total || 0) || table.length;
   const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
+
   const heatmapRows = engine.heatmap.data?.charts?.heatmap || mainPayload.charts?.heatmap || [];
   const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];

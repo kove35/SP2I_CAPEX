@@ -1,0 +1,253 @@
+# Matrice des anomalies — Cockpit Direction / Analytics V6
+
+> Périmètre : `08_FRONTEND` (React) + `07_API_BACKEND` (FastAPI) — module Cockpit / Analytics.
+> Mode cible : **V6 financier** (`VITE_SP2I_USE_V6_FINANCIALS=true`), qui active `/analytics/v6/dashboard` et `/analytics/v6/cost-intelligence`.
+> Les correctifs doivent rester **rétro-compatibles V5** (le flag peut être désactivé).
+
+---
+
+## 1. Vue d'ensemble
+
+| # | Anomalie | Sévérité | Priorité | Zone |
+|---|----------|----------|----------|------|
+| A | Le projet actif n'est pas propagé aux filtres analytics (isolation des contextes) | Critique | P0 | Frontend |
+| B | Les options de filtres spatiaux ne sont pas scopées au projet actif | Élevée | P1 | Frontend + Backend |
+| C | Sources financières mélangées V5/V6 → graphiques incohérents avec les KPI | Élevée | P1 | Frontend |
+| D | Le tableau détaillé est alimenté par des agrégats par lot (V6) au lieu des lignes | Élevée | P1 | Frontend |
+| E | Contrat Cost Intelligence : lecture à la racine alors que V6 renvoie sous `charts` | Élevée | P1 | Frontend |
+| F | Compteurs / états vides / libellés incohérents (total = nb de lots, etc.) | Moyenne | P2 | Frontend |
+
+---
+
+## 2. Anomalie A — Projet actif non propagé aux filtres analytics
+
+### Reproduction
+1. Ouvrir `ProjectHub` (`/app/projects`), ouvrir un projet **B** (≠ projet par défaut `PROJET_MPEMBA`).
+2. Naviguer vers le cockpit `/app`.
+3. Constater que le panneau de filtres (`GlobalAnalyticsFilters`) et le contexte projet affichent toujours le projet par défaut, et que les données analytics restent celles du projet par défaut.
+
+### Attendu
+- Le cockpit doit refléter le **projet actif** sélectionné dans le hub / le sélecteur de projet.
+- Chaque projet doit isoler son DQE, ses scénarios, ses arbitrages et sa gouvernance.
+
+### Observé
+- `ProjectHub.openProject` / `runPrimaryAction` ne mettent à jour que le **appStore** (`activeProject`, `activeProjectDetails`).
+- Le **analyticsFilterStore** (`filters.projet`) n'est **jamais synchronisé** avec le projet actif.
+- `defaultAnalyticsFilters.projet` est codé en dur à `PROJECT_CONTEXT.code` (`PROJET_MPEMBA`).
+- `GlobalAnalyticsFilters` et `useCrossFiltering` lisent le projet depuis le **analyticsFilterStore**, pas depuis le appStore.
+
+### Cause racine
+- Absence d'un point de synchronisation unique entre le projet actif (appStore) et le filtre `projet` (analyticsFilterStore).
+- `ProjectSelector` (topbar) lit le appStore, mais `GlobalAnalyticsFilters` lit le analyticsFilterStore : deux sources de vérité divergentes.
+
+### Fichiers concernés
+- `08_FRONTEND/src/modules/projects/ProjectHub.jsx`
+- `08_FRONTEND/src/store/appStore.jsx`
+- `08_FRONTEND/src/stores/analyticsFilterStore.js`
+- `08_FRONTEND/src/components/filters/GlobalAnalyticsFilters.jsx`
+- `08_FRONTEND/src/hooks/useCrossFiltering.js`
+- `08_FRONTEND/src/hooks/useAnalyticsFilters.js`
+- `08_FRONTEND/src/layouts/AppShell.jsx`
+
+### Correctif proposé
+- Créer un **pont de synchronisation** : quand `state.activeProject` / `state.activeProjectDetails` change, mettre à jour `filters.projet` (et réinitialiser les filtres spatiaux) dans le analyticsFilterStore, puis invalider les requêtes analytics.
+- Centraliser dans un hook `useProjectScopeSync()` monté dans `AppShell` (ou dans `useAnalyticsEngine`).
+- Faire en sorte que `GlobalAnalyticsFilters` affiche le projet depuis le appStore (source de vérité) et non depuis le filtre.
+
+---
+
+## 3. Anomalie B — Options de filtres spatiaux non scopées au projet
+
+### Reproduction
+1. Ouvrir le cockpit sur le projet par défaut (qui possède des bâtiments/niveaux/lots).
+2. Changer de projet vers un projet sans ces bâtiments.
+3. Les listes déroulantes Bâtiment / Niveau / Lot / Famille proposent toujours les valeurs de l'ancien projet.
+
+### Attendu
+- Les options spatiales (bâtiments, niveaux, appartements, pièces, lots, familles) doivent être **propres au projet actif**.
+
+### Observé
+- `getAnalyticsFilters()` appelle `/analytics/filters` **sans paramètre projet**.
+- La clé React Query est `["analytics-filter-options"]` (aucune portée projet).
+- Le endpoint backend `/filters` (routes/analytics.py:267) ne prend **aucun paramètre** et appelle `AnalyticsService.filter_options()` sur l'ensemble des données.
+
+### Cause racine
+- Le endpoint `/analytics/filters` n'accepte pas `projet` et ne filtre pas par projet.
+- La clé de cache frontend n'inclut pas le projet.
+
+### Fichiers concernés
+- `08_FRONTEND/src/services/filterService.js`
+- `08_FRONTEND/src/components/filters/GlobalAnalyticsFilters.jsx`
+- `07_API_BACKEND/app/analytics/routes/analytics.py` (endpoint `/filters`)
+- `07_API_BACKEND/app/analytics/services/analytics_service.py` (`filter_options`)
+
+### Correctif proposé
+- Backend : accepter `projet` sur `/analytics/filters` et filtrer `filter_options` par projet.
+- Frontend : passer `projet` dans `getAnalyticsFilters` et inclure le projet dans la clé de cache.
+
+---
+
+## 4. Anomalie C — Sources financières mélangées V5/V6
+
+### Reproduction
+1. Activer le mode V6 (`VITE_SP2I_USE_V6_FINANCIALS=true`).
+2. Ouvrir le cockpit Direction.
+3. Constater que la grille de KPI affiche les cartes **V6** (`CAPEX Direct`, `Indirect Costs`, `TPC`…) alors que le waterfall / les signaux Cost Intelligence affichent des montants issus d'une autre source (V5 `/analytics/capex`).
+
+### Attendu
+- Tous les blocs (KPI, waterfall, signaux, graphiques) doivent reposer sur la **même source financière** (V6 si activé, sinon V5).
+
+### Observé
+- `CockpitPage.jsx` fusionne deux sources :
+  ```js
+  const kpis = { ...(capexPayload.kpis || {}), ...(mainPayload.kpis || {}) };
+  ```
+  - `capexPayload` = `/analytics/capex` (**V5**, toujours appelé, même en mode V6).
+  - `mainPayload` = `/analytics/v6/dashboard` (**V6**).
+- `EnterpriseKpiGrid` bascule en mode V6 dès qu'un KPI V6 est présent (`isV6Financial`), mais le waterfall et les signaux lisent des clés legacy qui peuvent provenir du payload V5.
+- Le endpoint `/analytics/capex` (V5) est appelé inconditionnellement même en mode V6.
+
+### Cause racine
+- Pas de sélection unique de la source financière : le frontend appelle à la fois V5 (`capex`) et V6 (`dashboard`) et les fusionne.
+
+### Fichiers concernés
+- `08_FRONTEND/src/modules/cockpit/CockpitPage.jsx`
+- `08_FRONTEND/src/hooks/useAnalyticsEngine.js`
+- `08_FRONTEND/src/components/kpi/EnterpriseKpiGrid.jsx`
+
+### Correctif proposé
+- En mode V6, ne pas appeler `/analytics/capex` (V5) pour le cockpit Direction, ou ne pas fusionner ses KPI.
+- Dériver `kpis` d'une **source unique** selon le mode financier.
+- Aligner le waterfall et les signaux sur les mêmes clés que la grille KPI.
+
+---
+
+## 5. Anomalie D — Tableau détaillé alimenté par des agrégats par lot
+
+### Reproduction
+1. Activer le mode V6.
+2. Ouvrir le cockpit Direction.
+3. Le bloc « Analyse détaillée des lignes budgétaires » n'affiche que ~18 lignes (une par lot), avec des désignations « non renseignée » et des colonnes spatiales vides.
+
+### Attendu
+- Le tableau détaillé doit lister les **lignes budgétaires fines** (désignation, lot, famille, bâtiment, niveau, appartement, pièce, montants), pas des agrégats par lot.
+
+### Observé
+- `_build_dashboard_v6` (backend) renvoie `table = by_lot` et `total = len(by_lot)` (~18).
+- `CockpitPage.jsx` :
+  ```js
+  const table = mainPayload.table?.length ? mainPayload.table : engine.drilldown.data?.table || [];
+  const total = mainPayload.pagination?.total || ...;
+  ```
+  → en V6, `mainPayload.table` est l'agrégat par lot, donc le tableau détaillé et le compteur reflètent ~18 lots au lieu des milliers de lignes.
+- `FactMetreGrid.normalizeRow` comble les champs manquants avec « non renseigné » → symptôme décrit.
+
+### Cause racine
+- Le payload V6 dashboard ne transporte pas les lignes fines ; le frontend utilise à tort `mainPayload.table` (agrégat) comme source du tableau détaillé au lieu du drilldown / lignes fines.
+
+### Fichiers concernés
+- `08_FRONTEND/src/modules/cockpit/CockpitPage.jsx`
+- `07_API_BACKEND/app/analytics/services/analytics_service.py` (`_build_dashboard_v6`)
+- `08_FRONTEND/src/components/grids/FactMetreGrid.jsx`
+
+### Correctif proposé
+- Alimenter le tableau détaillé depuis une source de **lignes fines** (drilldown ou endpoint lignes) et non depuis `mainPayload.table` (agrégat).
+- Le compteur `total` doit refléter le nombre réel de lignes fines.
+
+---
+
+## 6. Anomalie E — Contrat Cost Intelligence (racine vs `charts`)
+
+### Reproduction
+1. Activer le mode V6.
+2. Ouvrir le cockpit Direction.
+3. La bande « Cost Intelligence » (signaux : pièce la plus coûteuse, lot le plus coûteux, pareto, benchmark…) est **vide** ou n'affiche que la carte qualité.
+
+### Attendu
+- Les signaux Cost Intelligence doivent s'afficher à partir des données renvoyées par l'API.
+
+### Observé
+- `buildCostSignals(costPayload)` lit à la **racine** :
+  ```js
+  const topCosts = costPayload.top_costs || {};
+  const pareto = costPayload.pareto || {};
+  const capexM2 = costPayload.capex_m2 || {};
+  const benchmark = costPayload.benchmark || {};
+  const anomalies = costPayload.anomalies?.items || [];
+  ```
+- Or le backend **V6** (`_build_cost_intelligence_v6`) renvoie ces données **sous `charts`** :
+  ```python
+  return self._response(query, kpis={...}, charts={
+      "top_costs": {...},
+      "pareto": {...},
+  }, table=rows, ...)
+  ```
+  → `costPayload.charts.top_costs`, `costPayload.charts.pareto`, etc.
+- Le backend **V5** (`_build_cost_intelligence`) renvoie ces données **à la racine** (`top_costs`, `pareto`, `capex_m2`, `benchmark`, `anomalies`).
+
+### Cause racine
+- Le frontend ne gère que le contrat V5 (racine) ; il casse en V6 (sous `charts`).
+
+### Fichiers concernés
+- `08_FRONTEND/src/modules/cockpit/CockpitPage.jsx` (`buildCostSignals`)
+- `07_API_BACKEND/app/analytics/services/analytics_service.py` (`_build_cost_intelligence` / `_build_cost_intelligence_v6`)
+
+### Correctif proposé
+- Normaliser la lecture : lire depuis `costPayload.charts?.top_costs ?? costPayload.top_costs`, idem pour `pareto`, `capex_m2`, `benchmark`, `anomalies`.
+- Idéalement, normaliser côté service frontend pour exposer un contrat unique.
+
+---
+
+## 7. Anomalie F — Compteurs, états vides et libellés
+
+### Reproduction
+1. Activer le mode V6.
+2. Ouvrir le cockpit Direction.
+3. Le compteur « X lignes chargées » affiche ~18 (nombre de lots) au lieu du nombre réel de lignes.
+4. Certains états vides / libellés sont incohérents (ex. « Designation non renseignee » en masse, « Aucun fichier de référence » alors qu'un DQE est actif).
+
+### Attendu
+- Les compteurs reflètent le nombre réel de lignes fines.
+- Les états vides et libellés sont cohérents avec les données réellement chargées.
+
+### Observé
+- `total = mainPayload.pagination?.total` = `len(by_lot)` (~18) en V6.
+- `FactMetreGrid` affiche « X lignes affichées sur Y » avec Y = ~18.
+- Les libellés de repli (« non renseigné ») masquent l'absence de données fines.
+
+### Cause racine
+- Découle des anomalies D (source du tableau) et C (source des KPI) : les compteurs sont calculés sur des agrégats.
+
+### Fichiers concernés
+- `08_FRONTEND/src/modules/cockpit/CockpitPage.jsx`
+- `08_FRONTEND/src/components/grids/FactMetreGrid.jsx`
+
+### Correctif proposé
+- Corriger la source du tableau (Anomalie D) → les compteurs refléteront les lignes fines.
+- Revoir les libellés de repli pour ne pas afficher « non renseigné » quand la donnée est absente par nature (agrégat).
+
+---
+
+## 8. Stratégie de correction (ordre)
+
+1. **P0 — Anomalie A** : pont de synchronisation projet actif → filtres analytics (isolation des contextes).
+2. **P1 — Anomalie B** : scoper les options de filtres spatiaux au projet (backend + frontend).
+3. **P1 — Anomalie C** : source financière unique (V6 vs V5) pour KPI, waterfall et signaux.
+4. **P1 — Anomalie D** : alimenter le tableau détaillé par les lignes fines, pas les agrégats.
+5. **P1 — Anomalie E** : normaliser la lecture du contrat Cost Intelligence (racine vs `charts`).
+6. **P2 — Anomalie F** : compteurs et libellés cohérents (découle de C/D).
+
+Chaque correctif doit être **rétro-compatible V5** et couvert par un test (backend pytest, frontend vitest, E2E Playwright).
+
+---
+
+## 9. Tests à ajouter
+
+| Anomalie | Test |
+|----------|------|
+| A | E2E : ouvrir projet B → le cockpit affiche le projet B et les données de B. |
+| B | Backend : `/analytics/filters?projet=B` ne renvoie que les options de B. |
+| C | Frontend : en mode V6, `kpis` provient d'une source unique ; waterfall et KPI cohérents. |
+| D | Frontend : le tableau détaillé contient des lignes fines (désignation renseignée), pas des agrégats. |
+| E | Frontend : `buildCostSignals` lit correctement `charts.top_costs` (V6) et `top_costs` (V5). |
+| F | Frontend : le compteur reflète le nombre réel de lignes fines. |

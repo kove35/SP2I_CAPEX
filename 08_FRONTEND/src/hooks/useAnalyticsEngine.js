@@ -1,8 +1,10 @@
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getAnalyticsCapex,
   getAnalyticsCostIntelligence,
   getAnalyticsCostIntelligenceV6,
+
   getAnalyticsDashboard,
   getAnalyticsDashboardV6,
   getAnalyticsDrilldown,
@@ -21,7 +23,11 @@ import {
 } from "../services/analyticsService";
 import { buildAnalyticsQueryKey } from "../services/analyticsQueryBuilder";
 import { useAnalyticsFilters } from "./useAnalyticsFilters";
+import { useAppStore } from "../store/appStore.jsx";
+import { useAnalyticsFilterStore } from "../stores/analyticsFilterStore";
+import { getProjectWorkspaceKey } from "../services/projectService";
 import { markPerformance, measurePerformance } from "../services/performanceMonitor";
+
 
 const logAnalyticsResult = (label, data, filters) => {
   console.log("Analytics query result", label, {
@@ -79,13 +85,57 @@ function hasDashboardSuccess(query) {
 
 export function useAnalyticsEngine(dashboardType = "direction") {
   const { filters, debouncedFilters } = useAnalyticsFilters();
+  const { state: appState } = useAppStore();
+  const setAnalyticsFilter = useAnalyticsFilterStore((store) => store.setFilter);
+  const replaceAnalyticsFilters = useAnalyticsFilterStore((store) => store.replaceFilters);
   const useV6Financials = USE_V6_FINANCIALS && dashboardType === "direction";
   const shouldLoadProcurementScenarios = dashboardType === "procurement";
   const shouldLoadProcurementDetails = dashboardType === "procurement";
   const shouldLoadTradeDetails = dashboardType === "procurement" || dashboardType === "logistics";
 
+  // Anomalie A — Isolation des contextes : le projet actif (appStore) doit piloter le
+  // filtre `projet` du store analytics. Quand le projet change, on réinitialise les
+  // filtres spatiaux pour éviter de mélanger les données de deux projets.
+  const activeProjectKey = React.useMemo(() => {
+    const details = appState.activeProjectDetails;
+    if (details) return getProjectWorkspaceKey(details) || details.workspace_key || details.code || appState.activeProject;
+    return appState.activeProject;
+  }, [appState.activeProject, appState.activeProjectDetails]);
+
+  const lastSyncedProject = React.useRef(null);
+  React.useEffect(() => {
+    if (!activeProjectKey) return;
+    if (lastSyncedProject.current === activeProjectKey) return;
+    lastSyncedProject.current = activeProjectKey;
+    const currentProject = filters.projet;
+    if (currentProject && currentProject !== activeProjectKey) {
+      // Changement de projet : on resynchronise le filtre projet et on purge les filtres spatiaux.
+      replaceAnalyticsFilters({
+        projet: activeProjectKey,
+        scenario: filters.scenario,
+        devise: filters.devise,
+        batiment: "",
+        niveau: "",
+        appartement: "",
+        piece: "",
+        lot: "",
+        famille: "",
+        fournisseur: "",
+        importLocal: "",
+        decisionImport: "",
+        dateDebut: "",
+        dateFin: "",
+        periodeDebut: "",
+        periodeFin: "",
+      });
+    } else if (!currentProject) {
+      setAnalyticsFilter("projet", activeProjectKey);
+    }
+  }, [activeProjectKey, filters.projet, filters.scenario, filters.devise, replaceAnalyticsFilters, setAnalyticsFilter]);
+
   console.log("Analytics filters", debouncedFilters);
   console.table(ANALYTICS_QUERY_PLAN);
+
 
   const dashboard = useQuery({
     queryKey: buildAnalyticsQueryKey("dashboard", debouncedFilters, { dashboardType, financialMode: useV6Financials ? "v6" : "v5" }),
