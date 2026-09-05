@@ -72,3 +72,21 @@ python tests/recette/run_recette.py
    « Projet introuvable »), refusé sans projet (403).
 
 Le rapport détaillé est écrit dans `run_recette_report.json`.
+
+## Synchronisation réelle (test backend) — `prepare_sync_db.py`
+
+`test_excel_sync_datetime_serialization` effectue une **vraie synchronisation**
+(ServicePipeline → PostgreSQL). Il a besoin du schéma métier complet. La base
+isolée `sp2i_capex_sync_test` est préparée par `prepare_sync_db.py` :
+`create_all` ORM + **DDL extrait tel quel de `cloud_migrations`**
+(`ensure_powerbi_schema`, sans `ANALYTICS_VIEWS_SQL`). Suite backend : **31 passed**.
+
+## Parcours navigateur avec API réelle — résultat partiel
+
+`08_FRONTEND/tests/e2e/real-api-recipe.spec.js` (config dédiée
+`playwright.realapi.config.js`, aucun `page.route()` sur l'API métier) :
+connexion OK et « CAPEX Direct = 3 000 FCFA » pour le projet A confirmés.
+**Blocage** : `/analytics/filters?projet=1` répond **HTTP 500** sur le schéma
+minimal → les options « Niveau » sont vides → les scénarios « filtre niveau » et
+« ratio indisponible » restent à établir en navigateur. Voir
+`docs/VALIDATION_CHAINE_MIGRATIONS_V6.md`.

@@ -75,7 +75,7 @@ def _seed_identity() -> None:
                            currency="FCFA", owner_id=owner_id, setup_status="CONFIGURED")
 
         db.add_all([
-            make_project(1, "Projet A synthetique", alice.id),
+            make_project(1, "Projet A synthetique", admin.id),
             make_project(2, "Projet B synthetique", admin.id),
             make_project(3, "Projet C vide", admin.id),
             make_project(4, "Projet D geometrie non resolvable", admin.id),
@@ -83,6 +83,11 @@ def _seed_identity() -> None:
         db.flush()
 
         db.add_all([
+            # Admin membre de tous les projets (recette : un seul compte voit A/B/C/D).
+            WorkspaceMembership(user_id=admin.id, project_id=1, role="ADMIN"),
+            WorkspaceMembership(user_id=admin.id, project_id=2, role="ADMIN"),
+            WorkspaceMembership(user_id=admin.id, project_id=3, role="ADMIN"),
+            WorkspaceMembership(user_id=admin.id, project_id=4, role="ADMIN"),
             WorkspaceMembership(user_id=alice.id, project_id=1, role="MANAGER"),
             WorkspaceMembership(user_id=bob.id, project_id=1, role="VIEWER"),
         ])
