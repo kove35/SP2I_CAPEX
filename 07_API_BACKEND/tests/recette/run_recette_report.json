@@ -1,0 +1,97 @@
+[
+  {
+    "scenario": "connexion admin",
+    "ok": true,
+    "detail": "http=200"
+  },
+  {
+    "scenario": "mauvais mot de passe rejete",
+    "ok": true,
+    "detail": "http=401"
+  },
+  {
+    "scenario": "connexion analyste",
+    "ok": true,
+    "detail": "http=200"
+  },
+  {
+    "scenario": "projet A (admin)",
+    "ok": true,
+    "detail": "capex_direct=3000.0"
+  },
+  {
+    "scenario": "projet B (admin)",
+    "ok": true,
+    "detail": "capex_direct=500.0"
+  },
+  {
+    "scenario": "changement projet isole (A != B)",
+    "ok": true,
+    "detail": "3000 != 500"
+  },
+  {
+    "scenario": "projet vide repond 200 zeros",
+    "ok": true,
+    "detail": "http=200 kpis={'capex_direct': 0.0, 'capex_import': 0.0, 'capex_optimise': 0.0, 'economie_nette': 0.0, 'indirect_costs': 0.0, 'site_installation': 0.0, 'import_logistics': 0.0, 'contingency': 0.0, 'total_project_cost': 0.0, 'capex_direct_per_m2': 0.0, 'total_project_cost_per_m2': 0.0, 'total_project_cost_per_appartement': 0.0, 'total_project_cost_per_niveau': 0.0, 'fallback_legacy_lot_capex': 0.0, 'fallback_legacy_lot_pct': 0.0, 'capex_m2': 0.0, 'cost_per_apartment': 0.0, 'cost_per_level': 0.0}"
+  },
+  {
+    "scenario": "filtre niveau RDC = 1000",
+    "ok": true,
+    "detail": "capex_direct=1000.0"
+  },
+  {
+    "scenario": "dashboard table 3 lots",
+    "ok": true,
+    "detail": "nb_lots=3"
+  },
+  {
+    "scenario": "somme lots = capex projet",
+    "ok": true,
+    "detail": "sum=3000.0"
+  },
+  {
+    "scenario": "KPI total coherent tableau",
+    "ok": true,
+    "detail": "kpi=3988.32"
+  },
+  {
+    "scenario": "cost-intelligence 4 lignes fines",
+    "ok": true,
+    "detail": "nb_rows=4"
+  },
+  {
+    "scenario": "somme lignes fines = capex_direct",
+    "ok": true,
+    "detail": "sum=3000.0"
+  },
+  {
+    "scenario": "surface non resolvable -> None",
+    "ok": true,
+    "detail": "surface_m2=None"
+  },
+  {
+    "scenario": "capex_m2 indisponible",
+    "ok": true,
+    "detail": "capex_m2=None"
+  },
+  {
+    "scenario": "total_project_cost_per_m2 indisponible",
+    "ok": true,
+    "detail": "tpc_m2=None"
+  },
+  {
+    "scenario": "analyste autorise projet A",
+    "ok": true,
+    "detail": "http=200"
+  },
+  {
+    "scenario": "analyste refuse projet B (404)",
+    "ok": true,
+    "detail": "http=404 detail=Projet introuvable."
+  },
+  {
+    "scenario": "analyste sans projet refuse (403)",
+    "ok": true,
+    "detail": "http=403 detail=Un projet autorise est requis."
+  }
+]
