@@ -76,17 +76,31 @@ Le rapport détaillé est écrit dans `run_recette_report.json`.
 ## Synchronisation réelle (test backend) — `prepare_sync_db.py`
 
 `test_excel_sync_datetime_serialization` effectue une **vraie synchronisation**
-(ServicePipeline → PostgreSQL). Il a besoin du schéma métier complet. La base
-isolée `sp2i_capex_sync_test` est préparée par `prepare_sync_db.py` :
-`create_all` ORM + **DDL extrait tel quel de `cloud_migrations`**
-(`ensure_powerbi_schema`, sans `ANALYTICS_VIEWS_SQL`). Suite backend : **31 passed**.
+(ServicePipeline → PostgreSQL). Il a besoin des tables/colonnes écrites par la
+synchronisation. La base isolée `sp2i_capex_sync_test` est préparée par
+`prepare_sync_db.py` : `create_all` ORM + **DDL extrait tel quel de
+`cloud_migrations`** (`ensure_powerbi_schema`, sans `ANALYTICS_VIEWS_SQL`).
+Suite backend : **31 passed**.
 
-## Parcours navigateur avec API réelle — résultat partiel
+## Parcours navigateur avec API réelle — ✅ 5/5
 
 `08_FRONTEND/tests/e2e/real-api-recipe.spec.js` (config dédiée
-`playwright.realapi.config.js`, aucun `page.route()` sur l'API métier) :
-connexion OK et « CAPEX Direct = 3 000 FCFA » pour le projet A confirmés.
-**Blocage** : `/analytics/filters?projet=1` répond **HTTP 500** sur le schéma
-minimal → les options « Niveau » sont vides → les scénarios « filtre niveau » et
-« ratio indisponible » restent à établir en navigateur. Voir
+`playwright.realapi.config.js`, aucun `page.route()` sur l'API métier).
+
+Commande dédiée (backend recette lancé, ex. `python tests/recette/_run_backend.py`) :
+
+```powershell
+$env:VITE_SP2I_USE_V6_FINANCIALS='true'
+npx playwright test --config=playwright.realapi.config.js
+```
+
+Scénarios : connexion, projet A (CAPEX Direct = 3 000 FCFA), filtre niveau RDC
+(1 000 FCFA), projet B (500 FCFA), projet vide C (aucun montant résiduel),
+ratio indisponible sur D (niveau S1 → « Indisponible pour ce perimetre »).
+
+Blocage `/analytics/filters` levé : (1) la vue `vw_fact_metre_current`
+(dépendance du endpoint) a été ajoutée au schéma de recette
+(`recipe_v6_schema.sql`, grain synthétique) ; (2) bug applicatif corrigé dans
+`_piece_filter_options` (bind `:projet` non transmis) avec test de régression
+dans `tests/test_project_isolation.py`. Voir
 `docs/VALIDATION_CHAINE_MIGRATIONS_V6.md`.

@@ -58,4 +58,22 @@ INSERT INTO recipe_fact_v6 (id_ligne, projet_id, project_code, designation, quan
  ('D-S1-L1', 4, 'PROJET_D', 'Gros oeuvre', 1, 'ens', 'LOT_FOND', 'GO-D1', 'BAT_D', 'S1', NULL, 'Gros oeuvre',
   1000, 0, 900, 1000, 0, 900, 100, 'LOCAL', 'V6');
 
+-- ---------------------------------------------------------------------------
+-- Source de faits "courante" utilisee par /analytics/filters (dropdowns BI).
+-- En production cette relation est construite par la chaine de migrations
+-- (analytics views) ; dans ce schema minimal de recette elle expose le meme
+-- contrat de colonnes (project_code/projet_id + dimensions + montants) sur le
+-- grain financier synthetique recipe_fact_v6. Sans elle, le endpoint renvoie
+-- HTTP 500 "relation vw_fact_metre_current does not exist".
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE VIEW vw_fact_metre_current AS
+SELECT
+    project_code, projet_id, designation, quantite, unite,
+    lot, lot_code, article_code, sous_lot, batiment, niveau,
+    appartement, piece, famille,
+    prix_local_fcfa, prix_import_fcfa, prix_optimise_fcfa,
+    capex_local, capex_import, capex_optimise, economie,
+    decision_import, pricing_scope
+FROM recipe_fact_v6;
+
 COMMIT;
