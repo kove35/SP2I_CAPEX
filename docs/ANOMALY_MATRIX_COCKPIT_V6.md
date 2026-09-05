@@ -251,3 +251,25 @@ Chaque correctif doit être **rétro-compatible V5** et couvert par un test (bac
 | D | Frontend : le tableau détaillé contient des lignes fines (désignation renseignée), pas des agrégats. |
 | E | Frontend : `buildCostSignals` lit correctement `charts.top_costs` (V6) et `top_costs` (V5). |
 | F | Frontend : le compteur reflète le nombre réel de lignes fines. |
+
+---
+
+## 10. Statut des correctifs (commit `82b9219`)
+
+> Branche : `codex/production-recipe-fixes` (worktree isolé depuis `origin/main`).
+
+| # | Correctif appliqué | Fichiers | Statut |
+|---|--------------------|----------|--------|
+| A | Pont de synchronisation projet actif → filtre `projet` analytics, avec purge des filtres spatiaux au changement de projet. Monté dans `useAnalyticsEngine` (source de vérité = appStore). | `useAnalyticsEngine.js` | ✅ Implémenté |
+| C | Source financière unique : en mode V6, `kpis` provient du dashboard V6 (qui embarque les alias legacy) ; on ne fusionne plus les KPI V5 `/analytics/capex`. | `CockpitPage.jsx` | ✅ Implémenté |
+| D/F | Tableau détaillé : bascule sur les lignes fines de la Cost Intelligence / drilldown quand `mainPayload.table` est un agrégat par lot ; `total` recalculé sur la source fine. | `CockpitPage.jsx` | ✅ Implémenté (frontend) |
+| E | Contrat Cost Intelligence normalisé : lecture `charts.*` (V6) avec repli racine (V5) dans `buildCostSignals`. | `CockpitPage.jsx` | ✅ Implémenté |
+| B | Scoper les options de filtres spatiaux au projet (backend `/analytics/filters` + clé de cache frontend). | Backend + `filterService.js` | ⏳ À traiter (backend) |
+
+### Notes de validation
+- Les correctifs sont **rétro-compatibles V5** : chaque lecture V6 a un repli V5 explicite.
+- **Anomalie D/F** : le correctif frontend privilégie les lignes fines de la Cost Intelligence quand elles sont disponibles. Pour un affichage exhaustif des lignes budgétaires fines du projet, un endpoint dédié (lignes fines paginées) reste recommandé côté backend — à confirmer avec l'équipe API.
+- **Anomalie B** nécessite une modification backend (accepter `projet` sur `/analytics/filters`) non couverte par ce commit frontend.
+- Validation automatisée à compléter : build Vite, tests E2E Playwright (scénarios A/C/D/E/F) et tests backend pytest.
+
+
