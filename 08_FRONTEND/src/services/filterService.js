@@ -6,8 +6,10 @@ export function toSelectOptions(values = []) {
     .map((value) => ({ value: String(value), label: String(value) }));
 }
 
-export async function getAnalyticsFilters() {
-  const data = await request({ url: "/analytics/filters" });
+export async function getAnalyticsFilters(projet) {
+  const params = projet ? { projet } : {};
+  const data = await request({ url: "/analytics/filters", params });
+
   return {
     batiments: toSelectOptions(data.batiments || []),
     niveaux: toSelectOptions(data.niveaux || []),

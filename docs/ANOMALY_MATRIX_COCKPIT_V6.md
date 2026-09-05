@@ -264,12 +264,14 @@ Chaque correctif doit être **rétro-compatible V5** et couvert par un test (bac
 | C | Source financière unique : en mode V6, `kpis` provient du dashboard V6 (qui embarque les alias legacy) ; on ne fusionne plus les KPI V5 `/analytics/capex`. | `CockpitPage.jsx` | ✅ Implémenté |
 | D/F | Tableau détaillé : bascule sur les lignes fines de la Cost Intelligence / drilldown quand `mainPayload.table` est un agrégat par lot ; `total` recalculé sur la source fine. | `CockpitPage.jsx` | ✅ Implémenté (frontend) |
 | E | Contrat Cost Intelligence normalisé : lecture `charts.*` (V6) avec repli racine (V5) dans `buildCostSignals`. | `CockpitPage.jsx` | ✅ Implémenté |
-| B | Scoper les options de filtres spatiaux au projet (backend `/analytics/filters` + clé de cache frontend). | Backend + `filterService.js` | ⏳ À traiter (backend) |
+| B | Scoper les options de filtres spatiaux au projet (backend `/analytics/filters` + clé de cache frontend). | Backend + `filterService.js` | ✅ Implémenté (backend + frontend) |
 
 ### Notes de validation
 - Les correctifs sont **rétro-compatibles V5** : chaque lecture V6 a un repli V5 explicite.
 - **Anomalie D/F** : le correctif frontend privilégie les lignes fines de la Cost Intelligence quand elles sont disponibles. Pour un affichage exhaustif des lignes budgétaires fines du projet, un endpoint dédié (lignes fines paginées) reste recommandé côté backend — à confirmer avec l'équipe API.
-- **Anomalie B** nécessite une modification backend (accepter `projet` sur `/analytics/filters`) non couverte par ce commit frontend.
+- **Anomalie B (backend)** : `/analytics/filters` accepte désormais `projet` et applique `_enforce_project_scope` (droits + existence, fail-closed : 403 sans projet pour non-admin, 404 si non autorisé). Les options (bâtiments, niveaux, appartements, pièces, lots, familles, import_local) sont scopées au projet via `_filter_options_scope` / `_piece_filter_options`. Deux bugs corrigés au passage : (1) garde-fou `1 = 0` quand la table de faits n'expose ni `project_code` ni `projet_id` (évite une erreur SQL « column does not exist ») ; (2) le prédicat projet est appliqué **dans** la sous-requête `fact_pieces` (les colonnes projet ne sont pas exposées dans la projection extérieure). Côté frontend, `getAnalyticsFilters(projet)` passe déjà `projet` et la clé de cache `["analytics-filter-options", projet]` est scopée.
+- **Tests de régression ajoutés** (`tests/test_project_isolation.py`, 8 tests verts) : portée projet accepte le propriétaire / rejette l'outsider (404), projet explicite requis pour non-admin (403), SQL fact/financial scopé, mapping `projet_id` quand `project_code` absent, `_filter_options_scope` (prédicat projet, garde-fou `1 = 0`, vide sans projet) et `_piece_filter_options` (prédicat dans la sous-requête).
 - Validation automatisée à compléter : build Vite, tests E2E Playwright (scénarios A/C/D/E/F) et tests backend pytest.
+
 
 

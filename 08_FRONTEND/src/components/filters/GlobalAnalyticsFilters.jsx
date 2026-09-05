@@ -21,10 +21,11 @@ export default function GlobalAnalyticsFilters() {
   const project = getProjectContext(filters.projet);
   const scenario = getScenarioContext(filters.scenario);
   const filterOptions = useQuery({
-    queryKey: ["analytics-filter-options"],
-    queryFn: getAnalyticsFilters,
+    queryKey: ["analytics-filter-options", filters.projet],
+    queryFn: () => getAnalyticsFilters(filters.projet),
     staleTime: 5 * 60_000,
   });
+
   const options = filterOptions.data || {};
 
   return (

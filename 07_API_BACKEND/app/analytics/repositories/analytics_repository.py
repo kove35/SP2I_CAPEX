@@ -604,9 +604,16 @@ class AnalyticsRepository:
             for offset, scenario, capex, gain, item_roi, risque, jalon in points
         ]
 
-    def filter_options(self) -> dict[str, list[str]]:
-        """Valeurs distinctes exposees au cockpit React pour les dropdowns BI."""
+    def filter_options(self, projet: str | None = None) -> dict[str, list[str]]:
+        """Valeurs distinctes exposees au cockpit React pour les dropdowns BI.
+
+        Quand ``projet`` est fourni, les options sont limitees au perimetre de ce
+        projet (isolation des contextes). Sans projet, le comportement historique
+        (toutes options) est conserve pour les administrateurs.
+        """
         fact_source = self._fact_source()
+        scope_predicate, scope_params = self._filter_options_scope(projet)
+        scope_sql = f" AND {scope_predicate}" if scope_predicate else ""
         fields = {
             "batiments": "batiment",
             "niveaux": "niveau",
@@ -619,7 +626,7 @@ class AnalyticsRepository:
         result: dict[str, list[str]] = {}
         for key, column in fields.items():
             if key == "pieces":
-                result[key] = self._piece_filter_options()
+                result[key] = self._piece_filter_options(projet)
                 continue
             if column == "NULL":
                 result[key] = []
@@ -630,34 +637,64 @@ class AnalyticsRepository:
                     SELECT DISTINCT {column} AS value
                     FROM {fact_source}
                     WHERE {column} IS NOT NULL AND TRIM(CAST({column} AS text)) <> ''
+                    {scope_sql}
                     ORDER BY value
                     LIMIT 500
                     """
-                )
+                ),
+                scope_params,
             ).scalars().all()
             result[key] = [normalize_display_text(str(value)) for value in rows if value]
         return result
 
-    def _piece_filter_options(self) -> list[str]:
+    def _filter_options_scope(self, projet: str | None) -> tuple[str, dict[str, Any]]:
+        """Predicat SQL de portee projet pour les options de filtres.
+
+        Renvoie le predicat parenthese (sans ``AND``/``WHERE``) et ses parametres.
+        Meme garde-fou que ``build_where_clause`` : si la table de faits ne
+        possede ni ``project_code`` ni ``projet_id``, on renvoie ``1 = 0``
+        (aucune option) plutot que de lever une erreur SQL "column does not exist".
+        """
+        if not projet:
+            return "", {}
+        columns = self._fact_columns()
+        project_code = "project_code" if "project_code" in columns else "NULL"
+        project_id = "projet_id" if "projet_id" in columns else "NULL"
+        if project_code == "NULL" and project_id == "NULL":
+            return "1 = 0", {}
+        return (
+            self._project_predicate(project_code, project_id),
+            {"projet": projet},
+        )
+
+    def _piece_filter_options(self, projet: str | None = None) -> list[str]:
         """Options Piece robustes PLAN_READY: FACT_METRE puis DIM_PIECE si disponible."""
         fact_source = self._fact_source()
         piece_sql = self._piece_sql()
+        scope_predicate, scope_params = self._filter_options_scope(projet)
+        # Le predicat de portee doit s'appliquer DANS la sous-requete (sur la
+        # table de faits) car les colonnes project_code/projet_id n'y sont pas
+        # exposees dans la projection exterieure (seul ``value`` l'est).
+        inner_where = f" WHERE {scope_predicate}" if scope_predicate else ""
         unions = [
             f"""
             SELECT DISTINCT value
             FROM (
                 SELECT {piece_sql} AS value
                 FROM {fact_source}
+                {inner_where}
             ) fact_pieces
             WHERE value IS NOT NULL AND TRIM(CAST(value AS text)) <> ''
             """
         ]
+
         dim_piece_columns = load_table_columns(self.db, "dim_piece")
         dim_piece_candidates = [
             f"NULLIF(TRIM(CAST({column} AS text)), '')"
             for column in ("piece_nom", "piece_code", "piece")
             if column in dim_piece_columns
         ]
+
         if dim_piece_candidates:
             dim_piece_sql = f"COALESCE({', '.join(dim_piece_candidates)})"
             unions.append(

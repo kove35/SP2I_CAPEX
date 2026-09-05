@@ -326,8 +326,8 @@ class AnalyticsService:
         where_sql, params = self._spatial_view_where(query)
         return self._detect_cost_anomalies(where_sql, params)
 
-    def filter_options(self) -> dict[str, Any]:
-        options = self.repository.filter_options()
+    def filter_options(self, projet: str | None = None) -> dict[str, Any]:
+        options = self.repository.filter_options(projet=projet)
         return normalize_payload_labels({
             "batiments": options.get("batiments", []),
             "niveaux": options.get("niveaux", []),
@@ -337,6 +337,7 @@ class AnalyticsService:
             "familles": options.get("familles", []),
             "import_local": options.get("import_local", []),
         })
+
 
     def system_health(self) -> dict[str, Any]:
         return {

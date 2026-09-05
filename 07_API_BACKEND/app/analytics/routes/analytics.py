@@ -264,9 +264,15 @@ def building_completion(db: Session = Depends(get_db)) -> dict:
     return sanitize_for_json(AnalyticsService(db).build_building_completion())
 
 
-@router.get("/filters", dependencies=[Depends(require_admin)])
-def filters(db: Session = Depends(get_db)) -> dict:
-    return sanitize_for_json(AnalyticsService(db).filter_options())
+@router.get("/filters")
+def filters(
+    projet: str | None = None,
+    current_user: User = Depends(require_analyst),
+    db: Session = Depends(get_db),
+) -> dict:
+    _enforce_project_scope(projet, current_user, db)
+    return sanitize_for_json(AnalyticsService(db).filter_options(projet=projet))
+
 
 
 @router.get("/dashboard", response_model=AnalyticsResponse)
