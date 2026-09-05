@@ -188,6 +188,10 @@ def test_piece_filter_options_places_scope_inside_subquery(
     # La sous-requete exterieure ne doit PAS referencer project_code hors scope.
     outer_where = sql.split(") fact_pieces", 1)[1]
     assert "project_code" not in outer_where
+    # Regression : le bind ``:projet`` du predicat de portee doit etre transmis a
+    # db.execute (sinon ``InvalidRequestError: A value is required for bind
+    # parameter 'projet'`` des qu'un projet est fourni).
+    assert captured["params"] == {"projet": "PROJET_MPEMBA"}
 
 
 

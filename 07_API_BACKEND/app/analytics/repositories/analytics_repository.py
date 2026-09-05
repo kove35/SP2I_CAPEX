@@ -901,7 +901,8 @@ class AnalyticsRepository:
                     value
                 LIMIT 500
                 """
-            )
+            ),
+            scope_params,
         ).scalars().all()
         return [normalize_display_text(str(value)) for value in rows if value]
 
