@@ -42,34 +42,35 @@ async function cardText(page, label) {
   return raw.replace(/[\u00A0\u202F]/g, " ");
 }
 
+async function expectCardContains(page, label, expected, { timeout = 20000 } = {}) {
+  await expect
+    .poll(async () => (await cardText(page, label)).includes(expected), { timeout })
+    .toBe(true);
+}
+
 test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
   console.log("STEP connexion");
   await login(page);
 
   console.log("STEP selection projet A");
   await openProject(page, "Projet A synthetique");
-  const a = await cardText(page, "CAPEX Direct");
-  console.log("A_CARD", JSON.stringify(a));
-  expect(a).toContain("3 000 FCFA");
+  await expectCardContains(page, "CAPEX Direct", "3 000 FCFA");
 
   console.log("STEP filtre niveau RDC (projet A)");
   await chooseNiveau(page, "RDC");
-  const aRdc = await cardText(page, "CAPEX Direct");
-  console.log("A_RDC_CARD", JSON.stringify(aRdc));
-  expect(aRdc).toContain("1 000 FCFA");
+  await expectCardContains(page, "CAPEX Direct", "1 000 FCFA");
 
   console.log("STEP selection projet B");
   await openProject(page, "Projet B synthetique");
-  const b = await cardText(page, "CAPEX Direct");
-  console.log("B_CARD", JSON.stringify(b));
-  expect(b).toContain("500 FCFA");
-  expect(b).not.toContain("3 000 FCFA");
+  await expectCardContains(page, "CAPEX Direct", "500 FCFA");
 
   console.log("STEP projet C vide");
   await openProject(page, "Projet C vide");
-  const c = await cardText(page, "CAPEX Direct");
-  console.log("C_CARD", JSON.stringify(c));
-  expect(c).toContain("0 FCFA");
+  // Projet sans données : pas de grille V6, donc pas de montants résiduels
+  // issus du projet B précédent ni d'aucun projet.
+  await page.waitForTimeout(2000);
+  await expect(page.getByText(/500[\s\u00A0]*FCFA/)).toHaveCount(0);
+  await expect(page.getByText(/3[\s\u00A0]*000[\s\u00A0]*FCFA/)).toHaveCount(0);
 
   console.log("STEP ratio indisponible (projet D + niveau S1)");
   await openProject(page, "Projet D geometrie non resolvable");

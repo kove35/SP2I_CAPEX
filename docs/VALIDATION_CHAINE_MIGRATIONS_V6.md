@@ -53,5 +53,5 @@ prévue par le dépôt — **à ne pas exécuter aveuglément par ordre de nom**
 | Intégration PostgreSQL (vue V6, données synthétiques) | ✅ `ALL_V6_SPATIAL_KPI_CHECKS_PASSED` |
 | Recette API réelle (backend uvicorn + PostgreSQL isolé) | ✅ **17/17** scénarios (`tests/recette/run_recette.py`) |
 | Tests navigateur avec API simulée (`page.route`) | ✅ **27/27** (`workflow-project.spec.js`) |
-| Tests navigateur avec API réelle | ⚠️ **partiel / à établir** : connexion OK + sélection projet A + KPI « CAPEX Direct = 3 000 FCFA » confirmés ; **filtre niveau et ratio indisponible bloqués** car `/analytics/filters?projet=1` répond **HTTP 500** sur le schéma minimal de recette (menu « Niveau » sans options) — cause exacte et preuves dans `08_FRONTEND/tests/e2e/real-api-recipe.spec.js` |
+| Tests navigateur avec API réelle | ✅ **5/5** (`real-api-recipe.spec.js`, config dédiée `playwright.realapi.config.js`) : connexion, A → filtre niveau RDC → B, projet vide, ratio indisponible. Blocage `/analytics/filters` levé (vue `vw_fact_metre_current` ajoutée au schéma de recette + bind `:projet` injecté dans `_piece_filter_options`, test de régression) |
 | Chaîne complète de migrations `001..033` sur base neuve | ⏳ **non validée** (procédure ci-dessus, environnement dédié requis) |
