@@ -9275,3 +9275,5 @@ button.procurement-kpi-card:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.kpi-empty-state{display:flex;flex-direction:column;gap:4px;padding:18px 20px;margin:6px 0 14px;border:1px dashed var(--border,#3a4468);border-radius:12px;background:var(--surface-soft,#12162b);color:var(--text-soft,#aab3d6)}.kpi-empty-state strong{color:var(--text,#e8ecff)}.kpi-empty-state p{margin:0;line-height:1.4}

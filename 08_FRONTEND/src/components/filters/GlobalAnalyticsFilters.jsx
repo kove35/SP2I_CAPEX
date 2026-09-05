@@ -4,6 +4,8 @@ import { RotateCcw, Search, X } from "lucide-react";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { getAnalyticsFilters } from "../../services/filterService";
 import { getProjectContext, getScenarioContext, SCENARIO_OPTIONS } from "../../utils/businessContext";
+import { getProjectWorkspaceKey } from "../../services/projectService";
+import { useAppStore } from "../../store/appStore.jsx";
 import AnalyticsSelect from "./AnalyticsSelect";
 
 const selectFields = [
@@ -18,7 +20,15 @@ const selectFields = [
 
 export default function GlobalAnalyticsFilters() {
   const { filters, activeChips, applyFilter, clearFilter, reset } = useCrossFiltering();
-  const project = getProjectContext(filters.projet);
+  const { state } = useAppStore();
+  // Contexte projet depuis les informations applicatives (store unique), jamais un repli
+  // par defaut pour un autre projet.
+  const activeDetails = state.activeProjectDetails;
+  const activeProject = activeDetails && String(getProjectWorkspaceKey(activeDetails)) === String(filters.projet || "")
+    ? activeDetails
+    : null;
+  const project = getProjectContext(activeProject || filters.projet);
+  const projectSubtitle = [project.type, project.location].filter(Boolean).join(" · ");
   const scenario = getScenarioContext(filters.scenario);
   const filterOptions = useQuery({
     queryKey: ["analytics-filter-options", filters.projet],
@@ -33,8 +43,8 @@ export default function GlobalAnalyticsFilters() {
       <div className="global-analytics-filters">
         <div className="decision-context-card project-context-card">
           <span>Projet immobilier</span>
-          <strong>{project.label}</strong>
-          <small>{project.type} · {project.location}</small>
+          <strong>{project.label || "Projet CAPEX"}</strong>
+          {projectSubtitle ? <small>{projectSubtitle}</small> : null}
         </div>
         <label className={`scenario-select-field ${scenario.tone}`}>
           <span>Strategie active</span>

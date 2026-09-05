@@ -8,7 +8,7 @@ import GlobalAnalyticsFilters from "../../components/filters/GlobalAnalyticsFilt
 import FactMetreGrid from "../../components/grids/FactMetreGrid";
 import InsightsPanel from "../../components/analytics/InsightsPanel";
 import EnterpriseKpiGrid from "../../components/kpi/EnterpriseKpiGrid";
-import { useAnalyticsEngine } from "../../hooks/useAnalyticsEngine";
+import { useAnalyticsEngine, V6_FINANCIALS_ENABLED } from "../../hooks/useAnalyticsEngine";
 import { useWorkflow } from "../../hooks/useWorkflow";
 import ProjectQuickActions from "../../components/ProjectQuickActions";
 import ProjectWorkflowStepper from "../projects/ProjectWorkflowStepper";
@@ -279,8 +279,24 @@ export default function CockpitPage() {
   // Source financière unique : en mode V6 le dashboard embarque déjà les alias legacy
   // (capex_brut, capex_optimise, economie_nette...). On ne fusionne PAS les KPI V5
   // (/analytics/capex) pour éviter un mélange de sources incohérent (Anomalie C).
-  const kpis = Object.keys(mainPayload.kpis || {}).length ? mainPayload.kpis : capexPayload.kpis || {};
-  const hasPrimaryKpis = Boolean(mainPayload.kpis || capexPayload.kpis);
+  // En V6 le mode de la grille depend de la configuration, pas de la presence d'un
+  // montant non nul : un projet vide conserve donc les cartes V6.
+  const v6FinancialMode = V6_FINANCIALS_ENABLED;
+  const kpis = Object.keys(mainPayload.kpis || {}).length
+    ? mainPayload.kpis
+    : (v6FinancialMode ? {} : capexPayload.kpis || {});
+  const hasPrimaryKpis = Boolean(Object.keys(kpis || {}).length || capexPayload.kpis);
+  const hasRows = Number(kpis.nb_lignes || 0) > 0 || Number(mainPayload.pagination?.total || 0) > 0 || (mainPayload.table || []).length > 0;
+  const filtersActive = Boolean(
+    engine.filters && (
+      engine.filters.batiment || engine.filters.niveau || engine.filters.appartement
+      || engine.filters.piece || engine.filters.lot || engine.filters.famille
+      || engine.filters.importLocal || engine.filters.decisionImport
+    )
+  );
+  const dashboardSettled = Boolean(engine.dashboard?.isSuccess || engine.dashboard?.status === "success");
+  const validEmpty = !engine.error && dashboardSettled && !hasRows;
+  const gridFiltersEmpty = validEmpty && filtersActive;
   // Tableau détaillé : on privilégie les lignes fines. En V6, `mainPayload.table` est un
   // agrégat par lot (~18 lignes) ; on bascule alors sur les lignes fines de la Cost
   // Intelligence (Anomalie D/F) quand elles sont disponibles et plus granulaires.
@@ -407,7 +423,15 @@ export default function CockpitPage() {
       <GlobalAnalyticsFilters />
       {engine.isFetching ? <div className="live-refresh">Synchronisation du cockpit en cours...</div> : null}
 
-      {engine.error && !hasPrimaryKpis ? null : <EnterpriseKpiGrid kpis={kpis} loading={engine.isLoading} />}
+      {engine.error && !hasPrimaryKpis ? null : (
+        <EnterpriseKpiGrid
+          kpis={kpis}
+          loading={engine.isLoading}
+          v6={v6FinancialMode}
+          empty={validEmpty}
+          filtersEmpty={gridFiltersEmpty}
+        />
+      )}
       {costSignals.length || dataQualityPayload.kpis ? (
         <section className="cost-intelligence-strip" aria-label="Cost Intelligence">
           <article className="cost-intelligence-card data-quality">

@@ -14,11 +14,24 @@ function formatRatioMoney(value) {
   return formatMoney(value);
 }
 
-export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
-  const isV6Financial = Boolean(kpis.total_project_cost || kpis.capex_direct || kpis.indirect_costs);
+export default function EnterpriseKpiGrid({
+  kpis = {},
+  loading = false,
+  v6 = false,
+  empty = false,
+  emptyTitle = "Aucune donnée pour ce projet",
+  emptyDetail = "Les indicateurs seront disponibles après l'ajout de données DQE.",
+  filtersEmpty = false,
+}) {
+  const isV6Financial = v6 || Boolean(
+    kpis && (Object.prototype.hasOwnProperty.call(kpis, "total_project_cost")
+      || Object.prototype.hasOwnProperty.call(kpis, "capex_direct")
+      || Object.prototype.hasOwnProperty.call(kpis, "indirect_costs"))
+  );
   const economyRate = Number(kpis.taux_economie || 0) * 100;
   const importRate = Number(kpis.taux_importable || 0) * 100;
-  const confidence = kpis.analytics_confidence_label || "Moyenne";
+  const evaluable = !empty && Number(kpis.nb_lignes || 0) > 0;
+  const confidence = kpis.analytics_confidence_label || (evaluable ? "Moyenne" : "Non évalué");
   const capexOptimise = Number(kpis.capex_optimise || 0);
   const nbLignes = Number(kpis.nb_lignes || 0);
   const nbLots = Number(kpis.nb_lots || 0);
@@ -26,9 +39,11 @@ export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
   const roiAverage = roiValues.length ? roiValues.reduce((sum, value) => sum + value, 0) / roiValues.length : 0;
   const roiMax = roiValues.length ? Math.max(...roiValues) : 0;
   const roiMin = roiValues.length ? Math.min(...roiValues) : 0;
-  const displayRisk = kpis.analytics_confidence === "LOW" && ["Fort", "Eleve", "Elevé", "Critique"].includes(String(kpis.risque_global || ""))
-    ? "Moyen"
-    : (kpis.risque_global || "Moyen");
+  const displayRisk = kpis.risque_global
+    ? (kpis.analytics_confidence === "LOW" && ["Fort", "Eleve", "Elevé", "Critique"].includes(String(kpis.risque_global))
+      ? "Moyen"
+      : kpis.risque_global)
+    : (evaluable ? "Moyen" : "Non évalué");
 
   React.useEffect(() => {
     console.log("EnterpriseKpiGrid render", { nb_lignes: kpis.nb_lignes, kpis });
@@ -65,7 +80,7 @@ export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
 
   if (loading) {
     return (
-      <section className="enterprise-kpi-grid">
+      <section className="enterprise-kpi-grid" aria-busy="true">
         {items.map((item) => (
           <article key={item.label} className="enterprise-kpi">
             <Skeleton rows={2} />
@@ -75,11 +90,26 @@ export default function EnterpriseKpiGrid({ kpis = {}, loading = false }) {
     );
   }
 
+  const bannerTitle = filtersEmpty
+    ? "Aucune donnée pour les filtres sélectionnés"
+    : emptyTitle;
+  const bannerDetail = filtersEmpty
+    ? "Aucun résultat sur ce périmètre. Réinitialisez les filtres pour élargir la sélection."
+    : emptyDetail;
+
   return (
-    <section className="enterprise-kpi-grid">
-      {items.map((item) => (
-        <AdvancedKpiCard key={item.label} {...item} />
-      ))}
-    </section>
+    <React.Fragment>
+      {empty ? (
+        <div className="kpi-empty-state" data-testid="kpi-empty-state">
+          <strong>{bannerTitle}</strong>
+          <p>{bannerDetail}</p>
+        </div>
+      ) : null}
+      <section className="enterprise-kpi-grid">
+        {items.map((item) => (
+          <AdvancedKpiCard key={item.label} {...item} points={[]} delta={null} />
+        ))}
+      </section>
+    </React.Fragment>
   );
 }

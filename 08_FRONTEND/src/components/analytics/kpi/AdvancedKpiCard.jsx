@@ -8,11 +8,13 @@ export default function AdvancedKpiCard({
   helper,
   tone = "blue",
   icon: Icon,
-  delta = 0,
+  delta = null,
   positiveIsGood = true,
   status = "Live",
-  points,
+  points = [],
 }) {
+  const hasSeries = Array.isArray(points) && points.length > 0;
+  const hasTrend = delta !== null && delta !== undefined && !(typeof value === "string" && value.startsWith("Indisponible"));
   return (
     <article className={`advanced-kpi-card advanced-kpi-${tone}`}>
       <header>
@@ -23,10 +25,10 @@ export default function AdvancedKpiCard({
         </div>
       </header>
       <strong>{value}</strong>
-      <KpiSparkline tone={tone} points={points} />
+      {hasSeries ? <KpiSparkline tone={tone} points={points} /> : null}
       <footer>
         <small>{helper}</small>
-        <KpiTrendBadge delta={delta} positiveIsGood={positiveIsGood} />
+        {hasTrend ? <KpiTrendBadge delta={delta} positiveIsGood={positiveIsGood} /> : null}
       </footer>
     </article>
   );

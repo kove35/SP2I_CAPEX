@@ -1,7 +1,8 @@
 import React from "react";
 
 export default function KpiSparkline({ tone = "blue", points = [] }) {
-  const values = points.length ? points : [34, 42, 39, 51, 48, 62, 68];
+  if (!Array.isArray(points) || !points.length) return null;
+  const values = points;
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = Math.max(max - min, 1);

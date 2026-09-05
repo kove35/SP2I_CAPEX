@@ -13,8 +13,8 @@ export default function ProjectSelector() {
       <div className="context-icon"><Building2 size={18} /></div>
       <div>
         <span>Projet immobilier</span>
-        <strong>{project.label}</strong>
-        <small><MapPin size={12} /> {project.location}</small>
+        <strong>{project.label || "Projet CAPEX"}</strong>
+        {project.location ? <small><MapPin size={12} /> {project.location}</small> : null}
       </div>
       <div className={`scenario-pill ${scenario.tone}`}>
         <ShieldCheck size={13} />

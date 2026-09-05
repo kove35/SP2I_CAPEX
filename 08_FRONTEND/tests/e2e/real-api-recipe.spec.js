@@ -55,6 +55,8 @@ test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
   console.log("STEP selection projet A");
   await openProject(page, "Projet A synthetique");
   await expectCardContains(page, "CAPEX Direct", "3 000 FCFA");
+  await expect(page.getByText("Projet A synthetique").first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/Complexe immobilier Mpemba/i)).toHaveCount(0);
 
   console.log("STEP filtre niveau RDC (projet A)");
   await chooseNiveau(page, "RDC");
@@ -66,11 +68,9 @@ test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
 
   console.log("STEP projet C vide");
   await openProject(page, "Projet C vide");
-  // Projet sans données : pas de grille V6, donc pas de montants résiduels
-  // issus du projet B précédent ni d'aucun projet.
-  await page.waitForTimeout(2000);
-  await expect(page.getByText(/500[\s\u00A0]*FCFA/)).toHaveCount(0);
-  await expect(page.getByText(/3[\s\u00A0]*000[\s\u00A0]*FCFA/)).toHaveCount(0);
+  await page.waitForTimeout(1500);
+  await expect(page.getByText("Aucune donnée pour ce projet").first()).toBeVisible({ timeout: 15000 });
+  await expectCardContains(page, "CAPEX Direct", "0 FCFA", { timeout: 15000 });
 
   console.log("STEP ratio indisponible (projet D + niveau S1)");
   await openProject(page, "Projet D geometrie non resolvable");

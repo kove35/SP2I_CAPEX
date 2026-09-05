@@ -73,7 +73,8 @@ const ANALYTICS_QUERY_PLAN = [
   { endpoint: "/analytics/import-risks", query: "import-risks", priority: 4, trigger: "vue procurement/logistics", enabled: "deferredTradeReady" },
 ];
 
-const USE_V6_FINANCIALS = String(import.meta.env.VITE_SP2I_USE_V6_FINANCIALS || "").toLowerCase() === "true";
+export const V6_FINANCIALS_ENABLED = String(import.meta.env.VITE_SP2I_USE_V6_FINANCIALS || "").toLowerCase() === "true";
+const USE_V6_FINANCIALS = V6_FINANCIALS_ENABLED;
 
 function querySettled(query) {
   return query.isSuccess || query.isError;

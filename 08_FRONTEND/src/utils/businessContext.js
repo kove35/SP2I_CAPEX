@@ -8,6 +8,20 @@ export const PROJECT_CONTEXT = {
   status: "Projet actif",
 };
 
+export const PROJECT_MPEMBA_KEY = PROJECT_CONTEXT.code;
+
+function isMpembaKey(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return key === PROJECT_CONTEXT.code.toLowerCase() || key === "projet-mpemba" || key === "projet-mpemba-demo";
+}
+
+function readableProjectName(value) {
+  const code = String(value || "").trim();
+  if (!code) return "";
+  // Identifiant numerique ou technique : nom lisible sans inventer de donnee.
+  return /^\d+$/.test(code) ? `Projet ${code}` : code;
+}
+
 export const SCENARIO_OPTIONS = [
   {
     code: "IMPORT_OPTIMIZATION",
@@ -56,30 +70,33 @@ const TECHNICAL_SCENARIO_PATTERNS = [/FRONT_/i, /_TEST/i, /\bTEST\b/i, /\bDEV\b/
 export function getProjectContext(projectCodeOrDetails) {
   if (projectCodeOrDetails && typeof projectCodeOrDetails === "object") {
     const details = projectCodeOrDetails;
+    const code = details.workspace_key || details.code || details.id || "";
+    const base = isMpembaKey(code) ? PROJECT_CONTEXT : {};
     return {
-      ...PROJECT_CONTEXT,
+      ...base,
       ...details,
-      code: details.workspace_key || details.code || details.id || PROJECT_CONTEXT.code,
-      label: details.name || details.label || PROJECT_CONTEXT.label,
-      location: [details.city, details.country].filter(Boolean).join(", ") || PROJECT_CONTEXT.location,
-      type: details.type || PROJECT_CONTEXT.type,
-      status: details.status || PROJECT_CONTEXT.status,
+      code,
+      label: details.name || details.label || (isMpembaKey(code) ? PROJECT_CONTEXT.label : readableProjectName(code)),
+      location: [details.city, details.country, details.location].filter(Boolean).join(", "),
+      type: details.type || "",
+      status: details.status || "",
     };
   }
 
+  const codeOrId = String(projectCodeOrDetails || "");
   const fallbackProject = demoProjects.find((project) =>
-    [project.workspace_key, project.id, project.name].includes(String(projectCodeOrDetails || ""))
+    [project.workspace_key, project.id, project.name].includes(codeOrId)
   );
+  const isMpemba = isMpembaKey(codeOrId) || fallbackProject?.workspace_key === PROJECT_MPEMBA_KEY;
 
   return {
-    ...PROJECT_CONTEXT,
-    code: projectCodeOrDetails || PROJECT_CONTEXT.code,
-    label: fallbackProject?.name || PROJECT_CONTEXT.label,
-    location: fallbackProject ? [fallbackProject.city, fallbackProject.country].filter(Boolean).join(", ") : PROJECT_CONTEXT.location,
-    type: fallbackProject?.type || PROJECT_CONTEXT.type,
-    status: fallbackProject?.status || PROJECT_CONTEXT.status,
-    trust_score: fallbackProject?.trust_score ?? PROJECT_CONTEXT.trust_score,
-    ...fallbackProject,
+    ...(isMpemba ? PROJECT_CONTEXT : {}),
+    code: codeOrId || (isMpemba ? PROJECT_CONTEXT.code : ""),
+    label: fallbackProject?.name || (isMpemba ? PROJECT_CONTEXT.label : readableProjectName(codeOrId)),
+    location: fallbackProject ? [fallbackProject.city, fallbackProject.country].filter(Boolean).join(", ") : "",
+    type: fallbackProject?.type || "",
+    status: fallbackProject?.status || "",
+    ...(fallbackProject ? { trust_score: fallbackProject.trust_score } : {}),
   };
 }
 
