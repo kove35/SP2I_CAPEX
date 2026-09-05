@@ -109,6 +109,12 @@ class AnalyticsRepository:
         return dict(row)
 
     def get_project_cost_summary(self, query: AnalyticsQuery) -> dict[str, Any]:
+        # Quand un filtre spatial (batiment/niveau/appartement/piece/lot/famille)
+        # est actif, les KPI V6 doivent refleter le perimetre filtre : on agrege les
+        # lignes financieres V6 APRES application des filtres (avant aggregation),
+        # en reutilisant les memes taux que vw_project_cost_summary_v6.
+        if self._has_spatial_filters(query):
+            return self._v6_scoped_summary(query)
         where_sql, params = self._v6_project_where(query, table_alias="s")
         row = self.db.execute(
             text(
@@ -145,6 +151,169 @@ class AnalyticsRepository:
         summary["cost_per_apartment"] = summary.get("total_project_cost_per_appartement")
         summary["cost_per_level"] = summary.get("total_project_cost_per_niveau")
         return self._json_safe(summary)
+
+    @staticmethod
+    def _has_spatial_filters(query: AnalyticsQuery) -> bool:
+        """Vrai si un filtre spatial ou de regroupement (hors projet) est actif."""
+        filters = query.filters
+        return bool(
+            filters.batiment
+            or filters.niveau
+            or filters.appartement
+            or filters.piece
+            or filters.lot
+            or filters.famille
+        )
+
+    def _v6_scoped_summary(self, query: AnalyticsQuery) -> dict[str, Any]:
+        """KPI V6 calcules sur le perimetre filtre (projet + spatial).
+
+        Agrege les lignes financieres V6 (vw_fact_metre_financial_v6) APRES
+        application des filtres, puis applique les memes taux que la vue
+        vw_project_cost_summary_v6 (indirect 11%, site 4.2%, import logistique
+        3.5%, contingence 12%). Les denominateurs (surface, nb appartements,
+        nb niveaux) sont calcules sur le perimetre filtre ; quand la surface
+        n'est pas resolvable pour ce perimetre, les ratios /m2 sont marques
+        indisponibles (None) plutot que faussement calcules sur le projet entier.
+        """
+        financial_source = self._financial_source()
+        where_sql, params = self.build_financial_where_clause(query)
+        row = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    COALESCE(SUM(capex_local), 0)::numeric AS capex_direct,
+                    COALESCE(SUM(capex_import), 0)::numeric AS capex_import,
+                    COALESCE(SUM(capex_optimise), 0)::numeric AS capex_optimise,
+                    COALESCE(SUM(economie), 0)::numeric AS economie_nette,
+                    COUNT(*) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK') AS fallback_legacy_lot_lines,
+                    COALESCE(SUM(capex_local) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK'), 0)::numeric AS fallback_legacy_lot_capex,
+                    COUNT(DISTINCT niveau) FILTER (
+                        WHERE NULLIF(TRIM(CAST(niveau AS text)), '') IS NOT NULL
+                    )::numeric AS nb_niveaux,
+                    COUNT(DISTINCT appartement) FILTER (
+                        WHERE NULLIF(TRIM(CAST(appartement AS text)), '') IS NOT NULL
+                    )::numeric AS nb_appartements
+                FROM {financial_source}
+                {where_sql}
+                """
+            ),
+            params,
+        ).mappings().one()
+        d = dict(row)
+        capex_direct = float(d.get("capex_direct") or 0)
+        capex_import = float(d.get("capex_import") or 0)
+        capex_optimise = float(d.get("capex_optimise") or 0)
+        economie_nette = float(d.get("economie_nette") or 0)
+        indirect_rate = 0.11
+        site_rate = 0.042
+        import_logistics_rate = 0.035
+        contingency_rate = 0.12
+        indirect_costs = round(capex_direct * indirect_rate, 2)
+        site_installation = round(capex_direct * site_rate, 2)
+        import_logistics = round(capex_direct * import_logistics_rate, 2)
+        base = capex_direct + indirect_costs + site_installation + import_logistics
+        contingency = round(base * contingency_rate, 2)
+        total_project_cost = round(base * (1 + contingency_rate), 2)
+        nb_niveaux = float(d.get("nb_niveaux") or 0)
+        nb_appartements = float(d.get("nb_appartements") or 0)
+        fallback_legacy_lot_capex = float(d.get("fallback_legacy_lot_capex") or 0)
+        surface_m2 = self._v6_scoped_surface_m2(query)
+        summary: dict[str, Any] = {
+            "capex_direct": capex_direct,
+            "capex_import": capex_import,
+            "capex_optimise": capex_optimise,
+            "economie_nette": economie_nette,
+            "indirect_costs": indirect_costs,
+            "site_installation": site_installation,
+            "import_logistics": import_logistics,
+            "contingency": contingency,
+            "total_project_cost": total_project_cost,
+            "nb_niveaux": nb_niveaux,
+            "nb_appartements": nb_appartements,
+            "fallback_legacy_lot_lines": d.get("fallback_legacy_lot_lines") or 0,
+            "fallback_legacy_lot_capex": fallback_legacy_lot_capex,
+            "fallback_legacy_lot_pct": round(
+                100.0 * fallback_legacy_lot_capex / capex_direct, 2
+            )
+            if capex_direct
+            else 0,
+        }
+        if surface_m2:
+            summary["surface_m2"] = surface_m2
+            summary["capex_direct_per_m2"] = round(capex_direct / surface_m2, 2)
+            summary["total_project_cost_per_m2"] = round(total_project_cost / surface_m2, 2)
+            summary["capex_m2"] = summary["total_project_cost_per_m2"]
+        else:
+            summary["surface_m2"] = None
+            summary["capex_direct_per_m2"] = None
+            summary["total_project_cost_per_m2"] = None
+            summary["capex_m2"] = None
+        summary["total_project_cost_per_appartement"] = (
+            round(total_project_cost / nb_appartements, 2) if nb_appartements else None
+        )
+        summary["total_project_cost_per_niveau"] = (
+            round(total_project_cost / nb_niveaux, 2) if nb_niveaux else None
+        )
+        summary["cost_per_apartment"] = summary["total_project_cost_per_appartement"]
+        summary["cost_per_level"] = summary["total_project_cost_per_niveau"]
+        return self._json_safe(summary)
+
+    def _v6_scoped_surface_m2(self, query: AnalyticsQuery) -> float | None:
+        """Surface (m2) du perimetre filtre, si resolvable via les dimensions.
+
+        Renvoie None quand le perimetre ne peut pas etre ramene a une surface
+        (ex. filtre piece seul, ou dimensions absentes) : les ratios /m2 sont
+        alors declares indisponibles pour ce perimetre.
+        """
+        financial_source = self._financial_source()
+        columns = load_table_columns(self.db, financial_source)
+        if "batiment" not in columns and "niveau" not in columns and "appartement" not in columns:
+            return None
+        where_sql, params = self.build_financial_where_clause(query)
+        row = self.db.execute(
+            text(
+                f"""
+                SELECT COALESCE(SUM(x.surface_m2), 0)::numeric AS surface_m2
+                FROM (
+                    SELECT
+                        f.appartement,
+                        MAX(COALESCE(a.surface_m2, a.surface, 0))::numeric AS surface_m2
+                    FROM {financial_source} f
+                    LEFT JOIN dim_appartement a
+                      ON CAST(a.appartement_id AS text) = CAST(f.appartement AS text)
+                    WHERE NULLIF(TRIM(CAST(f.appartement AS text)), '') IS NOT NULL
+                    {where_sql.replace('WHERE', 'AND', 1) if where_sql else ''}
+                    GROUP BY f.appartement
+                ) x
+                """
+            ),
+            params,
+        ).mappings().one()
+        surface = float(row["surface_m2"] or 0)
+        if surface:
+            return surface
+        row = self.db.execute(
+            text(
+                f"""
+                SELECT COALESCE(SUM(x.surface_m2), 0)::numeric AS surface_m2
+                FROM (
+                    SELECT
+                        f.batiment,
+                        MAX(COALESCE(b.surface_totale_m2, 0))::numeric AS surface_m2
+                    FROM {financial_source} f
+                    LEFT JOIN dim_batiment b
+                      ON LOWER(COALESCE(NULLIF(b.batiment_code, ''), b.batiment)) = LOWER(f.batiment)
+                    WHERE NULLIF(TRIM(CAST(f.batiment AS text)), '') IS NOT NULL
+                    {where_sql.replace('WHERE', 'AND', 1) if where_sql else ''}
+                    GROUP BY f.batiment
+                ) x
+                """
+            ),
+            params,
+        ).mappings().one()
+        surface = float(row["surface_m2"] or 0)
+        return surface if surface else None
 
     def get_dashboard_direction_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         where_sql, params = self._v6_project_where(query, table_alias="d")
