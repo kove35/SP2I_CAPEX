@@ -4,7 +4,6 @@ import { RotateCcw, Search, X } from "lucide-react";
 import { useCrossFiltering } from "../../hooks/useCrossFiltering";
 import { getAnalyticsFilters } from "../../services/filterService";
 import { getProjectContext, getScenarioContext, SCENARIO_OPTIONS } from "../../utils/businessContext";
-import { getProjectWorkspaceKey } from "../../services/projectService";
 import { useAppStore } from "../../store/appStore.jsx";
 import AnalyticsSelect from "./AnalyticsSelect";
 
@@ -22,12 +21,9 @@ export default function GlobalAnalyticsFilters() {
   const { filters, activeChips, applyFilter, clearFilter, reset } = useCrossFiltering();
   const { state } = useAppStore();
   // Contexte projet depuis les informations applicatives (store unique), jamais un repli
-  // par defaut pour un autre projet.
-  const activeDetails = state.activeProjectDetails;
-  const activeProject = activeDetails && String(getProjectWorkspaceKey(activeDetails)) === String(filters.projet || "")
-    ? activeDetails
-    : null;
-  const project = getProjectContext(activeProject || filters.projet);
+  // par defaut pour un autre projet. Le projet actif prime : pas de flash Mpemba pendant
+  // la resynchronisation du filtre projet apres rechargement.
+  const project = getProjectContext(state.activeProjectDetails || filters.projet);
   const projectSubtitle = [project.type, project.location].filter(Boolean).join(" · ");
   const scenario = getScenarioContext(filters.scenario);
   const filterOptions = useQuery({

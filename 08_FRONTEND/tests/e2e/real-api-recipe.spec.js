@@ -58,6 +58,12 @@ test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
   await expect(page.getByText("Projet A synthetique").first()).toBeVisible({ timeout: 10000 });
   await expect(page.getByText(/Complexe immobilier Mpemba/i)).toHaveCount(0);
 
+  console.log("STEP rechargement (contexte A conserve)");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expectCardContains(page, "CAPEX Direct", "3 000 FCFA");
+  await expect(page.getByText("Projet A synthetique").first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/Complexe immobilier Mpemba/i)).toHaveCount(0);
+
   console.log("STEP filtre niveau RDC (projet A)");
   await chooseNiveau(page, "RDC");
   await expectCardContains(page, "CAPEX Direct", "1 000 FCFA");
@@ -71,10 +77,14 @@ test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
   await page.waitForTimeout(1500);
   await expect(page.getByText("Aucune donnée pour ce projet").first()).toBeVisible({ timeout: 15000 });
   await expectCardContains(page, "CAPEX Direct", "0 FCFA", { timeout: 15000 });
+  await expect(page.getByText(/Non évalué/).first()).toBeVisible({ timeout: 10000 });
 
   console.log("STEP ratio indisponible (projet D + niveau S1)");
   await openProject(page, "Projet D geometrie non resolvable");
   await expect(page.getByText("CAPEX Direct")).toBeVisible({ timeout: 30000 });
   await chooseNiveau(page, "S1");
+  const appCard = page.locator(".advanced-kpi-card").filter({ hasText: "Par appartement" });
+  await expect(appCard).toContainText("Indisponible", { timeout: 25000 });
+  await expect(appCard.locator("svg.kpi-sparkline")).toHaveCount(0);
   await expect(page.getByText(/Indisponible pour ce perimetre/).first()).toBeVisible({ timeout: 25000 });
 });

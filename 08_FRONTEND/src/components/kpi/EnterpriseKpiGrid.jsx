@@ -103,6 +103,7 @@ export default function EnterpriseKpiGrid({
         <div className="kpi-empty-state" data-testid="kpi-empty-state">
           <strong>{bannerTitle}</strong>
           <p>{bannerDetail}</p>
+          <small>Risque : Non évalué · Confiance : Non évalué</small>
         </div>
       ) : null}
       <section className="enterprise-kpi-grid">
