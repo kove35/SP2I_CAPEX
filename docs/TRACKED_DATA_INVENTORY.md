@@ -1,29 +1,46 @@
-# Inventaire des données suivies par Git
+﻿# Inventaire des donnees suivies par Git - ETAT APRES LOT 4
 
-Audit réalisé le 29 août 2026 sur les fichiers `.xlsx`, `.xls`, `.csv` et `.pdf`
-suivis par Git.
+Audit realise : septembre 2026, apres le retrait controle (Lot 4) des donnees a
+provenance indeterminee. Aucune donnee metier sensible n'est reproduite ici.
 
-## Résultat
+## SUIVI ET AUTORISE
 
-| Périmètre | Fichiers | Classification | Action avant publication |
-|---|---:|---|---|
-| `03_DONNEES_ENTREE/` | 2 | Restreint — DQE/source métier | Retirer du dépôt public ou confirmer qu'ils sont synthétiques |
-| `03_DONNEES_REFERENCE/` | 6 | Restreint — masters et archives DQE | Retirer du dépôt public ou confirmer qu'ils sont synthétiques |
-| `02_REFERENTIELS/` | 2 | Interne — ratios/mappings | Valider la licence et la confidentialité |
-| `05_RESULTATS/` | 3 | Interne — résultats dérivés | Ne pas publier si produits depuis un DQE client |
-| `06_ANALYSE_BI/` | 2 | Interne — datasets dérivés | Les deux CSV présents sont vides |
-| Racine | 64 | À qualifier — tests, benchmarks, fournisseurs et gouvernance | Conserver uniquement les jeux synthétiques documentés |
+- `02_REFERENTIELS/mapping_familles.xlsx`, `02_REFERENTIELS/ratios_fob.xlsx`
+  (INTERNE_DEMONTRE - referentiels de calcul conserves).
+- `07_API_BACKEND/app/core/capex_taxonomy/*.json` (20) et
+  `07_API_BACKEND/app/core/financial_ranges/*.json` (20) : JSON moteur
+  (INTERNE, requis au runtime).
+- JSON non nominatifs : `01_PARAMETRES/parametres_import_pointe_noire.json`,
+  `03_DONNEES_ENTREE/dqe/*.json` (squelettes vides), `ARCHIVES/DATASET_METADATA.json`,
+  rapports de recette (run_recette_report.json).
+- CSV vides places en sorties runtime : `05_RESULTATS/*.csv`,
+  `06_ANALYSE_BI/dataset/*.csv` (0 octet).
+- SQL de migrations/vues et documentation (docs/).
 
-Total : **79 fichiers**, **2 623 566 octets**. Quatre CSV sont vides. Une
-inspection textuelle des classeurs a détecté des termes métier (prix, CAPEX,
-client ou fournisseur) dans **55 classeurs**. Aucun terme évident de secret
-technique ni adresse e-mail n'a été détecté dans les chaînes partagées ; cela
-ne prouve pas l'absence de données confidentielles dans les cellules, formules,
-commentaires ou objets intégrés.
+## RETIRE DU SUIVI - LOCAL/IGNORE
 
-## Décision de sécurité
+Fichiers retires de l'index Git (git rm --cached) mais conserves localement
+et ignores via .gitignore (Lot 4) :
 
-Le dépôt ne doit pas être rendu ou maintenu public tant que les huit fichiers
-DQE/source des dossiers `03_DONNEES_ENTREE` et `03_DONNEES_REFERENCE` n'ont pas
-été qualifiés par le propriétaire des données. Une suppression dans un futur
-commit ne retire pas leur contenu de l'historique Git existant.
+- 65 XLSX racine/resultats a provenance indeterminee (masters de reference,
+  DQE_TEST, audits DQE, benchmarks, supplier registries, procurement, TCO, FOB,
+  market, drift, governance, audit/reference-engine) dont
+  `05_RESULTATS/audit_qualite_dqe.xlsx`.
+- 2 PBIX : `06_ANALYSE_BI/MPEMBA_V2/SP2I_CAPEX_MPEMBA_V2.pbix`,
+  `06_ANALYSE_BI/dashboards/SP2I_CAPEX_Dashboard.pbix`.
+- 13 JSON d'artefacts devtools/audit : `AUDIT_REFERENCE_ENGINE.json` et
+  `*_STATS.json` racine (12).
+
+## A VERIFIER
+
+- Classification proprietaire finale des fichiers retires (SYNTHETIQUE / INTERNE
+  / CONFIDENTIEL) si une re-publication est envisagee.
+- Contenu des PBIX (mode Import documente) hors depot.
+
+## DONNEES DEJA PURGEES ANTERIEUREMENT
+
+- 8 classeurs DQE/source des dossiers 03_DONNEES_ENTREE et 03_DONNEES_REFERENCE
+  (purgés de l'historique public le 1er septembre 2026).
+- Anciennes valeurs de connexion Neon remplacees par des placeholders
+  (Lot 1) ; artefact d'audit Neon `neon_integrity_audit_result.json` retire
+  du suivi.

@@ -41,3 +41,17 @@ temp/
 05_RESULTATS/private/
 private_data/
 *.credentials.json
+
+# Artefacts d'audit Neon jetables (generes localement, ne pas versionner).
+06_ANALYSE_BI/MPEMBA_V2/neon_integrity_audit_result.json
+
+# Lot 4 : donnees indeterminees retirees du suivi (copies locales conservees).
+# XLSX racine (audits/governance/procurement) - 02_REFERENTIELS/ reste suivi.
+/*.xlsx
+/05_RESULTATS/audit_qualite_dqe.xlsx
+# PBIX (donnees potentiellement embarquees, provenance indeterminee).
+/06_ANALYSE_BI/MPEMBA_V2/SP2I_CAPEX_MPEMBA_V2.pbix
+/06_ANALYSE_BI/dashboards/SP2I_CAPEX_Dashboard.pbix
+# JSON d'artefacts devtools/audit (stats et rapports machine).
+/*_STATS.json
+/AUDIT_REFERENCE_ENGINE.json

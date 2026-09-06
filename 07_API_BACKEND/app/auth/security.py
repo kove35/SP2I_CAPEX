@@ -11,7 +11,6 @@ from typing import Any
 
 
 JWT_ALGORITHM = "HS256"
-DEVELOPMENT_JWT_SECRET = "sp2i-dev-secret-change-me"
 PASSWORD_ITERATIONS = 600_000
 
 
@@ -19,15 +18,28 @@ def _is_production() -> bool:
     return os.getenv("ENVIRONMENT", "development").strip().lower() in {"prod", "production"}
 
 
+# Aucun secret statique n'est code dans l'application. En environnement
+# non-production et sans SP2I_JWT_SECRET explicite, une clef ephemere est
+# generee par processus (valable pour la duree du process uniquement).
+_ephemeral_dev_jwt_secret: str = ""
+
+
+def _dev_jwt_secret() -> str:
+    global _ephemeral_dev_jwt_secret
+    if not _ephemeral_dev_jwt_secret:
+        _ephemeral_dev_jwt_secret = secrets.token_urlsafe(48)
+    return _ephemeral_dev_jwt_secret
+
+
 def get_jwt_secret() -> str:
     secret = os.getenv("SP2I_JWT_SECRET", "").strip()
     if _is_production():
-        if not secret or secret == DEVELOPMENT_JWT_SECRET or len(secret) < 32:
+        if not secret or len(secret) < 32:
             raise RuntimeError(
                 "SP2I_JWT_SECRET doit etre configure avec au moins 32 caracteres en production."
             )
         return secret
-    return secret or DEVELOPMENT_JWT_SECRET
+    return secret or _dev_jwt_secret()
 
 
 def validate_security_configuration() -> None:

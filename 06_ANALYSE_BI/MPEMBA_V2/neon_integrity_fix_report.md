@@ -92,7 +92,7 @@ Une phase ulterieure pourra recharger les vraies surfaces depuis `SP2I_BIM_DQE_M
 ## Commandes d'execution Neon
 
 ```powershell
-$env:DATABASE_URL="postgresql://USER:PASSWORD@<NEON_HOST>/neondb?sslmode=require"
+$env:DATABASE_URL="<NEON_CONNECTION_STRING>"
 psql $env:DATABASE_URL -f 09_INFRA/sql/011_powerbi_neon_integrity_fix.sql
 .\.venv\Scripts\python.exe 06_ANALYSE_BI\MPEMBA_V2\run_neon_integrity_audit.py
 ```

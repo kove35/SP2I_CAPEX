@@ -4,7 +4,7 @@ FactMetre =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "fact_metre"]}[Data]
@@ -15,7 +15,7 @@ DimProjet =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "dim_projet"]}[Data]
@@ -26,7 +26,7 @@ DimBatiment =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "dim_batiment"]}[Data]
@@ -37,7 +37,7 @@ DimNiveau =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "dim_niveau"]}[Data]
@@ -48,7 +48,7 @@ DimAppartement =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "dim_appartement"]}[Data]
@@ -59,7 +59,7 @@ DimZone =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "dim_zone"]}[Data]
@@ -70,7 +70,7 @@ DimPiece =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "dim_piece"]}[Data]
@@ -81,7 +81,7 @@ DimLot =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "vw_dim_lot_active"]}[Data]
@@ -92,7 +92,7 @@ DimSousLotComplet =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "vw_dim_sous_lot_active"]}[Data]
@@ -103,7 +103,7 @@ DimArticleBpu =
     let
         Source = PostgreSQL.Database(
             "<NEON_HOST>",
-            "neondb",
+            "<NEON_DATABASE>",
             [CreateNavigationProperties = false]
         ),
         Table = Source{[Schema = "public", Item = "vw_dim_article_bpu_active"]}[Data]

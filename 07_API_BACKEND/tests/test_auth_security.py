@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from app.auth.schemas import PasswordChangeRequest, RegisterRequest
 from app.auth.security import create_access_token, decode_access_token, validate_security_configuration
-from app.auth.security import hash_password, verify_password
+from app.auth.security import get_jwt_secret, hash_password, verify_password
 
 
 def _encode_json(value: dict) -> str:
@@ -71,3 +71,26 @@ def test_password_hash_supports_new_and_legacy_formats() -> None:
     salt = "legacy-salt"
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
     assert verify_password(password, f"pbkdf2_sha256${salt}${digest}")
+
+
+def test_production_rejects_short_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SP2I_JWT_SECRET", "too-short")
+    with pytest.raises(RuntimeError):
+        validate_security_configuration()
+
+
+def test_development_without_env_uses_ephemeral_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.delenv("SP2I_JWT_SECRET", raising=False)
+    first = get_jwt_secret()
+    assert isinstance(first, str)
+    assert len(first) >= 32
+    assert get_jwt_secret() == first  # stable for the process lifetime
+    validate_security_configuration()  # must not raise
+
+
+def test_development_uses_explicit_secret_when_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "development")
+    monkeypatch.setenv("SP2I_JWT_SECRET", "dev-explicit-secret-with-at-least-32-chars")
+    assert get_jwt_secret() == "dev-explicit-secret-with-at-least-32-chars"

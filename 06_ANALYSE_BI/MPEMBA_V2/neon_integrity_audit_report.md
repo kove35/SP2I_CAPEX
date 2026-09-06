@@ -1,7 +1,7 @@
 # Audit Neon - SP2I CAPEX MPEMBA V2
 
 Date UTC : `2026-06-08T15:09:11.662303+00:00`
-Base : `neondb`
+Base : `<NEON_DATABASE>`
 Host : `<NEON_HOST>`
 Neon : `True`
 

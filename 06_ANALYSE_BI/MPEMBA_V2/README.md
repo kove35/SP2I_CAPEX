@@ -5,7 +5,7 @@ Ce dossier remplace le modele Power BI V1 pour le projet `Complexe Immobilier Mp
 Source unique :
 
 - Serveur : `<NEON_HOST>`
-- Base : `neondb`
+- Base : `<NEON_DATABASE>`
 - Mode Power BI : `Import`
 - Referentiel : `SP2I_BIM_DQE_MASTER.xlsx`
 
@@ -180,7 +180,7 @@ Conserver visibles :
 Executer l'audit complet avec l'URL Neon en variable de session, sans l'ecrire dans le depot :
 
 ```powershell
-$env:DATABASE_URL="postgresql://USER:PASSWORD@<NEON_HOST>/neondb?sslmode=require"
+$env:DATABASE_URL="<NEON_CONNECTION_STRING>"
 .\.venv\Scripts\python.exe 06_ANALYSE_BI\MPEMBA_V2\run_neon_integrity_audit.py
 ```
 
