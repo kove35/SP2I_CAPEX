@@ -76,9 +76,12 @@ export const useAnalyticsFilterStore = create((set, get) => ({
       filters: cleanFilters(values),
       revision: state.revision + 1,
     })),
-  resetFilters: () =>
+  resetFilters: (keepProjet) =>
     set((state) => ({
-      filters: defaultAnalyticsFilters,
+      filters: cleanFilters({
+        ...defaultAnalyticsFilters,
+        projet: keepProjet || defaultAnalyticsFilters.projet,
+      }),
       drilldownTarget: null,
       revision: state.revision + 1,
     })),

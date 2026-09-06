@@ -92,6 +92,24 @@ test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
   await clearFilterByLabel(page, "Lot");
   await expectCardContains(page, "CAPEX Direct", "1 000 FCFA");
 
+  console.log("STEP RESET apres filtre vide (reproduction exacte)");
+  await chooseFilterValue(page, "Lot", "LOT_CVC");
+  await expect(page.getByText("Aucune donnée pour les filtres sélectionnés").first()).toBeVisible({ timeout: 15000 });
+  await page.getByRole("button", { name: /Reinitialiser/i }).click();
+  await expectCardContains(page, "CAPEX Direct", "3 000 FCFA");
+  await expect(page.getByText(/Aucune donnée/).first()).toHaveCount(0);
+  const counterText = await page.locator("text=/lignes/i").allInnerTexts();
+  console.log("RESET_COUNTERS", JSON.stringify(counterText.slice(0, 8)));
+  await expect(page.getByText(/4 lignes à analyser/).first()).toBeVisible({ timeout: 15000 });
+  const ap = await cardText(page, "Par appartement");
+  console.log("RESET_PAR_APPART", JSON.stringify(ap));
+  expect(ap).toContain("1 329 FCFA");
+
+  console.log("STEP reset conserve le contexte apres rechargement");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expectCardContains(page, "CAPEX Direct", "3 000 FCFA");
+  await expect(page.getByText("Projet A synthetique").first()).toBeVisible({ timeout: 10000 });
+
   console.log("STEP selection projet B");
   await openProject(page, "Projet B synthetique");
   await expectCardContains(page, "CAPEX Direct", "500 FCFA");

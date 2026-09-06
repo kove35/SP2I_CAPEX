@@ -103,14 +103,15 @@ export function useAnalyticsEngine(dashboardType = "direction") {
     return appState.activeProject;
   }, [appState.activeProject, appState.activeProjectDetails]);
 
-  const lastSyncedProject = React.useRef(null);
+  // Re-synchronisation robuste : des qu'un filtre `projet` sort de l'alignement
+  // avec le projet actif (changement de projet OU reset du store qui repartirait
+  // sur la valeur par defaut), on le ramene immediatement vers le projet actif.
+  // Pas de garde « deja synchronise » bloquant (cause du reset qui basculait sur
+  // PROJET_MPEMBA apres avoir ouvert un autre projet).
   React.useEffect(() => {
     if (!activeProjectKey) return;
-    if (lastSyncedProject.current === activeProjectKey) return;
-    lastSyncedProject.current = activeProjectKey;
     const currentProject = filters.projet;
     if (currentProject && currentProject !== activeProjectKey) {
-      // Changement de projet : on resynchronise le filtre projet et on purge les filtres spatiaux.
       replaceAnalyticsFilters({
         projet: activeProjectKey,
         scenario: filters.scenario,

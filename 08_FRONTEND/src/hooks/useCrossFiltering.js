@@ -90,10 +90,13 @@ export function useCrossFiltering() {
   );
 
   const reset = React.useCallback(() => {
-    resetFilters();
+    // Le reset retire les filtres secondaires mais conserve le projet actif :
+    // jamais de requete Analytics hors projet (le projet par defaut n'est PAS une
+    // valeur de repli pour le projet actif).
+    resetFilters(filters.projet);
     resetLegacyFilters();
     invalidateAnalytics();
-  }, [invalidateAnalytics, resetFilters, resetLegacyFilters]);
+  }, [filters.projet, invalidateAnalytics, resetFilters, resetLegacyFilters]);
 
   const clearDrilldown = React.useCallback(() => {
     clearDrilldownTarget();
