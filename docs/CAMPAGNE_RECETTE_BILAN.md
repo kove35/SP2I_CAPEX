@@ -8,7 +8,7 @@ Environnement : backend réel `:8001`, frontend V6 `:5174`, PostgreSQL isolé `s
 |---|---|
 | ✅ Réussis : **6** | C1 Prérequis, C2 Projet A (corrigé), C3 Filtres/retour/Réinitialiser, C4 Isolation, C5 Cas limites, C6 Droits |
 | ❌ Échoués : **0** | — |
-| ✅ C7 « simulation » : **2/2** | Erreur API ≠ vide ; null ≠ zéro (suite distincte étiquetée) |
+| ✅ C7 « simulation » : **4/4** | Erreur API ≠ vide ; null ≠ zéro ; **réponse tardive de A n'écrase pas B** ; **mode V5 (flag off) : zéro appel `/analytics/v6/`** (suite distincte étiquetée) |
 | ⏸ Bloqués / non exécutés | Cascade 7 « robustesse ciblée » (erreurs/délais simulés) : **non incluse** — suite distincte étiquetée « simulation », à exécuter séparément |
 
 ### Détails par cascade
