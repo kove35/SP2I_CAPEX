@@ -316,35 +316,62 @@ class AnalyticsRepository:
         return surface if surface else None
 
     def get_dashboard_direction_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
-        where_sql, params = self._v6_project_where(query, table_alias="d")
+        """Lignes direction V6 par lot, scopées au périmètre (projet + filtres).
+
+        Le tableau du dashboard doit refléter exactement le périmètre des KPI :
+        on agrège les lignes financières V6 APRÈS application des filtres (jamais
+        l'agrégat projet quand un résultat filtré est vide). Les montants projet
+        attachés à chaque ligne viennent du summary scopé (mêmes taux).
+        """
+        financial_source = self._financial_source()
+        where_sql, params = self.build_financial_where_clause(query)
+        summary = self.get_project_cost_summary(query)
+        total_direct = float(summary.get("capex_direct") or 0)
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
                     lot,
-                    capex_direct,
-                    pct_capex_direct,
-                    nb_lignes,
-                    nb_articles,
-                    fallback_legacy_lot_lines,
-                    fallback_legacy_lot_capex,
-                    project_capex_direct,
-                    indirect_costs,
-                    site_installation,
-                    import_logistics,
-                    contingency,
-                    total_project_cost,
-                    total_project_cost_per_m2,
-                    total_project_cost_per_appartement,
-                    total_project_cost_per_niveau
-                FROM vw_dashboard_direction_v6_scoped d
+                    COALESCE(SUM(capex_local), 0)::numeric AS capex_direct,
+                    COUNT(*)::numeric AS nb_lignes,
+                    COUNT(DISTINCT article_code)::numeric AS nb_articles,
+                    COUNT(*) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK') AS fallback_legacy_lot_lines,
+                    COALESCE(SUM(capex_local) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK'), 0)::numeric AS fallback_legacy_lot_capex
+                FROM {financial_source}
                 {where_sql}
+                GROUP BY lot
                 ORDER BY capex_direct DESC
                 """
             ),
             params,
         ).mappings().all()
-        return [self._json_safe(dict(row)) for row in rows]
+
+        out: list[dict[str, Any]] = []
+        for row in rows:
+            lot_direct = float(row["capex_direct"] or 0)
+            out.append(
+                self._json_safe(
+                    {
+                        "lot": row["lot"],
+                        "capex_direct": lot_direct,
+                        "pct_capex_direct": round(100.0 * lot_direct / total_direct, 2) if total_direct else None,
+                        "nb_lignes": int(row["nb_lignes"] or 0),
+                        "nb_articles": int(row["nb_articles"] or 0),
+                        "fallback_legacy_lot_lines": int(row["fallback_legacy_lot_lines"] or 0),
+                        "fallback_legacy_lot_capex": float(row["fallback_legacy_lot_capex"] or 0),
+                        "project_capex_direct": summary.get("capex_direct"),
+                        "indirect_costs": summary.get("indirect_costs"),
+                        "site_installation": summary.get("site_installation"),
+                        "import_logistics": summary.get("import_logistics"),
+                        "contingency": summary.get("contingency"),
+                        "total_project_cost": summary.get("total_project_cost"),
+                        "total_project_cost_per_m2": summary.get("total_project_cost_per_m2"),
+                        "total_project_cost_per_appartement": summary.get("total_project_cost_per_appartement"),
+                        "total_project_cost_per_niveau": summary.get("total_project_cost_per_niveau"),
+                    }
+                )
+            )
+        return out
 
     def get_cost_intelligence_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         clauses: list[str] = []

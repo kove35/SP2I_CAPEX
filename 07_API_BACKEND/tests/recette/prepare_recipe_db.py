@@ -79,6 +79,7 @@ def _seed_identity() -> None:
             make_project(2, "Projet B synthetique", admin.id),
             make_project(3, "Projet C vide", admin.id),
             make_project(4, "Projet D geometrie non resolvable", admin.id),
+            make_project(5, "Projet E montants nuls", admin.id),
         ])
         db.flush()
 
@@ -88,6 +89,7 @@ def _seed_identity() -> None:
             WorkspaceMembership(user_id=admin.id, project_id=2, role="ADMIN"),
             WorkspaceMembership(user_id=admin.id, project_id=3, role="ADMIN"),
             WorkspaceMembership(user_id=admin.id, project_id=4, role="ADMIN"),
+            WorkspaceMembership(user_id=admin.id, project_id=5, role="ADMIN"),
             WorkspaceMembership(user_id=alice.id, project_id=1, role="MANAGER"),
             WorkspaceMembership(user_id=bob.id, project_id=1, role="VIEWER"),
         ])

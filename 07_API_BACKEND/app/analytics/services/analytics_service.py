@@ -1443,6 +1443,7 @@ class AnalyticsService:
     def _build_dashboard_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
         summary = self.repository.get_project_cost_summary(query)
         by_lot = self.repository.get_dashboard_direction_v6(query)
+        nb_dashboard_lines = sum(int(row.get("nb_lignes") or 0) for row in by_lot)
         kpis = {
             **summary,
             "capex_brut": summary.get("capex_direct"),
@@ -1459,11 +1460,11 @@ class AnalyticsService:
                 if float(summary.get("capex_direct") or 0) != 0
                 else 0
             ),
-            "nb_lignes": sum(int(row.get("nb_lignes") or 0) for row in by_lot),
+            "nb_lignes": nb_dashboard_lines,
             "nb_lots": len({str(row.get("lot") or "") for row in by_lot if row.get("lot")}),
-            "analytics_confidence": "HIGH",
-            "analytics_confidence_label": "Elevee",
-            "analytics_confidence_score": 95,
+            "analytics_confidence": "HIGH" if nb_dashboard_lines else None,
+            "analytics_confidence_label": "Elevee" if nb_dashboard_lines else None,
+            "analytics_confidence_score": 95 if nb_dashboard_lines else None,
         }
         return self._response(
             query,

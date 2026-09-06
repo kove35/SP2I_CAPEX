@@ -6,7 +6,8 @@ INSERT INTO dim_projet (projet_id, projet_code, projet_nom) VALUES
     (1, 'PROJET_A', 'Projet A synthetique'),
     (2, 'PROJET_B', 'Projet B synthetique'),
     (3, 'PROJET_C', 'Projet C vide'),
-    (4, 'PROJET_D', 'Projet D geometrie non resolvable')
+    (4, 'PROJET_D', 'Projet D geometrie non resolvable'),
+    (5, 'PROJET_E', 'Projet E montants nuls')
 ON CONFLICT (projet_code) DO NOTHING;
 
 INSERT INTO dim_batiment (batiment_id, batiment_code, batiment, surface_totale_m2) VALUES
@@ -57,6 +58,17 @@ INSERT INTO recipe_fact_v6 (id_ligne, projet_id, project_code, designation, quan
     decision_import, pricing_scope) VALUES
  ('D-S1-L1', 4, 'PROJET_D', 'Gros oeuvre', 1, 'ens', 'LOT_FOND', 'GO-D1', 'BAT_D', 'S1', NULL, 'Gros oeuvre',
   1000, 0, 900, 1000, 0, 900, 100, 'LOCAL', 'V6');
+
+-- Projet E : des LIGNES REELLES mais toutes a montant nul (test vrai zero).
+INSERT INTO recipe_fact_v6 (id_ligne, projet_id, project_code, designation, quantite, unite,
+    lot, article_code, batiment, niveau, appartement, famille,
+    prix_local_fcfa, prix_import_fcfa, prix_optimise_fcfa,
+    capex_local, capex_import, capex_optimise, economie,
+    decision_import, pricing_scope) VALUES
+ ('E-01', 5, 'PROJET_E', 'Reservation option', 0, 'u', 'LOT_ELEC', 'ELEC-E1', 'BAT_A', 'RDC', 'A-RDC-01', 'Electricite',
+  0, 0, 0, 0, 0, 0, 0, 'LOCAL', 'V6'),
+ ('E-02', 5, 'PROJET_E', 'Peinture offerte', 0, 'u', 'LOT_PNT', 'PNT-E1', 'BAT_A', 'RDC', 'A-RDC-01', 'Peinture',
+  0, 0, 0, 0, 0, 0, 0, 'LOCAL', 'V6');
 
 -- ---------------------------------------------------------------------------
 -- Source de faits "courante" utilisee par /analytics/filters (dropdowns BI).

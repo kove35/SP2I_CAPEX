@@ -35,6 +35,24 @@ async function chooseNiveau(page, value) {
   await field.locator("button.analytics-select-option", { hasText: value }).click({ timeout: 15000 });
 }
 
+async function chooseFilterValue(page, labelText, value) {
+  const field = page
+    .locator(".analytics-select-field")
+    .filter({ has: page.locator("span", { hasText: labelText }) })
+    .first();
+  await field.locator("button.analytics-select-control").click({ timeout: 15000 });
+  await field.locator("button.analytics-select-option", { hasText: value }).click({ timeout: 15000 });
+}
+
+async function clearFilterByLabel(page, labelText) {
+  const field = page
+    .locator(".analytics-select-field")
+    .filter({ has: page.locator("span", { hasText: labelText }) })
+    .first();
+  await field.locator("button.analytics-select-control").click({ timeout: 15000 });
+  await field.locator("button.analytics-select-option.muted").first().click({ timeout: 15000 });
+}
+
 async function cardText(page, label) {
   const card = page.locator(".advanced-kpi-card").filter({ hasText: label }).first();
   await expect(card).toBeVisible({ timeout: 30000 });
@@ -66,6 +84,12 @@ test("recette API réelle : cockpit V6 sur backend réel", async ({ page }) => {
 
   console.log("STEP filtre niveau RDC (projet A)");
   await chooseNiveau(page, "RDC");
+  await expectCardContains(page, "CAPEX Direct", "1 000 FCFA");
+
+  console.log("STEP filtre vide RDC + LOT_CVC puis retrait LOT_CVC");
+  await chooseFilterValue(page, "Lot", "LOT_CVC");
+  await expect(page.getByText("Aucune donnée pour les filtres sélectionnés").first()).toBeVisible({ timeout: 15000 });
+  await clearFilterByLabel(page, "Lot");
   await expectCardContains(page, "CAPEX Direct", "1 000 FCFA");
 
   console.log("STEP selection projet B");
