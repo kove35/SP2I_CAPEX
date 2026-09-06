@@ -8,6 +8,7 @@ export default defineConfig({
     "**/performance/**",
     "**/spatial/**",
     "**/real-api-recipe.spec.js",
+    "**/real-api-campaign.spec.js",
   ],
   timeout: 30_000,
   expect: {
