@@ -9279,3 +9279,5 @@ button.procurement-kpi-card:hover {
 .kpi-empty-state{display:flex;flex-direction:column;gap:4px;padding:18px 20px;margin:6px 0 14px;border:1px dashed var(--border,#3a4468);border-radius:12px;background:var(--surface-soft,#12162b);color:var(--text-soft,#aab3d6)}.kpi-empty-state strong{color:var(--text,#e8ecff)}.kpi-empty-state p{margin:0;line-height:1.4}
 
 .advanced-kpi-card{min-width:0}.advanced-kpi-card strong{overflow-wrap:anywhere;word-break:break-word}.kpi-empty-state small{color:var(--text-faint,#7f88ad)}
+
+.chart-empty-state{display:flex;flex-direction:column;gap:6px;padding:18px 16px;border:1px dashed var(--border,#3a4468);border-radius:12px;background:var(--surface-soft,#12162b);color:var(--text-soft,#aab3d6);font-size:13px}.chart-empty-state strong{color:var(--text,#e8ecff);font-size:14px}.chart-empty-state p{margin:0;line-height:1.5}

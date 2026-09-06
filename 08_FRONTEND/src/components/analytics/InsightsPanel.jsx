@@ -34,23 +34,32 @@ export default function InsightsPanel({ kpis = {}, barRows = [], table = [] }) {
     },
   ];
 
+  const hasData = Boolean(Object.keys(kpis || {}).length || table.length || barRows.length);
+
   return (
     <aside className="insights-panel">
       <header>
         <span>SP2I aide a la decision</span>
         <strong>Points cles pour la direction</strong>
       </header>
-      <div>
-        {insights.map(({ icon: Icon, label, text }) => (
-          <article key={label}>
-            <Icon size={16} />
-            <div>
-              <strong>{label}</strong>
-              <p>{text}</p>
-            </div>
-          </article>
-        ))}
-      </div>
+      {hasData ? (
+        <div>
+          {insights.map(({ icon: Icon, label, text }) => (
+            <article key={label}>
+              <Icon size={16} />
+              <div>
+                <strong>{label}</strong>
+                <p>{text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="chart-empty-state">
+          <strong>Aucune donnee pour ce projet</strong>
+          <p>Les indicateurs seront disponibles apres l'ajout de donnees DQE.</p>
+        </div>
+      )}
     </aside>
   );
 }

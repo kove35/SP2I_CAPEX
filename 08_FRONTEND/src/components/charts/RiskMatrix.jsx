@@ -85,6 +85,16 @@ export default function RiskMatrix({ rows = [], filtersLabel = "Tous les filtres
   const { applyFilters, applyDrilldown } = useCrossFiltering();
   const riskRows = useMemo(() => normalizeRowsPayload(rows).slice(0, 72).map(normalizeRiskRow), [rows]);
   const insight = useMemo(() => buildInsight(riskRows), [riskRows]);
+  if (!riskRows.length) {
+    return (
+      <div className="risk-matrix-shell">
+        <div className="chart-empty-state">
+          <strong>Aucune donnee pour ce projet</strong>
+          <p>La carte des risques sera disponible apres l'ajout de donnees DQE. Filtres : {filtersLabel}</p>
+        </div>
+      </div>
+    );
+  }
   const maxImpactM = Math.max(...riskRows.map((row) => row.impact / MILLION), 10);
   const xThreshold = maxImpactM * 0.5;
 

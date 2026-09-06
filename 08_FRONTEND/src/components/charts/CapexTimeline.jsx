@@ -8,9 +8,6 @@ import { getScenarioContext } from "../../utils/businessContext";
 
 function normalizeTimeline(data = []) {
   const rows = Array.isArray(data) ? data : [];
-  if (!rows.length) {
-    return [{ date: new Date().toISOString().slice(0, 10), capex: 0, economie: 0, roi: 0, risque: 0, scenario: "T0", jalon: "Initial" }];
-  }
   return rows.map((row, index) => {
     const scenarioCode = row.scenario || row.scenario_nom || (index === rows.length - 1 ? "IMPORT_OPTIMIZATION" : "LOCAL_IMPORT_BALANCE");
     return {
@@ -45,6 +42,16 @@ export default function CapexTimeline({ data = [], filtersLabel = "Tous les filt
   const { applyDrilldown } = useCrossFiltering();
   const rows = React.useMemo(() => normalizeTimeline(data), [data]);
   const insights = React.useMemo(() => buildInsights(rows), [rows]);
+
+  if (!rows.length) {
+    return (
+      <div className="chart-empty-state">
+        <strong>Aucune donnee pour ce projet</strong>
+        <p>L'evolution financiere sera disponible apres l'ajout de donnees DQE. Filtres : {filtersLabel}</p>
+      </div>
+    );
+  }
+
   const currentScope = rows.find((row) => row.scenarioCode === "Scenario actif") || rows[rows.length - 1] || {};
   const dates = rows.map((row) => row.date);
   const capex = rows.map((row) => row.capex);
