@@ -57,11 +57,15 @@ test("C2 A sans filtre : KPI 3000, 4 lignes, tableau financier", async ({ page }
   await softProbe(issues, "nom A", await page.getByText("Projet A synthetique").first().isVisible().catch(() => false), "absent");
   await softProbe(issues, "pas Mpemba", (await page.getByText(/Mpemba/i).count()) === 0, "present");
   await softProbe(issues, "4 lignes a analyser", (await page.getByText(/4 lignes à analyser/).count()) > 0, "absent");
-  const gridCard = page.locator(".analytics-card", { hasText: "Analyse detaillee" }).first();
-  const grid = await gridCard.innerText().catch(() => "");
-  await softProbe(issues, "tableau lignes financieres", grid.includes("Climatiseur"), grid.slice(0, 400));
-  await softProbe(issues, "montants tableau", /(3 000|1 200|800|600|400)/.test(grid), grid.slice(0, 400));
-  await softProbe(issues, "decisions import/local visibles", /IMPORT/.test(grid) && /LOCAL/.test(grid), grid.slice(0, 400));
+  const factGrid = page.locator("[data-fact-metre-grid]");
+  let grid = "";
+  if (await factGrid.count()) grid = await factGrid.first().innerText().catch(() => "");
+  else grid = await page.getByText(/Analyse detaillee/).first().innerText().catch(() => "");
+  const gridNorm = grid.replace(/[\u00A0\u202F]/g, " ");
+  await softProbe(issues, "tableau lignes financieres", gridNorm.includes("Climatiseur"), gridNorm.slice(0, 400));
+  await softProbe(issues, "montants tableau", /(3 000|1 200|800|600|400)/.test(gridNorm), gridNorm.slice(0, 400));
+  await softProbe(issues, "decisions import/local visibles", /IMPORT/.test(gridNorm) && /LOCAL/.test(gridNorm), gridNorm.slice(0, 400));
+  console.log("C2_ISSUES", JSON.stringify(issues));
   expect(issues).toEqual([]);
 });
 

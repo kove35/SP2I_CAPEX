@@ -6,8 +6,9 @@ Environnement : backend réel `:8001`, frontend V6 `:5174`, PostgreSQL isolé `s
 
 | Résultat | Tests |
 |---|---|
-| ✅ Réussis : **5** | C1 Prérequis, C3 Filtres/retour/Réinitialiser/rechargement, C4 Isolation A↔B, C5 Cas limites (C/D/E), C6 Droits (routes métier) |
-| ❌ Échoués : **1** | C2 Projet A sans filtre — panneaux secondaires (lot ouvert « cohérence des panneaux ») |
+| ✅ Réussis : **6** | C1 Prérequis, C2 Projet A (corrigé), C3 Filtres/retour/Réinitialiser, C4 Isolation, C5 Cas limites, C6 Droits |
+| ❌ Échoués : **0** | — |
+| ✅ C7 « simulation » : **2/2** | Erreur API ≠ vide ; null ≠ zéro (suite distincte étiquetée) |
 | ⏸ Bloqués / non exécutés | Cascade 7 « robustesse ciblée » (erreurs/délais simulés) : **non incluse** — suite distincte étiquetée « simulation », à exécuter séparément |
 
 ### Détails par cascade

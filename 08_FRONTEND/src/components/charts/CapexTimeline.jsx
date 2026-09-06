@@ -46,8 +46,8 @@ export default function CapexTimeline({ data = [], filtersLabel = "Tous les filt
   if (!rows.length) {
     return (
       <div className="chart-empty-state">
-        <strong>Aucune donnee pour ce projet</strong>
-        <p>L'evolution financiere sera disponible apres l'ajout de donnees DQE. Filtres : {filtersLabel}</p>
+        <strong>Aucun historique disponible</strong>
+        <p>L'evolution financiere apparaitra quand des simulations fourniront un historique sur ce projet. Filtres : {filtersLabel}</p>
       </div>
     );
   }

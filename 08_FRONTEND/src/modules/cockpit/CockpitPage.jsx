@@ -301,16 +301,21 @@ export default function CockpitPage() {
   // agrégat par lot (~18 lignes) ; on bascule alors sur les lignes fines de la Cost
   // Intelligence (Anomalie D/F) quand elles sont disponibles et plus granulaires.
   const dashboardTable = mainPayload.table || [];
+  const financialLines = Array.isArray(mainPayload.lines) ? mainPayload.lines : [];
   const fineTable = costPayload.table || engine.drilldown.data?.table || [];
   const isDashboardAggregate = dashboardTable.length > 0 && dashboardTable.length <= 60 && !dashboardTable.some((row) => row.designation);
-  const table = fineTable.length && (isDashboardAggregate || !dashboardTable.length) ? fineTable : dashboardTable;
-  const total = Number(mainPayload.pagination?.total || 0) || Number(costPayload.pagination?.total || 0) || table.length;
+  // Tableau detaille = vraies lignes financieres V6 quand disponibles (grain ligne),
+  // jamais les agregats par lot.
+  const table = financialLines.length
+    ? financialLines
+    : (fineTable.length && (isDashboardAggregate || !dashboardTable.length) ? fineTable : dashboardTable);
+  const total = financialLines.length || Number(mainPayload.pagination?.total || 0) || Number(costPayload.pagination?.total || 0) || table.length;
   const barRows = mainPayload.charts?.bar || capexPayload.charts?.bar || [];
 
   const heatmapRows = engine.heatmap.data?.charts?.heatmap || mainPayload.charts?.heatmap || [];
   const sankeyRows = engine.procurement.data?.charts?.sankey || mainPayload.charts?.sankey || [];
   const timelineRows = engine.timeline.data?.charts?.timeline || mainPayload.charts?.timeline || [];
-  const riskRows = engine.risk.data?.charts?.risk_matrix || heatmapRows || table;
+  const riskRows = engine.risk.data?.charts?.risk_matrix || engine.risk.data?.charts?.heatmap || [];
   const filterLabel = buildFilterLabel(engine.filters);
   const estimatedSavings = Number(currentSimulation?.kpi?.economie_nette || kpis.economie_nette || 0);
   const procurementGain = Number(kpis.economie_nette || 0);

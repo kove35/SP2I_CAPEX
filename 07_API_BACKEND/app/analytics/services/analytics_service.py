@@ -1443,6 +1443,7 @@ class AnalyticsService:
     def _build_dashboard_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
         summary = self.repository.get_project_cost_summary(query)
         by_lot = self.repository.get_dashboard_direction_v6(query)
+        lines = self.repository.get_financial_lines_v6(query)
         nb_dashboard_lines = sum(int(row.get("nb_lignes") or 0) for row in by_lot)
         kpis = {
             **summary,
@@ -1466,7 +1467,7 @@ class AnalyticsService:
             "analytics_confidence_label": "Elevee" if nb_dashboard_lines else None,
             "analytics_confidence_score": 95 if nb_dashboard_lines else None,
         }
-        return self._response(
+        payload = self._response(
             query,
             kpis=kpis,
             charts={"bar": by_lot},
@@ -1475,10 +1476,15 @@ class AnalyticsService:
             metadata={
                 "engine": "SP2I Financial Engine V6",
                 "source": "vw_dashboard_direction_v6_scoped",
+                "lines_source": "vw_fact_metre_financial_v6",
                 "project_cost_source": "vw_project_cost_summary_v6",
                 "mode": "parallel_v6",
             },
         )
+        # Lignes financieres reelles (grain ligne) pour le tableau detaille :
+        # jamais remplacees par les agregats par lot.
+        payload["lines"] = lines
+        return payload
 
     def _build_spatial(self, query: AnalyticsQuery) -> dict[str, Any]:
         where_sql, params = self._spatial_view_where(query)

@@ -38,7 +38,7 @@ function normalizeRows(payload, rows = []) {
   const rawRows = rows.length ? rows : Array.isArray(payload) ? payload : [];
   return rawRows.map((row) => {
     const capexLocal = Number(row.capex_local || row.capex_brut || row.value || 0);
-    const capexOptimise = Number(row.capex_optimise || row.value || capexLocal || 0);
+    const capexOptimise = Number(row.capex_optimise || 0);
     const economie = Number(row.economie || Math.max(capexLocal - capexOptimise, 0));
     const roi = Number(row.roi || row.taux_economie || (capexLocal ? economie / capexLocal : 0));
     const risque = Number(row.risque || row.criticite || row.global_risk_score || (normalizeDecision(row.decision_import) === "IMPORT" ? 58 : 32));
@@ -49,7 +49,7 @@ function normalizeRows(payload, rows = []) {
       batiment: toBusinessLabel(row.batiment, "Batiment non renseigne"),
       niveau: toBusinessLabel(row.niveau, "Niveau non renseigne"),
       decision_import: normalizeDecision(row.decision_import || row.decision),
-      value: capexOptimise || capexLocal,
+      value: capexLocal || capexOptimise,
       capexLocal,
       economie,
       roi,

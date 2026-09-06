@@ -373,6 +373,36 @@ class AnalyticsRepository:
             )
         return out
 
+    def get_financial_lines_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
+        """Lignes financieres V6 (grain ligne) pour le tableau detaille.
+
+        Contrat : une ligne par ligne financiere du perimetre filtre (jamais un
+        agregat par lot). Colonnes = vw_fact_metre_financial_v6 (dimensions et
+        montants reels : designation, lot, famille, batiment, niveau,
+        appartement, decision_import, capex_*).
+        """
+        financial_source = self._financial_source()
+        where_sql, params = self.build_financial_where_clause(query)
+        rows = self.db.execute(
+            text(
+                f"""
+                SELECT
+                    id_ligne, projet_id, project_code,
+                    designation, quantite, unite, lot, article_code, sous_lot,
+                    batiment, niveau, appartement, piece, famille,
+                    prix_local_fcfa, prix_import_fcfa, prix_optimise_fcfa,
+                    capex_local, capex_import, capex_optimise, economie,
+                    decision_import, pricing_scope
+                FROM {financial_source}
+                {where_sql}
+                ORDER BY lot, article_code, id_ligne
+                LIMIT 5000
+                """
+            ),
+            params,
+        ).mappings().all()
+        return [self._json_safe(dict(row)) for row in rows]
+
     def get_cost_intelligence_v6(self, query: AnalyticsQuery) -> list[dict[str, Any]]:
         clauses: list[str] = []
         params: dict[str, Any] = {}

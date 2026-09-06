@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 // Campagne recette : backend reel :8001 + frontend :5174 (deja actifs).
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: /real-api-campaign\.spec\.js/,
+  testMatch: /real-api-campaign(-c7-simulation)?\.spec\.js/,
   timeout: 90_000,
   expect: { timeout: 25_000 },
   fullyParallel: false,

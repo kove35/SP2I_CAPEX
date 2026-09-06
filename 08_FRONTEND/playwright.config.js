@@ -9,6 +9,7 @@ export default defineConfig({
     "**/spatial/**",
     "**/real-api-recipe.spec.js",
     "**/real-api-campaign.spec.js",
+    "**/real-api-campaign-c7-simulation.spec.js",
   ],
   timeout: 30_000,
   expect: {

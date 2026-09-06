@@ -43,6 +43,7 @@ class AnalyticsResponse(BaseModel):
     kpis: dict[str, Any] = Field(default_factory=dict)
     charts: dict[str, Any] = Field(default_factory=dict)
     table: list[dict[str, Any]] = Field(default_factory=list)
+    lines: list[dict[str, Any]] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
 

@@ -45,7 +45,7 @@ function buildFallbackLinks(rows = [], chartRows = []) {
     const decision = normalizeDecision(row.decision_import || row.decision || "IMPORT");
     const fournisseur = normalizeFamily(row.famille || "SP2I Supply");
     const key = `${decision}|${fournisseur}|${lot}`;
-    const value = Math.max(Number(row.capex_optimise || row.capex_brut || row.value || 0), 1);
+    const value = Math.max(Number(row.capex_local || row.capex_brut || row.value || 0), 0);
     const economie = Number(row.economie || row.economie_nette || 0);
     const current = acc.get(key) || { decision, fournisseur, lot, value: 0, economie: 0, roi: 0, delai: decision === "IMPORT" ? 75 : 14 };
     current.value += value;

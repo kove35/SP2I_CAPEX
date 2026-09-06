@@ -15,6 +15,13 @@ const WATERFALL_COLORS = {
   final: analyticsColors.amber,
 };
 
+function compactMoney(value) {
+  const abs = Math.abs(Number(value || 0));
+  if (abs >= 1_000_000) return `${Number(value / 1_000_000).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} M`;
+  if (abs >= 1_000) return `${Math.round(value / 1_000)} k`;
+  return `${Math.round(value)}`;
+}
+
 function buildWaterfallModel(summary = {}) {
   const capexBrut = Number(summary.capex_brut || summary.capex_local || 0);
   const capexFinal = Number(summary.capex_optimise || Math.max(capexBrut - Number(summary.economie_nette || 0), 0));
@@ -149,8 +156,7 @@ export default function CapexWaterfall({ summary = {}, filtersLabel = "Tous les 
                 `Cumul: <b>${formatMoney(cumul)}</b>`,
                 `Budget cible: <b>${formatMoney(budgetTarget)}</b>`,
                 `Strategie active: <b>${activeScenario.label}</b>`,
-                `Lots principaux: <b>Electricite, Alucobond, Gros oeuvre</b>`,
-                `Top fournisseurs: <b>SP2I Supply / Import Chine</b>`,
+                `Source: <b>Analyse SP2I</b>`,
               ].join("<br/>");
             },
           },
@@ -164,7 +170,7 @@ export default function CapexWaterfall({ summary = {}, filtersLabel = "Tous les 
           yAxis: {
             type: "value",
             max: Math.ceil(maxValue * 1.12),
-            axisLabel: { color: analyticsColors.muted, formatter: (value) => `${Math.round(value / 1_000_000)}M` },
+            axisLabel: { color: analyticsColors.muted, formatter: (value) => compactMoney(value) },
             splitLine: chartTheme.splitLine,
           },
           series: [
@@ -189,7 +195,7 @@ export default function CapexWaterfall({ summary = {}, filtersLabel = "Tous les 
                 color: analyticsColors.text,
                 fontSize: 11,
                 fontWeight: 900,
-                formatter: ({ dataIndex }) => `${Math.round((cumulative[dataIndex] || 0) / 1_000_000)}M`,
+                formatter: ({ dataIndex }) => compactMoney(cumulative[dataIndex] || 0),
               },
               emphasis: {
                 itemStyle: { shadowBlur: 24, shadowColor: "rgba(103,232,201,.38)" },

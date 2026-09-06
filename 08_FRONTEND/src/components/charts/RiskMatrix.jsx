@@ -89,8 +89,8 @@ export default function RiskMatrix({ rows = [], filtersLabel = "Tous les filtres
     return (
       <div className="risk-matrix-shell">
         <div className="chart-empty-state">
-          <strong>Aucune donnee pour ce projet</strong>
-          <p>La carte des risques sera disponible apres l'ajout de donnees DQE. Filtres : {filtersLabel}</p>
+          <strong>Aucune évaluation de risque disponible</strong>
+          <p>Le module risque n'a pas produit de matrice pour ce périmètre. Ce n'est pas une absence de lignes projet : les KPI financiers peuvent être présents. Filtres : {filtersLabel}</p>
         </div>
       </div>
     );
