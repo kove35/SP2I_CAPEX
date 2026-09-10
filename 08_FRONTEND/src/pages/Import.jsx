@@ -1,7 +1,9 @@
 import React from "react";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:8000";
+import { buildApiUrl } from "../services/apiClient";
+
+// Base API centralisee (voir services/apiClient.js) : plus d'URL en dur.
 const LIGNES_PAR_PAGE = 10;
 
 const exempleLignes = [
@@ -63,7 +65,7 @@ export default function Import() {
   const appelerApi = async (url, options = {}) => {
     try {
       const reponse = await axios({
-        url: `${API_BASE_URL}${url}`,
+        url: buildApiUrl(url),
         method: options.method || "GET",
         data: options.body,
         timeout: options.timeout || 120000,
