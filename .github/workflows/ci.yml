@@ -65,4 +65,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Frontend post-build smoke (bundle runtime)
+        run: npm run test:postbuild
       - run: npm run test:e2e
