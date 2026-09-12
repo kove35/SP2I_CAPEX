@@ -289,7 +289,7 @@ class AnalyticsService:
         return self._build_project_cost_v6(query)
 
     def dashboard_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
-        return self._build_dashboard_v6(query)
+        return self._cached("dashboard:v6", query, lambda: self._build_dashboard_v6(query))
 
     def cost_intelligence_v6(self, query: AnalyticsQuery) -> dict[str, Any]:
         return self._build_cost_intelligence_v6(query)
