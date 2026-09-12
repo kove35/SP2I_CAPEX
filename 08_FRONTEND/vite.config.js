@@ -9,6 +9,7 @@ const VENDOR_CHUNKS = [
   { match: /node_modules[\\/]@tanstack/, name: "vendor-query" },
   { match: /node_modules[\\/]axios/, name: "vendor-axios" },
   { match: /node_modules[\\/]lucide-react/, name: "vendor-icons" },
+  { match: /node_modules[\\/](antd|@ant-design|rc-[a-z0-9-]+|dayjs)/, name: "vendor-antd" },
 ];
 
 export default defineConfig({

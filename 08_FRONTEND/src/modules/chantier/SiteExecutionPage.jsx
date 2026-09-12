@@ -8,7 +8,7 @@ import {
   listProjectExecutionActions,
 } from "../../services/projectService";
 import { useWorkflow } from "../../hooks/useWorkflow";
-import ActionsWorkflowBoard from "./ActionsWorkflowBoard";
+const ActionsWorkflowBoard = React.lazy(() => import("./ActionsWorkflowBoard"));
 import WorkflowGuardEmptyState from "../projects/WorkflowGuardEmptyState";
 import SmartWorkflowActions from "../projects/SmartWorkflowActions";
 import {
@@ -928,7 +928,8 @@ export default function SiteExecutionPage() {
       {tab === "workflow" && (
         <section className="execution-workflow-section">
           <AnalyticsCard title="Workflow des actions chantier" eyebrow="Kanban opérationnel">
-            <ActionsWorkflowBoard
+            <React.Suspense fallback={<div className="live-refresh">Chargement du workflow...</div>}>
+              <ActionsWorkflowBoard
               projectId={state.activeProject}
               actions={remoteActionsRaw}
               onRefresh={() => {
@@ -941,8 +942,9 @@ export default function SiteExecutionPage() {
                   }
                 );
               }}
-              loading={false}
-            />
+                loading={false}
+              />
+            </React.Suspense>
           </AnalyticsCard>
         </section>
       )}
