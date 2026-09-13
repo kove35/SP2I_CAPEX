@@ -9,7 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.analytics.schemas import AnalyticsQuery
 from app.analytics.utils.display_text import normalize_display_text
-from app.analytics.utils.schema_utils import first_non_empty_sql, load_table_columns, optional_column_sql
+from app.analytics.utils.schema_utils import (
+    first_non_empty_sql,
+    load_table_columns,
+    optional_column_sql,
+    warn_missing_column,
+)
 from app.config.fact_source import get_fact_source
 from app.config.financial_source import get_financial_source
 
@@ -38,6 +43,16 @@ ALLOWED_ORDER = {
 }
 
 DRILLDOWN = ["projet", "batiment", "niveau", "appartement", "piece", "lot", "famille", "article"]
+
+COST_INTELLIGENCE_V6_SOURCE = "vw_cost_intelligence_v6_scoped"
+
+# Colonnes de pricing optionnelles de la couche cost-intelligence V6 : elles
+# peuvent manquer selon la source financiere deployee (ex.
+# vw_fact_metre_financial_canonical en production). Quand elles manquent, on
+# emet une valeur neutre (contrat CostIntelligenceV6 : champs str | None) au
+# lieu d'echouer en 42703 (UndefinedColumn). Les autres erreurs SQL restent
+# propagees.
+OPTIONAL_PRICE_COLUMNS = ("pricing_scope", "pricing_confidence", "price_reference_code")
 
 
 class AnalyticsRepository:
@@ -152,6 +167,42 @@ class AnalyticsRepository:
         summary["cost_per_level"] = summary.get("total_project_cost_per_niveau")
         return self._json_safe(summary)
 
+    def _pricing_scope_supported(self, financial_source: str) -> bool:
+        """Vrai si la source financiere expose la colonne optionnelle pricing_scope."""
+        return "pricing_scope" in load_table_columns(self.db, financial_source)
+
+    def _fallback_legacy_expressions(self, financial_source: str) -> tuple[str, str]:
+        """Expressions ``fallback_legacy_lot_*`` robustes a l'absence de pricing_scope.
+
+        Certaines sources financieres de production (ex.
+        ``vw_fact_metre_financial_canonical``) n'exposent pas ``pricing_scope`` :
+        on retourne alors des constantes sures (0) au lieu d'echouer en 42703
+        (UndefinedColumn). Les autres erreurs SQL restent propagees.
+        """
+        if self._pricing_scope_supported(financial_source):
+            return (
+                "COUNT(*) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK')",
+                "COALESCE(SUM(capex_local) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK'), 0)::numeric",
+            )
+        return ("0::numeric", "0::numeric")
+
+    def _optional_price_columns_sql(self, table_name: str) -> str:
+        """Fragment SELECT des colonnes de pricing optionnelles.
+
+        Conserve le SQL actuel quand la colonne existe dans la table/vue ;
+        sinon emet ``NULL::text AS <colonne>`` (valeur neutre du contrat
+        CostIntelligenceV6) sans jamais referencer la colonne absente.
+        """
+        columns = load_table_columns(self.db, table_name)
+        fragments: list[str] = []
+        for column in OPTIONAL_PRICE_COLUMNS:
+            if column in columns:
+                fragments.append(column)
+            else:
+                warn_missing_column(table_name, column)
+                fragments.append(f"NULL::text AS {column}")
+        return ",\n                    ".join(fragments)
+
     @staticmethod
     def _has_spatial_filters(query: AnalyticsQuery) -> bool:
         """Vrai si un filtre spatial ou de regroupement (hors projet) est actif."""
@@ -178,6 +229,7 @@ class AnalyticsRepository:
         """
         financial_source = self._financial_source()
         where_sql, params = self.build_financial_where_clause(query)
+        fallback_lines_sql, fallback_capex_sql = self._fallback_legacy_expressions(financial_source)
         row = self.db.execute(
             text(
                 f"""
@@ -186,8 +238,8 @@ class AnalyticsRepository:
                     COALESCE(SUM(capex_import), 0)::numeric AS capex_import,
                     COALESCE(SUM(capex_optimise), 0)::numeric AS capex_optimise,
                     COALESCE(SUM(economie), 0)::numeric AS economie_nette,
-                    COUNT(*) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK') AS fallback_legacy_lot_lines,
-                    COALESCE(SUM(capex_local) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK'), 0)::numeric AS fallback_legacy_lot_capex,
+                    {fallback_lines_sql} AS fallback_legacy_lot_lines,
+                    {fallback_capex_sql} AS fallback_legacy_lot_capex,
                     COUNT(DISTINCT niveau) FILTER (
                         WHERE NULLIF(TRIM(CAST(niveau AS text)), '') IS NOT NULL
                     )::numeric AS nb_niveaux,
@@ -325,6 +377,7 @@ class AnalyticsRepository:
         """
         financial_source = self._financial_source()
         where_sql, params = self.build_financial_where_clause(query)
+        fallback_lines_sql, fallback_capex_sql = self._fallback_legacy_expressions(financial_source)
         summary = self.get_project_cost_summary(query)
         total_direct = float(summary.get("capex_direct") or 0)
         rows = self.db.execute(
@@ -335,8 +388,8 @@ class AnalyticsRepository:
                     COALESCE(SUM(capex_local), 0)::numeric AS capex_direct,
                     COUNT(*)::numeric AS nb_lignes,
                     COUNT(DISTINCT article_code)::numeric AS nb_articles,
-                    COUNT(*) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK') AS fallback_legacy_lot_lines,
-                    COALESCE(SUM(capex_local) FILTER (WHERE pricing_scope = 'LEGACY_LOT_FALLBACK'), 0)::numeric AS fallback_legacy_lot_capex
+                    {fallback_lines_sql} AS fallback_legacy_lot_lines,
+                    {fallback_capex_sql} AS fallback_legacy_lot_capex
                 FROM {financial_source}
                 {where_sql}
                 GROUP BY lot
@@ -383,6 +436,7 @@ class AnalyticsRepository:
         """
         financial_source = self._financial_source()
         where_sql, params = self.build_financial_where_clause(query)
+        pricing_scope_sql = "pricing_scope" if self._pricing_scope_supported(financial_source) else "NULL::text AS pricing_scope"
         rows = self.db.execute(
             text(
                 f"""
@@ -392,7 +446,7 @@ class AnalyticsRepository:
                     batiment, niveau, appartement, piece, famille,
                     prix_local_fcfa, prix_import_fcfa, prix_optimise_fcfa,
                     capex_local, capex_import, capex_optimise, economie,
-                    decision_import, pricing_scope
+                    decision_import, {pricing_scope_sql}
                 FROM {financial_source}
                 {where_sql}
                 ORDER BY lot, article_code, id_ligne
@@ -420,6 +474,7 @@ class AnalyticsRepository:
             clauses.append("decision_import = :decision_import")
             params["decision_import"] = filters.decision_import
         where_sql = "WHERE " + " AND ".join(clauses) if clauses else ""
+        price_columns_sql = self._optional_price_columns_sql(COST_INTELLIGENCE_V6_SOURCE)
         rows = self.db.execute(
             text(
                 f"""
@@ -438,10 +493,8 @@ class AnalyticsRepository:
                     capex_optimise,
                     economie,
                     decision_import,
-                    pricing_scope,
-                    pricing_confidence,
-                    price_reference_code
-                FROM vw_cost_intelligence_v6_scoped
+                    {price_columns_sql}
+                FROM {COST_INTELLIGENCE_V6_SOURCE}
                 {where_sql}
                 ORDER BY capex_local DESC
                 LIMIT :limit OFFSET :offset
