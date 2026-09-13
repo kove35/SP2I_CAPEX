@@ -54,6 +54,13 @@ COST_INTELLIGENCE_V6_SOURCE = "vw_cost_intelligence_v6_scoped"
 # propagees.
 OPTIONAL_PRICE_COLUMNS = ("pricing_scope", "pricing_confidence", "price_reference_code")
 
+# Colonnes de lignage projet optionnelles des lignes financieres V6 : la couche
+# canonique (phase 026, vw_fact_metre_financial_canonical) ne porte pas de
+# lignage projet ; celui-ci est construit dans vw_fact_metre_financial_v6
+# (phase 033, via dim_projet). Quand ces colonnes manquent, on emet une valeur
+# neutre (NULL) au lieu d'echouer en 42703.
+OPTIONAL_FINANCIAL_LINE_COLUMNS = ("projet_id", "project_code")
+
 
 class AnalyticsRepository:
     """Repository SQL optimise pour les dashboards React/Power BI-like."""
@@ -186,16 +193,17 @@ class AnalyticsRepository:
             )
         return ("0::numeric", "0::numeric")
 
-    def _optional_price_columns_sql(self, table_name: str) -> str:
-        """Fragment SELECT des colonnes de pricing optionnelles.
+    def _optional_columns_sql(self, table_name: str, columns_to_check: tuple[str, ...]) -> str:
+        """Fragment SELECT de colonnes optionnelles, robuste a leur absence.
 
-        Conserve le SQL actuel quand la colonne existe dans la table/vue ;
-        sinon emet ``NULL::text AS <colonne>`` (valeur neutre du contrat
-        CostIntelligenceV6) sans jamais referencer la colonne absente.
+        Colonne presente : conserve le SQL actuel. Colonne absente : emet
+        ``NULL::text AS <colonne>`` (valeur neutre, contrat de reponse
+        inchange) sans jamais referencer la colonne absente. Les autres erreurs
+        SQL restent propagees.
         """
         columns = load_table_columns(self.db, table_name)
         fragments: list[str] = []
-        for column in OPTIONAL_PRICE_COLUMNS:
+        for column in columns_to_check:
             if column in columns:
                 fragments.append(column)
             else:
@@ -437,11 +445,13 @@ class AnalyticsRepository:
         financial_source = self._financial_source()
         where_sql, params = self.build_financial_where_clause(query)
         pricing_scope_sql = "pricing_scope" if self._pricing_scope_supported(financial_source) else "NULL::text AS pricing_scope"
+        line_identity_sql = self._optional_columns_sql(financial_source, OPTIONAL_FINANCIAL_LINE_COLUMNS)
         rows = self.db.execute(
             text(
                 f"""
                 SELECT
-                    id_ligne, projet_id, project_code,
+                    id_ligne,
+                    {line_identity_sql},
                     designation, quantite, unite, lot, article_code, sous_lot,
                     batiment, niveau, appartement, piece, famille,
                     prix_local_fcfa, prix_import_fcfa, prix_optimise_fcfa,
@@ -474,7 +484,7 @@ class AnalyticsRepository:
             clauses.append("decision_import = :decision_import")
             params["decision_import"] = filters.decision_import
         where_sql = "WHERE " + " AND ".join(clauses) if clauses else ""
-        price_columns_sql = self._optional_price_columns_sql(COST_INTELLIGENCE_V6_SOURCE)
+        price_columns_sql = self._optional_columns_sql(COST_INTELLIGENCE_V6_SOURCE, OPTIONAL_PRICE_COLUMNS)
         rows = self.db.execute(
             text(
                 f"""

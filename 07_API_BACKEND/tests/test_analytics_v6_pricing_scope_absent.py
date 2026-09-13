@@ -147,5 +147,44 @@ class CostIntelligenceV6PricingScopeTest(unittest.TestCase):
         self.assertEqual(_bare_price_references(sql), list(PRICE_COLUMNS))
 
 
+# Colonnes de la couche canonique (phase 026) : aucune lignee projet, aucun
+# pricing_scope (le lignage et le pricing BPU sont ajoutes en phase 033).
+CANONICAL_COLUMNS = {
+    "id_ligne", "lot", "sous_lot", "sous_lot_id", "component_code",
+    "designation", "designation_originale", "designation_normalisee",
+    "article_code", "code_article", "quantite", "unite",
+    "pu_local", "pu_import", "prix_local_fcfa", "prix_import_fcfa", "prix_optimise_fcfa",
+    "capex_local", "capex_import", "capex_optimise", "economie", "taux_economie",
+    "batiment", "niveau", "appartement", "piece", "decision_import", "fournisseur",
+    "famille", "created_at", "date_import",
+}
+
+
+class FinancialLinesV6ProjectLineageTest(unittest.TestCase):
+    """canonical n'expose ni projet_id ni project_code (lignage construit en 033)."""
+
+    def test_lines_sql_neutralizes_project_lineage_when_absent(self) -> None:
+        repo = _repo(columns=CANONICAL_COLUMNS, rows=[{"id_ligne": "L1"}])
+        repo.get_financial_lines_v6(_query())
+
+        sql = repo.db.all_sql
+        self.assertIn("NULL::text AS projet_id", sql)
+        self.assertIn("NULL::text AS project_code", sql)
+        cleaned = sql.replace("NULL::text AS projet_id", "").replace("NULL::text AS project_code", "")
+        self.assertNotIn("projet_id", cleaned)
+        self.assertNotIn("project_code", cleaned)
+
+    def test_lines_sql_keeps_project_lineage_when_present(self) -> None:
+        columns = CANONICAL_COLUMNS | {"projet_id", "project_code", "pricing_scope"}
+        repo = _repo(columns=columns, rows=[{"id_ligne": "L1"}])
+        repo.get_financial_lines_v6(_query())
+
+        sql = repo.db.all_sql
+        self.assertNotIn("NULL::text AS projet_id", sql)
+        self.assertNotIn("NULL::text AS project_code", sql)
+        self.assertIn("projet_id", sql)
+        self.assertIn("project_code", sql)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,15 @@ from types import SimpleNamespace
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/sp2i_test")
 
 OPTIONAL_PRICE_COLUMNS = ("pricing_scope", "pricing_confidence", "price_reference_code")
+OPTIONAL_LINEAGE_COLUMNS = ("projet_id", "project_code")
+
+
+def _reads_column(sql: str, columns: tuple[str, ...]) -> bool:
+    """Vrai si le SQL lit reellement une des colonnes (alias neutres exclus)."""
+    cleaned = sql
+    for column in columns:
+        cleaned = cleaned.replace(f"NULL::text AS {column}", "")
+    return any(column in cleaned for column in columns)
 
 
 def _reads_optional_price_column(sql: str) -> bool:
@@ -18,10 +27,7 @@ def _reads_optional_price_column(sql: str) -> bool:
     Les alias neutres (``NULL::text AS <colonne>``) conservent le contrat de
     reponse sans lire aucune colonne : ils sont exclus du controle.
     """
-    cleaned = sql
-    for column in OPTIONAL_PRICE_COLUMNS:
-        cleaned = cleaned.replace(f"NULL::text AS {column}", "")
-    return any(column in cleaned for column in OPTIONAL_PRICE_COLUMNS)
+    return _reads_column(sql, OPTIONAL_PRICE_COLUMNS)
 
 
 class _FakeResult:
@@ -64,7 +70,7 @@ class _DashboardFakeDb:
                     }
                 ]
             )
-        if "id_ligne, projet_id" in sql:
+        if "ORDER BY lot, article_code, id_ligne" in sql:
             return _FakeResult(
                 [
                     {
@@ -206,6 +212,18 @@ class DashboardV6HttpPricingScopeAbsentTest(unittest.TestCase):
             [],
             "aucun SQL ne doit lire pricing_scope quand la colonne est absente",
         )
+
+        financial_sql = [sql for sql in self.fake_db.sql if "vw_fact_metre_financial" in sql]
+        self.assertTrue(financial_sql, "les requetes de la source financiere doivent avoir ete emises")
+        lineage_offending = [sql for sql in financial_sql if _reads_column(sql, OPTIONAL_LINEAGE_COLUMNS)]
+        self.assertEqual(
+            lineage_offending,
+            [],
+            "aucun SQL sur la source financiere ne doit lire le lignage projet absent",
+        )
+        lines_sql = next(sql for sql in self.fake_db.sql if "ORDER BY lot, article_code, id_ligne" in sql)
+        self.assertIn("NULL::text AS projet_id", lines_sql)
+        self.assertIn("NULL::text AS project_code", lines_sql)
 
     def test_cost_intelligence_v6_returns_200_when_pricing_columns_absent(self) -> None:
         response = self.client.get(
